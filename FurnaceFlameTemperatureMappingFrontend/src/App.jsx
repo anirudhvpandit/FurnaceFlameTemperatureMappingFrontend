@@ -81,29 +81,29 @@ export default function App() {
   }, [selected]);
 
   const fetchHistory = async () => {
-  const res = await axios.get(`${BASE_URL}/history`);
-  const data = res.data;
+    const res = await axios.get(`${BASE_URL}/history`);
+    const data = res.data;
 
-  setHistory(data);
+    setHistory(data);
 
-  if (data.length >= 2) {
-    const firstTwo = data.slice(-2);
+    if (data.length >= 2) {
+      const firstTwo = data.slice(-2);
 
-    const datasetPromises = firstTwo.map((item) =>
-      axios.get(`${BASE_URL}/history/${item.id}`)
-    );
+      const datasetPromises = firstTwo.map((item) =>
+        axios.get(`${BASE_URL}/history/${item.id}`)
+      );
 
-    const responses = await Promise.all(datasetPromises);
+      const responses = await Promise.all(datasetPromises);
 
-    const newDatasets = {};
-    responses.forEach((res, idx) => {
-      newDatasets[firstTwo[idx].id] = res.data;
-    });
+      const newDatasets = {};
+      responses.forEach((res, idx) => {
+        newDatasets[firstTwo[idx].id] = res.data;
+      });
 
-    setDatasets((prev) => ({ ...prev, ...newDatasets }));
-    setSelected(firstTwo.map((item) => item.id));
-  }
-};
+      setDatasets((prev) => ({ ...prev, ...newDatasets }));
+      setSelected(firstTwo.map((item) => item.id));
+    }
+  };
 
   const toggleLine = (key) => {
     setVisibleLines((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -133,10 +133,10 @@ export default function App() {
       return;
     }
     if (!datasets[item.id]) {
-      
+
       const res = await axios.get(`${BASE_URL}/history/${item.id}`);
       console.log(res.data);
-      
+
       setDatasets((prev) => ({ ...prev, [item.id]: res.data }));
     }
     setSelected((prev) => [...prev, item.id]);
@@ -153,68 +153,68 @@ export default function App() {
     }));
 
   const renderParametersTable = (dataset) => {
-  if (!dataset) return { leftParams: [], rightParams: [], coalMills: [] };
- 
-  const boilerData = dataset.boiler_mill_parameters;
-  const coalData   = dataset.coal_mill_parameters;
- 
-  // Left side: Main Steam Pressure, Flow, Spray temps, O2, Wind Box, PA Flow
-  const leftParams = [];
-  const left = boilerData?.left;
-  if (left?.parameters?.length) {
-    left.parameters.forEach((param, idx) => {
-      if (param) {
-        leftParams.push({
-          label: String(param).trim(),
-          left:  left.l_values?.[idx] ?? null,
-          right: left.r_values?.[idx] ?? null,
-        });
-      }
-    });
-  }
- 
-  // Right side: FG Temp after DPSH, PSH, RH, HSH, Economizer, APH
-  const rightParams = [];
-  const right = boilerData?.right;
-  if (right?.parameters?.length) {
-    right.parameters.forEach((param, idx) => {
-      if (param) {
-        rightParams.push({
-          label: String(param).trim(),
-          left:  right.l_values?.[idx] ?? null,
-          right: right.r_values?.[idx] ?? null,
-        });
-      }
-    });
-  }
- 
-  // Coal mills — unchanged
-  const coalMills = [];
-  if (coalData?.parameters?.length) {
-    const millLetters = ["A", "B", "C", "D", "E", "F", "G", "H"];
-    millLetters.forEach((mill) => {
-      const millKey  = `coal_mill_${mill.toLowerCase()}`;
-      const millData = coalData[millKey];
-      if (!millData) return;
- 
-      const obj = { mill };
-      coalData.parameters.forEach((param, idx) => {
+    if (!dataset) return { leftParams: [], rightParams: [], coalMills: [] };
+
+    const boilerData = dataset.boiler_mill_parameters;
+    const coalData = dataset.coal_mill_parameters;
+
+    // Left side: Main Steam Pressure, Flow, Spray temps, O2, Wind Box, PA Flow
+    const leftParams = [];
+    const left = boilerData?.left;
+    if (left?.parameters?.length) {
+      left.parameters.forEach((param, idx) => {
         if (param) {
-          const key = String(param).trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
-          obj[key] = millData[idx] ?? null;
+          leftParams.push({
+            label: String(param).trim(),
+            left: left.l_values?.[idx] ?? null,
+            right: left.r_values?.[idx] ?? null,
+          });
         }
       });
-      coalMills.push(obj);
-    });
-  }
- 
-  return { leftParams, rightParams, coalMills };
-};
- 
- 
-// ─── BOILER PARAMS TAB JSX ───────────────────────────────────────────────────
-// Replace the entire {getTab(id) === "boiler" && ...} block with this:
- 
+    }
+
+    // Right side: FG Temp after DPSH, PSH, RH, HSH, Economizer, APH
+    const rightParams = [];
+    const right = boilerData?.right;
+    if (right?.parameters?.length) {
+      right.parameters.forEach((param, idx) => {
+        if (param) {
+          rightParams.push({
+            label: String(param).trim(),
+            left: right.l_values?.[idx] ?? null,
+            right: right.r_values?.[idx] ?? null,
+          });
+        }
+      });
+    }
+
+    // Coal mills — unchanged
+    const coalMills = [];
+    if (coalData?.parameters?.length) {
+      const millLetters = ["A", "B", "C", "D", "E", "F", "G", "H"];
+      millLetters.forEach((mill) => {
+        const millKey = `coal_mill_${mill.toLowerCase()}`;
+        const millData = coalData[millKey];
+        if (!millData) return;
+
+        const obj = { mill };
+        coalData.parameters.forEach((param, idx) => {
+          if (param) {
+            const key = String(param).trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+            obj[key] = millData[idx] ?? null;
+          }
+        });
+        coalMills.push(obj);
+      });
+    }
+
+    return { leftParams, rightParams, coalMills };
+  };
+
+
+  // ─── BOILER PARAMS TAB JSX ───────────────────────────────────────────────────
+  // Replace the entire {getTab(id) === "boiler" && ...} block with this:
+
 
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -243,64 +243,66 @@ export default function App() {
   };
 
   const MetaBanner = ({ meta }) => {
-  if (!meta) return null;
-  const items = [
-    { label: "UNIT",              value: meta.unit },
-    { label: "DATE",              value: meta.date },
-    { label: "TIME",              value: meta.time },
-    { label: "LOAD (MW)",         value: meta.load_mw },
-    { label: "COAL FLOW (TPH)",   value: meta.total_coal_flow_tph },
-    { label: "AIR FLOW (TPH)",    value: meta.total_air_flow_tph },
-    { label: "MILLS IN SERVICE",  value: meta.coal_mills_in_service
-                                         ? `${meta.coal_mills_in_service} — ${meta.coal_mills_list || ""}`
-                                         : null },
-    { label: "OIL GUNS",          value: meta.oil_guns_in_service },
-    { label: "BURNER TILT (DEG)", value: meta.burner_tilt_position },
-  ].filter(i => i.value !== null && i.value !== undefined && i.value !== "");
- 
-  if (!items.length) return null;
- 
-  return (
-    <div style={metaBannerStyle.wrap}>
-      {items.map(({ label, value }) => (
-        <div key={label} style={metaBannerStyle.item}>
-          <div style={metaBannerStyle.label}>{label}</div>
-          <div style={metaBannerStyle.value}>{String(value)}</div>
-        </div>
-      ))}
-    </div>
-  );
-};
+    if (!meta) return null;
+    const items = [
+      { label: "UNIT", value: meta.unit },
+      { label: "DATE", value: meta.date },
+      { label: "TIME", value: meta.time },
+      { label: "LOAD (MW)", value: meta.load_mw },
+      { label: "COAL FLOW (TPH)", value: meta.total_coal_flow_tph },
+      { label: "AIR FLOW (TPH)", value: meta.total_air_flow_tph },
+      {
+        label: "MILLS IN SERVICE", value: meta.coal_mills_in_service
+          ? `${meta.coal_mills_in_service} — ${meta.coal_mills_list || ""}`
+          : null
+      },
+      { label: "OIL GUNS", value: meta.oil_guns_in_service },
+      { label: "BURNER TILT (DEG)", value: meta.burner_tilt_position },
+    ].filter(i => i.value !== null && i.value !== undefined && i.value !== "");
 
-const metaBannerStyle = {
-  wrap: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "1px",
-    borderBottom: "1px solid #e3e3f0",
-    background: "#f0f0fa",
-  },
-  item: {
-    padding: "6px 14px",
-    borderRight: "1px solid #e3e3f0",
-    minWidth: "100px",
-    flex: "1 1 auto",
-  },
-  label: {
-    fontFamily: "'DM Mono', monospace",
-    fontSize: "8px",
-    letterSpacing: "0.18em",
-    color: "#84889a",
-    textTransform: "uppercase",
-    marginBottom: "2px",
-  },
-  value: {
-    fontFamily: "'DM Mono', monospace",
-    fontSize: "12px",
-    color: "#13121a",
-    fontWeight: "500",
-  },
-};
+    if (!items.length) return null;
+
+    return (
+      <div style={metaBannerStyle.wrap}>
+        {items.map(({ label, value }) => (
+          <div key={label} style={metaBannerStyle.item}>
+            <div style={metaBannerStyle.label}>{label}</div>
+            <div style={metaBannerStyle.value}>{String(value)}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const metaBannerStyle = {
+    wrap: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "1px",
+      borderBottom: "1px solid #e3e3f0",
+      background: "#f0f0fa",
+    },
+    item: {
+      padding: "6px 14px",
+      borderRight: "1px solid #e3e3f0",
+      minWidth: "100px",
+      flex: "1 1 auto",
+    },
+    label: {
+      fontFamily: "'DM Mono', monospace",
+      fontSize: "8px",
+      letterSpacing: "0.18em",
+      color: "#84889a",
+      textTransform: "uppercase",
+      marginBottom: "2px",
+    },
+    value: {
+      fontFamily: "'DM Mono', monospace",
+      fontSize: "12px",
+      color: "#13121a",
+      fontWeight: "500",
+    },
+  };
 
   return (
     <>
@@ -506,12 +508,12 @@ const metaBannerStyle = {
 
                       <div style={styles.runKpis}>
                         {[
-                          { label: "PEAK TEMP",          value: `${peakTemp.toFixed(0)}°C`,  color: "#2b2bc0" },
-                          { label: "FLOOR TEMP",         value: `${floorTemp.toFixed(0)}°C`, color: "#1a258a" },
-                          { label: "MAX TEMP",           value: `${maxTemp.toFixed(0)}°C`,   color: "#c0392b" },
-                          { label: "MIN TEMP",           value: `${minTemp.toFixed(0)}°C`,   color: "#0079a1" },
-                          { label: "AVG TEMP",           value: `${avgTemp}°C`,              color: "#0e00d9" },
-                          { label: "ELEVATIONS",         value: runData.length,              color: "#39355a" },
+                          { label: "PEAK TEMP", value: `${peakTemp.toFixed(0)}°C`, color: "#2b2bc0" },
+                          { label: "FLOOR TEMP", value: `${floorTemp.toFixed(0)}°C`, color: "#1a258a" },
+                          { label: "MAX TEMP", value: `${maxTemp.toFixed(0)}°C`, color: "#c0392b" },
+                          { label: "MIN TEMP", value: `${minTemp.toFixed(0)}°C`, color: "#0079a1" },
+                          { label: "AVG TEMP", value: `${avgTemp}°C`, color: "#0e00d9" },
+                          { label: "ELEVATIONS", value: runData.length, color: "#39355a" },
                         ].map((kpi) => (
                           <div key={kpi.label} style={styles.kpiCard}>
                             <div style={{ ...styles.kpiValue, color: kpi.color }}>{kpi.value}</div>
@@ -523,8 +525,8 @@ const metaBannerStyle = {
 
                     <div style={styles.tabBar}>
                       {[
-                        { key: "graph",  label: "GRAPH"         },
-                        { key: "raw",    label: "RAW DATA"      }
+                        { key: "graph", label: "GRAPH" },
+                        { key: "raw", label: "RAW DATA" }
                       ].map(({ key, label }) => (
                         <button
                           key={key}
@@ -544,7 +546,7 @@ const metaBannerStyle = {
                         <div style={styles.chartLabel}>
                           THERMAL PROFILE — ELEVATION VS TEMPERATURE
                         </div>
-                        <ResponsiveContainer width="100%" height={chartHeight}>
+                        <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={runData} layout="vertical">
                             <CartesianGrid strokeDasharray="2 6" vertical />
                             <YAxis dataKey="elevation" reversed />
@@ -557,10 +559,10 @@ const metaBannerStyle = {
                               tick={{ fill: "#84849a", fontSize: 10, fontFamily: "'DM Mono'" }}
                             />
                             <Tooltip content={<CustomTooltip />} />
-                            {visibleLines.c1  && <Line type="monotone" dataKey="c1"  stroke={COLORS.c1}  dot={false} strokeWidth={2} />}
-                            {visibleLines.c2  && <Line type="monotone" dataKey="c2"  stroke={COLORS.c2}  dot={false} strokeWidth={2} />}
-                            {visibleLines.c3  && <Line type="monotone" dataKey="c3"  stroke={COLORS.c3}  dot={false} strokeWidth={2} />}
-                            {visibleLines.c4  && <Line type="monotone" dataKey="c4"  stroke={COLORS.c4}  dot={false} strokeWidth={2} />}
+                            {visibleLines.c1 && <Line type="monotone" dataKey="c1" stroke={COLORS.c1} dot={false} strokeWidth={2} />}
+                            {visibleLines.c2 && <Line type="monotone" dataKey="c2" stroke={COLORS.c2} dot={false} strokeWidth={2} />}
+                            {visibleLines.c3 && <Line type="monotone" dataKey="c3" stroke={COLORS.c3} dot={false} strokeWidth={2} />}
+                            {visibleLines.c4 && <Line type="monotone" dataKey="c4" stroke={COLORS.c4} dot={false} strokeWidth={2} />}
                             {visibleLines.avg && <Line type="monotone" dataKey="avg" stroke={COLORS.avg} dot={false} strokeWidth={3} />}
                           </LineChart>
                         </ResponsiveContainer>
@@ -572,7 +574,7 @@ const metaBannerStyle = {
                               style={{
                                 ...styles.filterBtn,
                                 background: visibleLines[key] ? COLORS[key] : "#e0e0ef",
-                                color:      visibleLines[key] ? "#fff"      : "#555",
+                                color: visibleLines[key] ? "#fff" : "#555",
                               }}
                             >
                               {CORNER_LABELS[key]}
@@ -583,44 +585,44 @@ const metaBannerStyle = {
                     )}
 
                     {getTab(id) === "raw" && (
-  <div style={styles.tablePanel}>
-    <div style={styles.chartLabel}>RAW MEASUREMENT DATA</div>
-    <div style={{ overflowX: "auto" }}>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>ELEVATION (M)</th>
-            <th>LEVEL LABEL</th>
-            <th>CORNER 1</th>
-            <th>CORNER 2</th>
-            <th>CORNER 3</th>
-            <th>CORNER 4</th>
-            <th style={{ color: "#1900d9" }}>AVERAGE</th>
-          </tr>
-        </thead>
-        <tbody>
-          {dataset.elevation.map((_, i) => (
-  <tr key={i}>
-    <td>{dataset.elevation[i]}m</td>
-    <td style={{ color: "#84859a", fontSize: "10px" }}>
-      {dataset.elevation_labels?.[i + 1] || "—"}
-    </td>
-    <td>{dataset.corner1[i]}</td>
-    <td>{dataset.corner2[i]}</td>
-    <td>{dataset.corner3[i]}</td>
-    <td>{dataset.corner4[i]}</td>
-    <td className="avg-col">{dataset.average[i]}</td>
-  </tr>
-))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-)}
+                      <div style={styles.tablePanel}>
+                        <div style={styles.chartLabel}>RAW MEASUREMENT DATA</div>
+                        <div style={{ overflowX: "auto" }}>
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>ELEVATION (M)</th>
+                                <th>LEVEL LABEL</th>
+                                <th>CORNER 1</th>
+                                <th>CORNER 2</th>
+                                <th>CORNER 3</th>
+                                <th>CORNER 4</th>
+                                <th style={{ color: "#1900d9" }}>AVERAGE</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {dataset.elevation.map((_, i) => (
+                                <tr key={i}>
+                                  <td>{dataset.elevation[i]}m</td>
+                                  <td style={{ color: "#84859a", fontSize: "10px" }}>
+                                    {dataset.elevation_labels?.[i + 1] || "—"}
+                                  </td>
+                                  <td>{dataset.corner1[i]}</td>
+                                  <td>{dataset.corner2[i]}</td>
+                                  <td>{dataset.corner3[i]}</td>
+                                  <td>{dataset.corner4[i]}</td>
+                                  <td className="avg-col">{dataset.average[i]}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
 
-                    
 
-                    
+
+
 
                   </section>
                 );
@@ -645,15 +647,12 @@ const styles = {
     boxShadow: "0 1px 0 rgba(14, 0, 217, 0.08), 0 2px 16px rgba(18, 19, 26, 0.05)",
   },
   headerInner: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 clamp(12px, 3vw, 32px)",
-    height: "64px",
-    width: "100%",
-    flexWrap: "wrap",
-    gap: "clamp(8px, 2vw, 16px)",
-  },
+  display: "flex",
+  flexWrap: "wrap", 
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+},
   hamburger: {
     display: "flex",
     flexDirection: "column",
@@ -674,11 +673,10 @@ const styles = {
     transition: "all 0.3s ease",
   },
   logoBlock: {
-    display: "flex",
-    alignItems: "center",
-    gap: "clamp(8px, 2vw, 14px)",
-    minWidth: 0,
-  },
+  flex: "1 1 250px",
+  minWidth: "200px",
+},
+
   logoMark: {
     width: "40px",
     height: "40px",
@@ -713,13 +711,9 @@ const styles = {
     marginTop: "3px",
   },
   stationUnitBlock: {
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: "clamp(4px, 1vw, 8px)",
-    margin: "0 clamp(8px, 2vw, 24px)",
-    flexWrap: "wrap",
-  },
+  flex: "1 1 200px",
+},
+
   stationUnitLabel: {
     fontFamily: "'DM Mono', monospace",
     fontSize: "8px",
@@ -734,11 +728,9 @@ const styles = {
     lineHeight: 1,
   },
   headerStats: {
-    display: "flex",
-    alignItems: "center",
-    gap: "clamp(8px, 2vw, 24px)",
-    flexWrap: "wrap",
-  },
+  flex: "1 1 200px",
+  justifyContent: "flex-end",
+},
   statItem: {
     display: "flex",
     alignItems: "center",
@@ -763,24 +755,22 @@ const styles = {
     background: "#cfd2e0",
   },
   mainLayout: {
-    display: "flex",
-    minHeight: "calc(100vh - 64px)",
-    width: "100%",
-    position: "relative",
-  },
+  display: "flex",
+},
   sidebar: {
-    width: "clamp(200px, 25vw, 280px)",
-    flexShrink: 0,
-    borderRight: "1px solid #d3cfe0",
-    background: "#f8f7fd",
-    padding: "clamp(16px, 2vw, 24px) 0",
-    overflowY: "auto",
-    maxHeight: "calc(100vh - 64px)",
-    position: "sticky",
-    top: "64px",
-    transform: "translateX(0)",
-    transition: "transform 0.3s ease",
-  },
+  width: "clamp(220px, 28vw, 300px)",
+  position: "fixed",        
+  left: 0,
+  top: "64px",
+  bottom: 0,
+  transform: "translateX(-100%)",
+  transition: "transform 0.3s ease",
+  zIndex: 100,
+  open : {
+  transform: "translateX(0)"
+}
+},
+
   sideSection: {
     padding: "0 clamp(12px, 2vw, 16px) clamp(16px, 3vw, 24px)",
     borderBottom: "1px solid #e0dfee",
@@ -847,11 +837,9 @@ const styles = {
     letterSpacing: "0.04em",
   },
   mainContent: {
-    flex: 1,
-    padding: "clamp(12px, 3vw, 32px) clamp(12px, 4vw, 40px)",
-    background: "#ededf5",
-    minWidth: 0,
-  },
+  flex: 1,
+  marginLeft: "0",
+},
   emptyMain: {
     display: "flex",
     flexDirection: "column",
@@ -904,6 +892,8 @@ const styles = {
     alignItems: "flex-start",
     gap: "14px",
   },
+
+  
   runAccent: {
     width: "3px",
     height: "40px",
@@ -925,19 +915,16 @@ const styles = {
     marginTop: "5px",
   },
   runKpis: {
-    display: "flex",
-    gap: "1px",
-    flexWrap: "wrap",
-    width: "100%",
-  },
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+  gap: "1px",
+  width: "100%",
+},
   kpiCard: {
-    padding: "clamp(8px, 1.5vw, 10px) clamp(12px, 2vw, 20px)",
-    background: "#eeedf5",
-    borderLeft: "1px solid #dfe1ee",
-    textAlign: "right",
-    minWidth: "clamp(75px, 15vw, 120px)",
-    flex: "1 1 auto",
-  },
+  padding: "10px",
+  background: "#eeedf5",
+  textAlign: "right",
+},
   kpiValue: {
     fontFamily: "'Bebas Neue', sans-serif",
     fontSize: "clamp(14px, 2vw, 22px)",
@@ -980,15 +967,14 @@ const styles = {
     color: "#0400d9",
   },
 
-  // ── Chart / table panels ──
   chartPanel: {
-    padding: "clamp(12px, 2vw, 24px)",
-    borderBottom: "1px solid #e3e3f0",
-    background: "#ffffff",
-    width: "100%",
-    boxSizing: "border-box",
-    overflowX: "auto",
-  },
+  padding: "clamp(12px, 2vw, 24px)",
+  borderBottom: "1px solid #e3e3f0",
+  background: "#ffffff",
+  width: "100%",
+  boxSizing: "border-box",
+  height: "clamp(220px, 40vh, 420px)",
+},
   chartLabel: {
     fontFamily: "'DM Mono', monospace",
     fontSize: "9px",

@@ -102,23 +102,17 @@
         }
 
         .data-table {
-  border-collapse: collapse;
   width: 100%;
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
+  border-collapse: collapse;
+  min-width: 600px; 
 }
 
-        .data-table thead th {
-          padding: 10px 16px;
-          text-align: right;
-          font-size: 9px;
-          letter-spacing: 0.2em;
-          color: rgba(33, 0, 217, 0.75);
-          text-transform: uppercase;
-          border-bottom: 1.5px solid rgba(43, 0, 217, 0.15);
-          background: #f4f3fe;
-          font-weight: 500;
-        }
+        .data-table th {
+  position: sticky;
+  top: 0;
+  background: #f5f6ff;
+  z-index: 2;
+}
 
         .data-table thead th:first-child { text-align: left; }
 
