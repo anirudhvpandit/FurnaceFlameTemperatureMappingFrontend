@@ -81,9 +81,29 @@ export default function App() {
   }, [selected]);
 
   const fetchHistory = async () => {
-    const res = await axios.get(`${BASE_URL}/history`);
-    setHistory(res.data);
-  };
+  const res = await axios.get(`${BASE_URL}/history`);
+  const data = res.data;
+
+  setHistory(data);
+
+  if (data.length >= 2) {
+    const firstTwo = data.slice(-2);
+
+    const datasetPromises = firstTwo.map((item) =>
+      axios.get(`${BASE_URL}/history/${item.id}`)
+    );
+
+    const responses = await Promise.all(datasetPromises);
+
+    const newDatasets = {};
+    responses.forEach((res, idx) => {
+      newDatasets[firstTwo[idx].id] = res.data;
+    });
+
+    setDatasets((prev) => ({ ...prev, ...newDatasets }));
+    setSelected(firstTwo.map((item) => item.id));
+  }
+};
 
   const toggleLine = (key) => {
     setVisibleLines((prev) => ({ ...prev, [key]: !prev[key] }));
