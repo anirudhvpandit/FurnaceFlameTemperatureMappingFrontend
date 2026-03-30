@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "furnace-flame-temperature-mapping-mobile",
+    "slug": "furnace-flame-temperature-mapping",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.furnaceflame.temperaturemapping",
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "ios": {
+      "bundleIdentifier": "com.furnaceflame.temperaturemapping"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "cc93a97f-b2e1-4e70-bf54-0d4bdaf19d6d"
+      }
+    }
+  }
+}

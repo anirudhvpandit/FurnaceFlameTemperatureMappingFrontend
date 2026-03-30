@@ -102,12 +102,11 @@
         }
 
         .data-table {
-          width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-          font-family: 'DM Mono', monospace;
-          font-size: 12px;
-        }
+  border-collapse: collapse;
+  width: 100%;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+}
 
         .data-table thead th {
           padding: 10px 16px;
@@ -513,10 +512,12 @@
         }
 
         .section-paper {
-          background: #ffffff;
-          border: 1px solid #ddd9e8;
-          box-shadow: 0 2px 12px rgba(26,22,18,0.06), 0 1px 3px rgba(26,22,18,0.04);
-        }
+  background: #ffffff;
+  border: 1px solid #e6e8f0;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(16, 24, 40, 0.04);
+  overflow: hidden;
+}
 
         .section-paper:hover {
           box-shadow: 0 4px 24px rgba(29, 0, 217, 0.08), 0 1px 3px rgba(20, 18, 26, 0.04);
