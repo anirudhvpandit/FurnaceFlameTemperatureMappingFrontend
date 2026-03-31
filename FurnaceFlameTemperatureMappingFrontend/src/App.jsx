@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import img from "./assets/abhitech-logo.png";
 
-const BASE_URL = "https://furnaceflametemperaturemappingbackend.onrender.com";
+const BASE_URL = "http://101.53.132.91:8001";
 
 
 const COLORS = {
@@ -81,7 +81,7 @@ export default function App() {
   }, [selected]);
 
   const fetchHistory = async () => {
-    const res = await axios.get(`${BASE_URL}/history`);
+    const res = await axios.get(`${BASE_URL}/history?station_id=1&unit_id=1`);
     const data = res.data;
 
     setHistory(data);
@@ -90,6 +90,8 @@ export default function App() {
       const firstTwo = data.slice(-2);
 
       const datasetPromises = firstTwo.map((item) =>
+        console.log(item) && 
+        
         axios.get(`${BASE_URL}/history/${item.id}`)
       );
 
@@ -118,9 +120,13 @@ export default function App() {
     }
     setUploading(true);
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("date", uploadDate);
-    await axios.post(`${BASE_URL}/upload`, formData);
+formData.append("file", file);
+formData.append("station_id", 1);
+formData.append("unit_id", 1);
+formData.append("uploaded_by", "admin");
+formData.append("notes", "test");
+
+await axios.post("http://101.53.132.91:8001/upload", formData);
     await fetchHistory();
     setUploadDate("");
     setUploading(false);
@@ -500,7 +506,7 @@ export default function App() {
                         <div style={{ ...styles.runAccent, background: accent }} />
                         <div>
                           <div style={styles.runTitle}>
-                            {dataset.filename.replace(/\.[^/.]+$/, "").toUpperCase()}
+                            {(dataset.filename || "").replace(/\.[^/.]+$/, "").toUpperCase()}
                           </div>
                           <div style={styles.runSubtitle}>{dataset.filename}</div>
                         </div>
