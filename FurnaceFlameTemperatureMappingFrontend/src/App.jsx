@@ -144,6 +144,7 @@ export default function App() {
   const [selectedStation, setSelectedStation] = useState(null);
   const [selectedUnit, setSelectedUnit]       = useState(null);
   const [sidebarOpen, setSidebarOpen]         = useState(true);
+  const [dateError, setDateError] = useState("");
 
   const getTab = (id) => activeTab[id] ?? "graph";
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
@@ -302,10 +303,37 @@ export default function App() {
           <div style={S.sideSection}>
             <div style={S.secLabel}>FILTER BY DATE</div>
             <CalPicker
-              startDate={startDate} endDate={endDate}
-              onStart={setStartDate} onEnd={setEndDate}
-              dataDates={dataDates}
-            />
+  startDate={startDate}
+  endDate={endDate}
+  dataDates={dataDates}
+  onStart={(ds) => {
+    if (!dataDates.has(ds)) {
+      setDateError("N/A — No data available for selected date");;
+      return;
+    }
+    setDateError("");
+    setStartDate(ds);
+  }}
+  onEnd={(ds) => {
+    if (!dataDates.has(ds)) {
+      setDateError("N/A — No data available for selected date");
+      return;
+    }
+    setDateError("");
+    setEndDate(ds);
+  }}
+/>
+{dateError && (
+  <div style={{
+    marginTop: "8px",
+    color: "#dc2626",
+    fontSize: "10px",
+    fontFamily: "'DM Mono', monospace",
+    letterSpacing: "0.1em"
+  }}>
+    {dateError}
+  </div>
+)}
           </div>
 
           {/* Run archive */}
