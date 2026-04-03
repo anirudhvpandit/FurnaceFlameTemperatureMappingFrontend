@@ -83,16 +83,18 @@ export default function App() {
   const fetchHistory = async () => {
     const res = await axios.get(`${BASE_URL}/history?station_id=1&unit_id=1`);
     const data = res.data;
-
+    console.log(data);
+    
     setHistory(data);
 
     if (data.length >= 2) {
       const firstTwo = data.slice(-2);
-
+      console.log(firstTwo);
+      
       const datasetPromises = firstTwo.map((item) =>
-        console.log(item) && 
+        console.log(item.run_id) && 
         
-        axios.get(`${BASE_URL}/history/${item.id}`)
+        axios.get(`${BASE_URL}/history/${item.run_id}`)
       );
 
       const responses = await Promise.all(datasetPromises);
@@ -103,7 +105,7 @@ export default function App() {
       });
 
       setDatasets((prev) => ({ ...prev, ...newDatasets }));
-      setSelected(firstTwo.map((item) => item.id));
+      setSelected(firstTwo.map((item) => item.run_id));
     }
   };
 
@@ -114,10 +116,7 @@ export default function App() {
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!uploadDate) {
-      alert("Please select a date before uploading.");
-      return;
-    }
+    
     setUploading(true);
     const formData = new FormData();
 formData.append("file", file);
@@ -133,19 +132,19 @@ await axios.post("http://101.53.132.91:8001/upload", formData);
   };
 
   const toggleSelection = async (item) => {
-    const isSelected = selected.includes(item.id);
+    const isSelected = selected.includes(item.run_id);
     if (isSelected) {
-      setSelected((prev) => prev.filter((id) => id !== item.id));
+      setSelected((prev) => prev.filter((id) => id !== item.run_id));
       return;
     }
-    if (!datasets[item.id]) {
+    if (!datasets[item.run_id]) {
 
-      const res = await axios.get(`${BASE_URL}/history/${item.id}`);
+      const res = await axios.get(`${BASE_URL}/history/${item.run_id}`);
       console.log(res.data);
 
-      setDatasets((prev) => ({ ...prev, [item.id]: res.data }));
+      setDatasets((prev) => ({ ...prev, [item.run_id]: res.data }));
     }
-    setSelected((prev) => [...prev, item.id]);
+    setSelected((prev) => [...prev, item.run_id]);
   };
 
   const buildRunData = (dataset) =>
@@ -373,15 +372,7 @@ await axios.post("http://101.53.132.91:8001/upload", formData);
           <aside style={styles.sidebar} className={`sidebar ${sidebarOpen ? "open" : ""}`}>
             <div style={styles.sideSection}>
               <div style={styles.sideLabel}>INGEST DATA</div>
-              <div style={{ marginBottom: "12px" }}>
-                <label style={styles.miniLabel}>SELECT DATE</label>
-                <input
-                  type="date"
-                  value={uploadDate}
-                  onChange={(e) => setUploadDate(e.target.value)}
-                  style={styles.dateInput}
-                />
-              </div>
+              
               <label className="upload-zone">
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M7 1v8M4 4l3-3 3 3M2 11h10" strokeLinecap="round" strokeLinejoin="round" />
@@ -844,7 +835,7 @@ const styles = {
   },
   mainContent: {
   flex: 1,
-  marginLeft: "0",
+  marginLeft: "clamp(220px, 28vw, 300px)", // ✅ SAME as sidebar width
 },
   emptyMain: {
     display: "flex",
@@ -871,11 +862,11 @@ const styles = {
     lineHeight: 1.7,
   },
   runsWrapper: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "clamp(8px, 2vw, 12px)",
-    width: "100%",
-  },
+  display: "grid",
+  gridTemplateColumns: "repeat(2, 1fr)",
+  gap: "16px",
+  width: "100%",
+},
   runSection: {
     marginBottom: "clamp(12px, 2vw, 28px)",
     overflowX: "hidden",
