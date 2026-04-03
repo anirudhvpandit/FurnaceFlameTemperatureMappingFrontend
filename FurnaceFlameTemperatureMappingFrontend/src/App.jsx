@@ -154,14 +154,15 @@ export default function App() {
     const un = localStorage.getItem("selectedUnit");
     if (st) setSelectedStation(JSON.parse(st));
     if (un) setSelectedUnit(JSON.parse(un));
-    fetchHistory();
     fetchMappingDates();
   }, []);
 
+  // ✅ NEW: Fetch history ONLY when both dates are selected
   useEffect(() => {
-    if (selected.length > 2)
-      setVisibleLines({ c1:false, c2:false, c3:false, c4:false, avg:true });
-  }, [selected]);
+    if (startDate && endDate) {
+      fetchHistoryByDate();
+    }
+  }, [startDate, endDate]);
 
   const fetchMappingDates = async () => {
     try {
@@ -170,17 +171,25 @@ export default function App() {
     } catch (e) { console.error(e); }
   };
 
-  const fetchHistory = async () => {
-    const res  = await axios.get(`${BASE_URL}/history?station_id=1&unit_id=1`);
-    const data = res.data;
-    setHistory(data);
-    if (data.length >= 2) {
-      const two = data.slice(-2);
-      const responses = await Promise.all(two.map(i => axios.get(`${BASE_URL}/history/${i.run_id}`)));
-      const ds = {};
-      responses.forEach((r,idx) => { ds[two[idx].run_id] = r.data; });
-      setDatasets(p => ({ ...p, ...ds }));
-      setSelected(two.map(i => i.run_id));
+  // ✅ NEW FUNCTION
+  const fetchHistoryByDate = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/history`, {
+        params: {
+          station_id: 1,
+          unit_id: 1,
+          start_date: startDate,
+          end_date: endDate
+        }
+      });
+
+      setHistory(res.data);
+
+      // ❌ Clear previous selections
+      setSelected([]);
+      setDatasets({});
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -188,25 +197,36 @@ export default function App() {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
+
     const fd = new FormData();
-    fd.append("file", file); fd.append("station_id",1);
-    fd.append("unit_id",1); fd.append("uploaded_by","admin"); fd.append("notes","");
+    fd.append("file", file);
+    fd.append("station_id",1);
+    fd.append("unit_id",1);
+    fd.append("uploaded_by","admin");
+    fd.append("notes","");
+
     await axios.post(`${BASE_URL}/upload`, fd);
-    await fetchHistory();
+
+    // ✅ refresh only dates, not history
     await fetchMappingDates();
+
     setUploading(false);
   };
 
   const toggleSelection = async (item) => {
     if (selected.includes(item.run_id)) {
-      setSelected(p => p.filter(id => id !== item.run_id)); return;
+      setSelected(p => p.filter(id => id !== item.run_id));
+      return;
     }
+
     if (!datasets[item.run_id]) {
       const res = await axios.get(`${BASE_URL}/history/${item.run_id}`);
       setDatasets(p => ({ ...p, [item.run_id]: res.data }));
     }
+
     setSelected(p => [...p, item.run_id]);
   };
+
 
   const buildRunData = (ds) =>
     ds.elevation.map((el,i) => ({
