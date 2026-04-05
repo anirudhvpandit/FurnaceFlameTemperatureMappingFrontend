@@ -56,8 +56,8 @@ function MiniCal({ view, onNav, dataDates, startDate, endDate, onPick }) {
               style={{
                 ...C.day,
                 ...(other ? C.dayOther : {}),
-                ...(r === "sel"     ? C.daySel   : {}),
-                ...(r === "inrange" ? C.dayRange  : {}),
+                ...(r === "sel"     ? C.daySel  : {}),
+                ...(r === "inrange" ? C.dayRange : {}),
                 cursor: other ? "default" : "pointer",
                 position: "relative",
               }}
@@ -113,7 +113,6 @@ function CalPicker({ startDate, endDate, onStart, onEnd, dataDates }) {
   );
 }
 
-// ─── CALENDAR STYLES ──────────────────────────────────────────
 const C = {
   calWrap:   { background:"#f5f5fb", borderRadius:"6px", padding:"10px", border:"0.5px solid #e2e1f0" },
   calHead:   { display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"8px" },
@@ -130,21 +129,146 @@ const C = {
   legDot:    { display:"inline-block", width:"6px", height:"6px", borderRadius:"50%", flexShrink:0 },
 };
 
+// ─── BOILER PARAMS TABLE ──────────────────────────────────────
+function BoilerParamsTable({ data }) {
+  if (!data || Object.keys(data).length === 0)
+    return <div style={S.noData}>No boiler parameters recorded for this run.</div>;
+
+  const leftRows = [
+    { label: "Main Steam Pressure (Kg/cm²)", l: data.main_steam_pressure_l, r: data.main_steam_pressure_r },
+    { label: "Main Steam Flow (TPH)",         l: data.main_steam_flow_l,     r: data.main_steam_flow_r     },
+    { label: "Superheat Spray (TPH)",         l: data.superheat_spray_l,     r: data.superheat_spray_r     },
+    { label: "Re-heat Spray (TPH)",           l: data.reheat_spray_l,        r: data.reheat_spray_r        },
+    { label: "O₂ at APH Inlet (PCR) %",      l: data.o2_aph_inlet_pcr_l,    r: data.o2_aph_inlet_pcr_r    },
+    { label: "Wind Box DP - A/B (mmwc)",      l: data.wind_box_dp_l,         r: data.wind_box_dp_r         },
+    { label: "Total PA Flow (TPH)",           l: data.total_pa_flow,         r: null,  single: true        },
+  ];
+
+  const fgRows = [
+    { label: "FG Temp after DPSH (L/R) °C",        l: data.fg_temp_after_dpsh_l, r: data.fg_temp_after_dpsh_r },
+    { label: "FG Temp after PSH (L/R) °C",         l: data.fg_temp_after_psh_l,  r: data.fg_temp_after_psh_r  },
+    { label: "FG Temp after RH (L/R) °C",          l: data.fg_temp_after_rh_l,   r: data.fg_temp_after_rh_r   },
+    { label: "FG Temp after HSH (L/R) °C",         l: data.fg_temp_after_hsh_l,  r: data.fg_temp_after_hsh_r  },
+    { label: "FG Temp after Economizer (L/R) °C",  l: data.fg_temp_after_eco_l,  r: data.fg_temp_after_eco_r  },
+    { label: "FG Temp after APH (L/R) °C",         l: data.fg_temp_after_aph_l,  r: data.fg_temp_after_aph_r  },
+  ];
+
+  const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
+
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px" }}>
+      {/* Left: Boiler params */}
+      <div>
+        <div style={S.subLabel}>BOILER & MILL PARAMETERS</div>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}>PARAMETER</th>
+              <th style={S.th}>L</th>
+              <th style={S.th}>R</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leftRows.map(row => (
+              <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
+                <td style={S.td}>{row.label}</td>
+                <td style={{ ...S.td, color:"#4f46e5", fontWeight:500 }}>{fmt(row.l)}</td>
+                <td style={{ ...S.td, color:"#0891b2", fontWeight:500 }}>
+                  {row.single ? "—" : fmt(row.r)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Right: FG Temps */}
+      <div>
+        <div style={S.subLabel}>FLUE GAS TEMPERATURES</div>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}>PARAMETER</th>
+              <th style={S.th}>L</th>
+              <th style={S.th}>R</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fgRows.map(row => (
+              <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
+                <td style={S.td}>{row.label}</td>
+                <td style={{ ...S.td, color:"#d97706", fontWeight:500 }}>{fmt(row.l)}</td>
+                <td style={{ ...S.td, color:"#7c3aed", fontWeight:500 }}>{fmt(row.r)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── COAL MILL TABLE ──────────────────────────────────────────
+function CoalMillTable({ data }) {
+  if (!data || data.length === 0)
+    return <div style={S.noData}>No coal mill parameters recorded for this run.</div>;
+
+  const rows = [
+    { key: "coal_flow_tph",    label: "Coal Flow (TPH)"      },
+    { key: "pa_flow_tph",      label: "PA Flow (TPH)"        },
+    { key: "mill_dp_mmwc",     label: "Mill DP (mmwc)"       },
+    { key: "mill_outlet_temp", label: "Mill Outlet Temp (°C)" },
+    { key: "mill_current_amp", label: "Mill Current (Amp)"   },
+  ];
+
+  const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
+
+  return (
+    <div>
+      <div style={S.subLabel}>COAL MILL PARAMETERS</div>
+      <div style={{ overflowX:"auto" }}>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}>PARAMETER</th>
+              {data.map(m => (
+                <th key={m.mill} style={{ ...S.th, color:"#4f46e5" }}>MILL {m.mill}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.key} style={{ borderBottom:"0.5px solid #eeecf8" }}>
+                <td style={{ ...S.td, color:"#6e6c96", fontWeight:500 }}>{row.label}</td>
+                {data.map(m => (
+                  <td key={m.mill} style={{ ...S.td, color:"#3a3860" }}>{fmt(m[row.key])}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
-  const [history, setHistory]     = useState([]);
-  const [selected, setSelected]   = useState([]);
-  const [datasets, setDatasets]   = useState({});
-  const [uploading, setUploading] = useState(false);
+  const [history, setHistory]         = useState([]);
+  const [selected, setSelected]       = useState([]);
+  const [datasets, setDatasets]       = useState({});
+  const [boilerData, setBoilerData]   = useState({});   // { run_id: {...} }
+  const [coalData, setCoalData]       = useState({});   // { run_id: [...] }
+  const [uploading, setUploading]     = useState(false);
   const [visibleLines, setVisibleLines] = useState({ c1:true, c2:true, c3:true, c4:true, avg:true });
-  const [activeTab, setActiveTab] = useState({});
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate]     = useState("");
-  const [dataDates, setDataDates] = useState(new Set());
+  const [activeTab, setActiveTab]     = useState({});
+  const [startDate, setStartDate]     = useState("");
+  const [endDate, setEndDate]         = useState("");
+  const [dataDates, setDataDates]     = useState(new Set());
   const [selectedStation, setSelectedStation] = useState(null);
   const [selectedUnit, setSelectedUnit]       = useState(null);
   const [sidebarOpen, setSidebarOpen]         = useState(true);
-  const [dateError, setDateError] = useState("");
+  const [dateError, setDateError]     = useState("");
 
   const getTab = (id) => activeTab[id] ?? "graph";
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
@@ -157,11 +281,8 @@ export default function App() {
     fetchMappingDates();
   }, []);
 
-  // ✅ NEW: Fetch history ONLY when both dates are selected
   useEffect(() => {
-    if (startDate && endDate) {
-      fetchHistoryByDate();
-    }
+    if (startDate && endDate) fetchHistoryByDate();
   }, [startDate, endDate]);
 
   const fetchMappingDates = async () => {
@@ -171,45 +292,31 @@ export default function App() {
     } catch (e) { console.error(e); }
   };
 
-  // ✅ NEW FUNCTION
   const fetchHistoryByDate = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/history`, {
-        params: {
-          station_id: 1,
-          unit_id: 1,
-          start_date: startDate,
-          end_date: endDate
-        }
+        params: { station_id:1, unit_id:1, start_date:startDate, end_date:endDate }
       });
-
       setHistory(res.data);
-
-      // ❌ Clear previous selections
       setSelected([]);
       setDatasets({});
-    } catch (err) {
-      console.error(err);
-    }
+      setBoilerData({});
+      setCoalData({});
+    } catch (err) { console.error(err); }
   };
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-
     const fd = new FormData();
     fd.append("file", file);
-    fd.append("station_id",1);
-    fd.append("unit_id",1);
-    fd.append("uploaded_by","admin");
-    fd.append("notes","");
-
+    fd.append("station_id", 1);
+    fd.append("unit_id", 1);
+    fd.append("uploaded_by", "admin");
+    fd.append("notes", "");
     await axios.post(`${BASE_URL}/upload`, fd);
-
-    // ✅ refresh only dates, not history
     await fetchMappingDates();
-
     setUploading(false);
   };
 
@@ -219,22 +326,41 @@ export default function App() {
       return;
     }
 
+    // Fetch all three in parallel if not already cached
+    const promises = [];
+
     if (!datasets[item.run_id]) {
-      const res = await axios.get(`${BASE_URL}/history/${item.run_id}`);
-      setDatasets(p => ({ ...p, [item.run_id]: res.data }));
+      promises.push(
+        axios.get(`${BASE_URL}/history/${item.run_id}`)
+          .then(res => setDatasets(p => ({ ...p, [item.run_id]: res.data })))
+      );
+    }
+    if (!boilerData[item.run_id]) {
+      promises.push(
+        axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`)
+          .then(res => setBoilerData(p => ({ ...p, [item.run_id]: res.data })))
+      );
+    }
+    if (!coalData[item.run_id]) {
+      promises.push(
+        axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`)
+          .then(res => setCoalData(p => ({ ...p, [item.run_id]: res.data })))
+      );
     }
 
+    await Promise.all(promises);
     setSelected(p => [...p, item.run_id]);
   };
 
-
   const buildRunData = (ds) =>
-    ds.elevation.map((el,i) => ({
-      elevation: Number(el),
-      c1: Number(ds.corner1[i]), c2: Number(ds.corner2[i]),
-      c3: Number(ds.corner3[i]), c4: Number(ds.corner4[i]),
-      avg: Number(ds.average[i]),
-    }));
+    ds.elevation
+      .map((el,i) => ({
+        elevation: Number(el),
+        c1: Number(ds.corner1[i]), c2: Number(ds.corner2[i]),
+        c3: Number(ds.corner3[i]), c4: Number(ds.corner4[i]),
+        avg: Number(ds.average[i]),
+      }))
+      .filter(r => r.elevation != null && r.elevation !== 0 && !isNaN(r.elevation));
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
@@ -307,7 +433,6 @@ export default function App() {
           width: SIDEBAR_W,
           transform: sidebarOpen ? "translateX(0)" : `translateX(-${SIDEBAR_W}px)`,
         }}>
-          {/* Upload */}
           <div style={S.sideSection}>
             <div style={S.secLabel}>INGEST DATA</div>
             <label style={S.uploadBtn}>
@@ -319,44 +444,28 @@ export default function App() {
             </label>
           </div>
 
-          {/* Calendar picker */}
           <div style={S.sideSection}>
             <div style={S.secLabel}>FILTER BY DATE</div>
             <CalPicker
-  startDate={startDate}
-  endDate={endDate}
-  dataDates={dataDates}
-  onStart={(ds) => {
-    if (!dataDates.has(ds)) {
-      setDateError("N/A — No data available for selected date");;
-      return;
-    }
-    setDateError("");
-    setStartDate(ds);
-  }}
-  onEnd={(ds) => {
-    if (!dataDates.has(ds)) {
-      setDateError("N/A — No data available for selected date");
-      return;
-    }
-    setDateError("");
-    setEndDate(ds);
-  }}
-/>
-{dateError && (
-  <div style={{
-    marginTop: "8px",
-    color: "#dc2626",
-    fontSize: "10px",
-    fontFamily: "'DM Mono', monospace",
-    letterSpacing: "0.1em"
-  }}>
-    {dateError}
-  </div>
-)}
+              startDate={startDate}
+              endDate={endDate}
+              dataDates={dataDates}
+              onStart={(ds) => {
+                if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
+                setDateError(""); setStartDate(ds);
+              }}
+              onEnd={(ds) => {
+                if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
+                setDateError(""); setEndDate(ds);
+              }}
+            />
+            {dateError && (
+              <div style={{ marginTop:"8px", color:"#dc2626", fontSize:"10px", fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em" }}>
+                {dateError}
+              </div>
+            )}
           </div>
 
-          {/* Run archive */}
           <div style={{ ...S.sideSection, borderBottom:"none", flex:1, overflowY:"auto" }}>
             <div style={S.secLabel}>RUN ARCHIVE</div>
             {history.length === 0 && (
@@ -467,9 +576,14 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Tabs */}
+                  {/* ── TABS: 4 tabs now ── */}
                   <div style={S.tabBar}>
-                    {[{ k:"graph", l:"GRAPH" },{ k:"raw", l:"RAW DATA" }].map(({ k, l }) => (
+                    {[
+                      { k:"graph",   l:"GRAPH"         },
+                      { k:"raw",     l:"RAW DATA"       },
+                      { k:"boiler",  l:"BOILER PARAMS"  },
+                      { k:"coal",    l:"COAL MILLS"     },
+                    ].map(({ k, l }) => (
                       <button
                         key={k}
                         onClick={() => setTab(id, k)}
@@ -526,14 +640,14 @@ export default function App() {
                             </tr>
                           </thead>
                           <tbody>
-                            {dataset.elevation.map((_,i) => (
+                            {runData.map((row,i) => (
                               <tr key={i} style={{ borderBottom:"0.5px solid #eeecf8" }}>
-                                <td style={S.td}>{dataset.elevation[i]}m</td>
-                                <td style={S.td}>{dataset.corner1[i]}</td>
-                                <td style={S.td}>{dataset.corner2[i]}</td>
-                                <td style={S.td}>{dataset.corner3[i]}</td>
-                                <td style={S.td}>{dataset.corner4[i]}</td>
-                                <td style={{ ...S.td, color:"#d97706", fontWeight:500 }}>{dataset.average[i]}</td>
+                                <td style={S.td}>{row.elevation}m</td>
+                                <td style={S.td}>{row.c1}</td>
+                                <td style={S.td}>{row.c2}</td>
+                                <td style={S.td}>{row.c3}</td>
+                                <td style={S.td}>{row.c4}</td>
+                                <td style={{ ...S.td, color:"#d97706", fontWeight:500 }}>{row.avg}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -541,6 +655,23 @@ export default function App() {
                       </div>
                     </div>
                   )}
+
+                  {/* Boiler params */}
+                  {getTab(id) === "boiler" && (
+                    <div style={S.tablePanel}>
+                      <div style={S.chartLabel}>BOILER & MILL PARAMETERS</div>
+                      <BoilerParamsTable data={boilerData[id]} />
+                    </div>
+                  )}
+
+                  {/* Coal mill params */}
+                  {getTab(id) === "coal" && (
+                    <div style={S.tablePanel}>
+                      <div style={S.chartLabel}>COAL MILL PARAMETERS</div>
+                      <CoalMillTable data={coalData[id]} />
+                    </div>
+                  )}
+
                 </section>
               );
             })}
@@ -553,62 +684,64 @@ export default function App() {
 
 // ─── STYLES ───────────────────────────────────────────────────
 const S = {
-  header:       { background:"#ffffff", borderBottom:"1px solid #e8e6f4", position:"sticky", top:0, zIndex:50, boxShadow:"0 1px 0 rgba(79,70,229,0.06)" },
-  headerInner:  { display:"flex", alignItems:"center", gap:"16px", padding:"10px 20px", flexWrap:"wrap" },
-  hamburger:    { background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", gap:"4px", padding:"4px" },
-  hLine:        { display:"block", width:"18px", height:"1.5px", background:"#9896c0" },
-  logoMark:     { width:"36px", height:"36px", border:"1px solid #e2e1f0", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5fb", flexShrink:0 },
-  brandName:    { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(13px,2vw,18px)", letterSpacing:"0.12em", color:"#1e1c3a", lineHeight:1 },
-  brandTag:     { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0", marginTop:"3px" },
-  suLabel:      { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.18em", color:"#b0aed0" },
-  suVal:        { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", color:"#4f46e5", letterSpacing:"0.08em" },
-  statsRow:     { display:"flex", alignItems:"center", gap:"20px", marginLeft:"auto" },
-  statItem:     { display:"flex", alignItems:"center", gap:"6px" },
-  statN:        { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", color:"#4f46e5", lineHeight:1 },
-  statL:        { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.15em", color:"#b0aed0" },
+  header:        { background:"#ffffff", borderBottom:"1px solid #e8e6f4", position:"sticky", top:0, zIndex:50, boxShadow:"0 1px 0 rgba(79,70,229,0.06)" },
+  headerInner:   { display:"flex", alignItems:"center", gap:"16px", padding:"10px 20px", flexWrap:"wrap" },
+  hamburger:     { background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", gap:"4px", padding:"4px" },
+  hLine:         { display:"block", width:"18px", height:"1.5px", background:"#9896c0" },
+  logoMark:      { width:"36px", height:"36px", border:"1px solid #e2e1f0", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5fb", flexShrink:0 },
+  brandName:     { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(13px,2vw,18px)", letterSpacing:"0.12em", color:"#1e1c3a", lineHeight:1 },
+  brandTag:      { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0", marginTop:"3px" },
+  suLabel:       { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.18em", color:"#b0aed0" },
+  suVal:         { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", color:"#4f46e5", letterSpacing:"0.08em" },
+  statsRow:      { display:"flex", alignItems:"center", gap:"20px", marginLeft:"auto" },
+  statItem:      { display:"flex", alignItems:"center", gap:"6px" },
+  statN:         { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", color:"#4f46e5", lineHeight:1 },
+  statL:         { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.15em", color:"#b0aed0" },
 
-  sidebar:      { background:"#ffffff", borderRight:"1px solid #e8e6f4", position:"fixed", left:0, top:"56px", bottom:0, overflowY:"auto", transition:"transform 0.3s ease", zIndex:40, display:"flex", flexDirection:"column" },
-  sideSection:  { padding:"16px 14px", borderBottom:"1px solid #f0eef8" },
-  secLabel:     { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.28em", color:"#c8c6e0", marginBottom:"10px", paddingTop:"2px" },
-  uploadBtn:    { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#4f46e5", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer" },
+  sidebar:       { background:"#ffffff", borderRight:"1px solid #e8e6f4", position:"fixed", left:0, top:"56px", bottom:0, overflowY:"auto", transition:"transform 0.3s ease", zIndex:40, display:"flex", flexDirection:"column" },
+  sideSection:   { padding:"16px 14px", borderBottom:"1px solid #f0eef8" },
+  secLabel:      { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.28em", color:"#c8c6e0", marginBottom:"10px", paddingTop:"2px" },
+  uploadBtn:     { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#4f46e5", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer" },
 
-  runCard:      { display:"flex", alignItems:"center", gap:"10px", padding:"8px 10px", borderRadius:"6px", cursor:"pointer", border:"0.5px solid transparent" },
-  runCardActive:{ background:"#f5f4ff", borderColor:"#c7c4f8" },
-  runCheck:     { width:"14px", height:"14px", borderRadius:"3px", border:"0.5px solid #d4d2e8", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, background:"#fff" },
+  runCard:       { display:"flex", alignItems:"center", gap:"10px", padding:"8px 10px", borderRadius:"6px", cursor:"pointer", border:"0.5px solid transparent" },
+  runCardActive: { background:"#f5f4ff", borderColor:"#c7c4f8" },
+  runCheck:      { width:"14px", height:"14px", borderRadius:"3px", border:"0.5px solid #d4d2e8", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, background:"#fff" },
   runCheckActive:{ background:"#4f46e5", borderColor:"#4f46e5" },
-  runName:      { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#3a3860", letterSpacing:"0.04em", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" },
-  runDate:      { fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#c8c6e0", marginTop:"2px" },
-  runIdx:       { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", letterSpacing:"0.1em" },
+  runName:       { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#3a3860", letterSpacing:"0.04em", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" },
+  runDate:       { fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#c8c6e0", marginTop:"2px" },
+  runIdx:        { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", letterSpacing:"0.1em" },
 
-  runSection:   { background:"#ffffff", border:"1px solid #e8e6f4", borderRadius:"10px", overflow:"hidden" },
-  runHeader:    { padding:"16px 20px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
-  runTitle:     { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(13px,1.8vw,18px)", letterSpacing:"0.1em", lineHeight:1 },
-  runSub:       { fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#c8c6e0", marginTop:"4px", letterSpacing:"0.06em" },
-  kpiRow:       { display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:"1px", marginTop:"12px" },
-  kpiCard:      { background:"#f5f4ff", padding:"10px 8px", textAlign:"center", borderRadius:"4px" },
-  kpiVal:       { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(13px,1.5vw,17px)", letterSpacing:"0.05em", lineHeight:1 },
-  kpiLbl:       { fontFamily:"'DM Mono',monospace", fontSize:"7px", letterSpacing:"0.18em", color:"#b0aed0", marginTop:"4px" },
+  runSection:    { background:"#ffffff", border:"1px solid #e8e6f4", borderRadius:"10px", overflow:"hidden" },
+  runHeader:     { padding:"16px 20px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
+  runTitle:      { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(13px,1.8vw,18px)", letterSpacing:"0.1em", lineHeight:1 },
+  runSub:        { fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#c8c6e0", marginTop:"4px", letterSpacing:"0.06em" },
+  kpiRow:        { display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:"1px", marginTop:"12px" },
+  kpiCard:       { background:"#f5f4ff", padding:"10px 8px", textAlign:"center", borderRadius:"4px" },
+  kpiVal:        { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(13px,1.5vw,17px)", letterSpacing:"0.05em", lineHeight:1 },
+  kpiLbl:        { fontFamily:"'DM Mono',monospace", fontSize:"7px", letterSpacing:"0.18em", color:"#b0aed0", marginTop:"4px" },
 
-  tabBar:       { display:"flex", gap:"4px", padding:"10px 16px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
-  tabBtn:       { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"5px 12px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0" },
-  tabActive:    { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
+  tabBar:        { display:"flex", gap:"4px", padding:"10px 16px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
+  tabBtn:        { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"5px 12px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0" },
+  tabActive:     { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
 
-  chartPanel:   { padding:"20px", background:"#ffffff" },
-  chartLabel:   { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:"#c8c6e0", marginBottom:"16px" },
-  filterBar:    { display:"flex", gap:"6px", marginTop:"14px", flexWrap:"wrap" },
-  filterBtn:    { border:"0.5px solid", padding:"4px 10px", fontSize:"9px", fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em", cursor:"pointer", borderRadius:"4px" },
+  chartPanel:    { padding:"20px", background:"#ffffff" },
+  chartLabel:    { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:"#c8c6e0", marginBottom:"16px" },
+  filterBar:     { display:"flex", gap:"6px", marginTop:"14px", flexWrap:"wrap" },
+  filterBtn:     { border:"0.5px solid", padding:"4px 10px", fontSize:"9px", fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em", cursor:"pointer", borderRadius:"4px" },
 
-  tablePanel:   { padding:"20px", background:"#ffffff" },
-  table:        { width:"100%", borderCollapse:"collapse", fontFamily:"'DM Mono',monospace", fontSize:"11px" },
-  th:           { padding:"8px 12px", textAlign:"left", fontSize:"8px", letterSpacing:"0.18em", color:"#c8c6e0", borderBottom:"1px solid #f0eef8", fontWeight:400 },
-  td:           { padding:"8px 12px", color:"#6e6c96" },
+  tablePanel:    { padding:"20px", background:"#ffffff" },
+  subLabel:      { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:"#c8c6e0", marginBottom:"12px" },
+  table:         { width:"100%", borderCollapse:"collapse", fontFamily:"'DM Mono',monospace", fontSize:"11px" },
+  th:            { padding:"8px 12px", textAlign:"left", fontSize:"8px", letterSpacing:"0.18em", color:"#c8c6e0", borderBottom:"1px solid #f0eef8", fontWeight:400 },
+  td:            { padding:"8px 12px", color:"#6e6c96" },
+  noData:        { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", padding:"20px 0", letterSpacing:"0.08em" },
 
-  tooltip:      { background:"#ffffff", border:"1px solid #e8e6f4", padding:"12px 14px", minWidth:"180px", borderRadius:"6px", boxShadow:"0 4px 20px rgba(79,70,229,0.08)" },
-  ttHead:       { display:"flex", justifyContent:"space-between", marginBottom:"8px", paddingBottom:"8px", borderBottom:"1px solid #f0eef8" },
-  ttLabel:      { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0" },
-  ttVal:        { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", color:"#4f46e5" },
-  ttRow:        { display:"flex", alignItems:"center", gap:"8px", marginBottom:"4px" },
-  ttDot:        { width:"5px", height:"5px", borderRadius:"50%", flexShrink:0 },
-  ttKey:        { fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#b0aed0", flex:1 },
-  ttNum:        { fontFamily:"'DM Mono',monospace", fontSize:"10px", fontWeight:"500" },
+  tooltip:       { background:"#ffffff", border:"1px solid #e8e6f4", padding:"12px 14px", minWidth:"180px", borderRadius:"6px", boxShadow:"0 4px 20px rgba(79,70,229,0.08)" },
+  ttHead:        { display:"flex", justifyContent:"space-between", marginBottom:"8px", paddingBottom:"8px", borderBottom:"1px solid #f0eef8" },
+  ttLabel:       { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0" },
+  ttVal:         { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", color:"#4f46e5" },
+  ttRow:         { display:"flex", alignItems:"center", gap:"8px", marginBottom:"4px" },
+  ttDot:         { width:"5px", height:"5px", borderRadius:"50%", flexShrink:0 },
+  ttKey:         { fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#b0aed0", flex:1 },
+  ttNum:         { fontFamily:"'DM Mono',monospace", fontSize:"10px", fontWeight:"500" },
 };
