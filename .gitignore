@@ -6,9 +6,7 @@ dist/
 dist-ssr/
 
 # Environment variables (never commit these — your keys live here)
-.env
-.env.local
-.env.*.local
+
 
 # Vite / editor
 *.local
