@@ -625,6 +625,9 @@ const fetchHistory = async () => {
               if (!dataset) return null;
 
               const runData = buildRunData(dataset);
+              const elevations = runData.map(r => r.elevation);
+const minElevation = Math.min(...elevations);
+const maxElevation = Math.max(...elevations);
               const temps   = runData.map(r => r.avg);
               const maxTemp = Math.max(...temps);
               const minTemp = Math.min(...temps);
@@ -689,8 +692,15 @@ const botRow = runData.length
                       <ResponsiveContainer width="100%" height={320}>
                         <LineChart data={runData} layout="vertical">
                           <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
-                          <YAxis dataKey="elevation" reversed tick={{ fill:"#a0a0c0", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
-                          <XAxis type="number" domain={[d => d-100, d => d+100]} tick={{ fill:"#a0a0c0", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
+<YAxis
+  dataKey="elevation"
+  type="number"
+  domain={[minElevation, maxElevation]}
+  reversed
+  tick={{ fill:"#a0a0c0", fontSize:10, fontFamily:"'DM Mono'" }}
+  axisLine={false}
+  tickLine={false}
+/>                     <XAxis type="number" domain={[d => d-100, d => d+100]} tick={{ fill:"#a0a0c0", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
                           <Tooltip content={<CustomTooltip />} />
                           {visibleLines.c1  && <Line type="monotone" dataKey="c1"  stroke={COLORS.c1}  dot={false} strokeWidth={2} />}
                           {visibleLines.c2  && <Line type="monotone" dataKey="c2"  stroke={COLORS.c2}  dot={false} strokeWidth={2} />}
