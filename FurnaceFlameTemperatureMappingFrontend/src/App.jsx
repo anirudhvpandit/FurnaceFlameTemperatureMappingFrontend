@@ -347,6 +347,41 @@ const fetchHistory = async () => {
     setUploading(false);
   };
 
+  const deleteRun = async (run_id) => {
+  if (!window.confirm("Are you sure you want to delete this run?")) return;
+
+  try {
+    await axios.delete(`${BASE_URL}/runs/${run_id}`);
+
+    // Remove from UI
+    setHistory(prev => prev.filter(r => r.run_id !== run_id));
+    setSelected(prev => prev.filter(id => id !== run_id));
+
+    // Cleanup cached data
+    setDatasets(prev => {
+      const copy = { ...prev };
+      delete copy[run_id];
+      return copy;
+    });
+
+    setBoilerData(prev => {
+      const copy = { ...prev };
+      delete copy[run_id];
+      return copy;
+    });
+
+    setCoalData(prev => {
+      const copy = { ...prev };
+      delete copy[run_id];
+      return copy;
+    });
+
+  } catch (err) {
+    console.error("Delete failed:", err);
+    alert("Failed to delete run");
+  }
+};
+
   const toggleSelection = async (item) => {
     if (selected.includes(item.run_id)) {
       setSelected(p => p.filter(id => id !== item.run_id));
@@ -515,30 +550,54 @@ const fetchHistory = async () => {
                   const active = selected.includes(item.run_id);
                   return (
                     <div
-                      key={item.run_id}
-                      onClick={() => toggleSelection(item)}
-                      style={{ ...S.runCard, ...(active ? S.runCardActive : {}) }}
-                    >
-                      <div style={{ ...S.runCheck, ...(active ? S.runCheckActive : {}) }}>
-                        {active && (
-                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                            <path d="M1.5 4l2 2 3-3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
-                          </svg>
-                        )}
-                      </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={S.runName}>{item.filename.replace(/\.[^/.]+$/,"")}</div>
-                        <div style={S.runDate}>
-                          {item.run_date
-                            ? new Date(item.run_date).toLocaleDateString("en-GB",{ day:"2-digit", month:"short", year:"numeric" })
-                            : new Date(item.run_timestamp).toLocaleDateString("en-GB",{ day:"2-digit", month:"short", year:"numeric" })
-                          }
-                        </div>
-                      </div>
-                      <div style={{ ...S.runIdx, color: active ? "#4f46e5" : "#c8c6e0" }}>
-                        {String(idx+1).padStart(2,"0")}
-                      </div>
-                    </div>
+  key={item.run_id}
+  style={{ ...S.runCard, ...(active ? S.runCardActive : {}) }}
+>
+  {/* SELECT CLICK */}
+  <div
+    onClick={() => toggleSelection(item)}
+    style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1 }}
+  >
+    <div style={{ ...S.runCheck, ...(active ? S.runCheckActive : {}) }}>
+      {active && (
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <path d="M1.5 4l2 2 3-3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      )}
+    </div>
+
+    <div style={{ flex:1, minWidth:0 }}>
+      <div style={S.runName}>
+        {item.filename.replace(/\.[^/.]+$/,"")}
+      </div>
+      <div style={S.runDate}>
+        {item.run_date
+          ? new Date(item.run_date).toLocaleDateString("en-GB",{ day:"2-digit", month:"short", year:"numeric" })
+          : new Date(item.run_timestamp).toLocaleDateString("en-GB",{ day:"2-digit", month:"short", year:"numeric" })
+        }
+      </div>
+    </div>
+  </div>
+
+  {/* DELETE BUTTON */}
+  <button
+    onClick={(e) => {
+      e.stopPropagation(); // prevent select
+      deleteRun(item.run_id);
+    }}
+    style={{
+      background: "none",
+      border: "none",
+      color: "#dc2626",
+      cursor: "pointer",
+      fontSize: "12px",
+      padding: "4px"
+    }}
+    title="Delete Run"
+  >
+    🗑
+  </button>
+</div>
                   );
                 })}
             </div>
@@ -729,7 +788,7 @@ const S = {
   sideSection:   { padding:"16px 14px", borderBottom:"1px solid #f0eef8" },
   secLabel:      { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.28em", color:"#c8c6e0", marginBottom:"10px", paddingTop:"2px" },
   uploadBtn:     { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#4f46e5", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer" },
-  runCard:       { display:"flex", alignItems:"center", gap:"10px", padding:"8px 10px", borderRadius:"6px", cursor:"pointer", border:"0.5px solid transparent" },
+  runCard:       { display:"flex", alignItems:"center", gap:"10px", padding:"8px 10px", borderRadius:"6px", cursor:"pointer", border:"0.5px solid transparent",position: "relative",opacity: 0.6, },
   runCardActive: { background:"#f5f4ff", borderColor:"#c7c4f8" },
   runCheck:      { width:"14px", height:"14px", borderRadius:"3px", border:"0.5px solid #d4d2e8", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, background:"#fff" },
   runCheckActive:{ background:"#4f46e5", borderColor:"#4f46e5" },
