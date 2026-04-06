@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
   CartesianGrid, ResponsiveContainer,
 } from "recharts";
 import img from "./assets/abhitech-logo.png";
+
+// ── Layer 1 / 3 crypto helpers ──────────────────────────────
+import { initCrypto, encFetch, decryptResponse } from "./furnaceCrypto.js";
 
 const BASE_URL = "http://101.53.132.91:8001";
 
@@ -141,23 +143,22 @@ function BoilerParamsTable({ data }) {
     { label: "Re-heat Spray (TPH)",           l: data.reheat_spray_l,        r: data.reheat_spray_r        },
     { label: "O₂ at APH Inlet (PCR) %",      l: data.o2_aph_inlet_pcr_l,    r: data.o2_aph_inlet_pcr_r    },
     { label: "Wind Box DP - A/B (mmwc)",      l: data.wind_box_dp_l,         r: data.wind_box_dp_r         },
-    { label: "Total PA Flow (TPH)",           l: data.total_pa_flow,         r: null,  single: true        },
+    { label: "Total PA Flow (TPH)",           l: data.total_pa_flow,         r: null, single: true         },
   ];
 
   const fgRows = [
-    { label: "FG Temp after DPSH (L/R) °C",        l: data.fg_temp_after_dpsh_l, r: data.fg_temp_after_dpsh_r },
-    { label: "FG Temp after PSH (L/R) °C",         l: data.fg_temp_after_psh_l,  r: data.fg_temp_after_psh_r  },
-    { label: "FG Temp after RH (L/R) °C",          l: data.fg_temp_after_rh_l,   r: data.fg_temp_after_rh_r   },
-    { label: "FG Temp after HSH (L/R) °C",         l: data.fg_temp_after_hsh_l,  r: data.fg_temp_after_hsh_r  },
-    { label: "FG Temp after Economizer (L/R) °C",  l: data.fg_temp_after_eco_l,  r: data.fg_temp_after_eco_r  },
-    { label: "FG Temp after APH (L/R) °C",         l: data.fg_temp_after_aph_l,  r: data.fg_temp_after_aph_r  },
+    { label: "FG Temp after DPSH (L/R) °C",       l: data.fg_temp_after_dpsh_l, r: data.fg_temp_after_dpsh_r },
+    { label: "FG Temp after PSH (L/R) °C",        l: data.fg_temp_after_psh_l,  r: data.fg_temp_after_psh_r  },
+    { label: "FG Temp after RH (L/R) °C",         l: data.fg_temp_after_rh_l,   r: data.fg_temp_after_rh_r   },
+    { label: "FG Temp after HSH (L/R) °C",        l: data.fg_temp_after_hsh_l,  r: data.fg_temp_after_hsh_r  },
+    { label: "FG Temp after Economizer (L/R) °C", l: data.fg_temp_after_eco_l,  r: data.fg_temp_after_eco_r  },
+    { label: "FG Temp after APH (L/R) °C",        l: data.fg_temp_after_aph_l,  r: data.fg_temp_after_aph_r  },
   ];
 
   const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
 
   return (
     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px" }}>
-      {/* Left: Boiler params */}
       <div>
         <div style={S.subLabel}>BOILER & MILL PARAMETERS</div>
         <table style={S.table}>
@@ -181,8 +182,6 @@ function BoilerParamsTable({ data }) {
           </tbody>
         </table>
       </div>
-
-      {/* Right: FG Temps */}
       <div>
         <div style={S.subLabel}>FLUE GAS TEMPERATURES</div>
         <table style={S.table}>
@@ -214,11 +213,11 @@ function CoalMillTable({ data }) {
     return <div style={S.noData}>No coal mill parameters recorded for this run.</div>;
 
   const rows = [
-    { key: "coal_flow_tph",    label: "Coal Flow (TPH)"      },
-    { key: "pa_flow_tph",      label: "PA Flow (TPH)"        },
-    { key: "mill_dp_mmwc",     label: "Mill DP (mmwc)"       },
+    { key: "coal_flow_tph",    label: "Coal Flow (TPH)"       },
+    { key: "pa_flow_tph",      label: "PA Flow (TPH)"         },
+    { key: "mill_dp_mmwc",     label: "Mill DP (mmwc)"        },
     { key: "mill_outlet_temp", label: "Mill Outlet Temp (°C)" },
-    { key: "mill_current_amp", label: "Mill Current (Amp)"   },
+    { key: "mill_current_amp", label: "Mill Current (Amp)"    },
   ];
 
   const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
@@ -252,99 +251,159 @@ function CoalMillTable({ data }) {
   );
 }
 
+// ─── QUERY STRING HELPER ──────────────────────────────────────
+// Replaces axios's { params } option for plain fetch / encFetch
+function qs(params) {
+  return new URLSearchParams(params).toString();
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
-  const [history, setHistory]         = useState([]);
-  const [selected, setSelected]       = useState([]);
-  const [datasets, setDatasets]       = useState({});
-  const [boilerData, setBoilerData]   = useState({});   // { run_id: {...} }
-  const [coalData, setCoalData]       = useState({});   // { run_id: [...] }
-  const [uploading, setUploading]     = useState(false);
+  // ── crypto gate — all API calls are blocked until this is true ──
+  const [cryptoReady, setCryptoReady]   = useState(false);
+
+  const [history, setHistory]           = useState([]);
+  const [selected, setSelected]         = useState([]);
+  const [datasets, setDatasets]         = useState({});
+  const [boilerData, setBoilerData]     = useState({});
+  const [coalData, setCoalData]         = useState({});
+  const [uploading, setUploading]       = useState(false);
   const [visibleLines, setVisibleLines] = useState({ c1:true, c2:true, c3:true, c4:true, avg:true });
-  const [activeTab, setActiveTab]     = useState({});
-  const [startDate, setStartDate]     = useState("");
-  const [endDate, setEndDate]         = useState("");
-  const [dataDates, setDataDates]     = useState(new Set());
+  const [activeTab, setActiveTab]       = useState({});
+  const [startDate, setStartDate]       = useState("");
+  const [endDate, setEndDate]           = useState("");
+  const [dataDates, setDataDates]       = useState(new Set());
   const [selectedStation, setSelectedStation] = useState(null);
   const [selectedUnit, setSelectedUnit]       = useState(null);
   const [sidebarOpen, setSidebarOpen]         = useState(true);
-  const [dateError, setDateError]     = useState("");
+  const [dateError, setDateError]       = useState("");
 
   const getTab = (id) => activeTab[id] ?? "graph";
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
 
+  // ── Initialise crypto once on mount ──────────────────────────
+  useEffect(() => {
+    const key = import.meta.env.VITE_TRANSIT_KEY;
+    if (!key) {
+      console.error("[crypto] VITE_TRANSIT_KEY is not set in .env — API calls will fail.");
+      return;
+    }
+    initCrypto(key)
+      .then(() => setCryptoReady(true))
+      .catch(err => console.error("[crypto] initCrypto failed:", err));
+  }, []);
+
+  // ── Load station/unit from localStorage ──────────────────────
   useEffect(() => {
     const st = localStorage.getItem("selectedStation");
     const un = localStorage.getItem("selectedUnit");
     if (st) setSelectedStation(JSON.parse(st));
     if (un) setSelectedUnit(JSON.parse(un));
-    fetchMappingDates();
   }, []);
 
+  // ── Fetch mapping dates once crypto is ready ──────────────────
   useEffect(() => {
-    if (startDate && endDate) fetchHistoryByDate();
-  }, [startDate, endDate]);
+    if (cryptoReady) fetchMappingDates();
+  }, [cryptoReady]);
 
+  // ── Re-fetch history when date range changes ──────────────────
+  useEffect(() => {
+    if (cryptoReady && startDate && endDate) fetchHistoryByDate();
+  }, [startDate, endDate, cryptoReady]);
+
+  // ─────────────────────────────────────────────────────────────
+  // API: /mapping-dates
+  // GET — response encrypted (Layer 3) → decrypted by encFetch
+  // ─────────────────────────────────────────────────────────────
   const fetchMappingDates = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/mapping-dates`, { params:{ station_id:1, unit_id:1 } });
-      setDataDates(new Set(res.data.map(r => r.run_date)));
-    } catch (e) { console.error(e); }
+      const data = await encFetch(
+        `${BASE_URL}/mapping-dates?${qs({ station_id: 1, unit_id: 1 })}`
+      );
+      // data is already the parsed array [{run_date: "YYYY-MM-DD"}, ...]
+      setDataDates(new Set(data.map(r => r.run_date)));
+    } catch (e) {
+      console.error("[fetchMappingDates]", e);
+    }
   };
 
+  // ─────────────────────────────────────────────────────────────
+  // API: /history
+  // GET — response encrypted (Layer 3) → decrypted by encFetch
+  // ─────────────────────────────────────────────────────────────
   const fetchHistoryByDate = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/history`, {
-        params: { station_id:1, unit_id:1, start_date:startDate, end_date:endDate }
-      });
-      setHistory(res.data);
+      const data = await encFetch(
+        `${BASE_URL}/history?${qs({ station_id: 1, unit_id: 1, start_date: startDate, end_date: endDate })}`
+      );
+      setHistory(data);
       setSelected([]);
       setDatasets({});
       setBoilerData({});
       setCoalData({});
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error("[fetchHistoryByDate]", err);
+    }
   };
 
+  // ─────────────────────────────────────────────────────────────
+  // API: /upload
+  // POST multipart/form-data — body is NOT encrypted (file bytes)
+  // but the server response IS encrypted (Layer 3) → decryptResponse
+  // ─────────────────────────────────────────────────────────────
   const handleUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file || !cryptoReady) return;
     setUploading(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("station_id", 1);
-    fd.append("unit_id", 1);
-    fd.append("uploaded_by", "admin");
-    fd.append("notes", "");
-    await axios.post(`${BASE_URL}/upload`, fd);
-    await fetchMappingDates();
-    setUploading(false);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("station_id", 1);
+      fd.append("unit_id", 1);
+      fd.append("uploaded_by", "admin");
+      fd.append("notes", "");
+
+      // Use raw fetch for multipart — do NOT set Content-Type (browser sets boundary)
+      const raw = await fetch(`${BASE_URL}/upload`, { method: "POST", body: fd });
+      // Decrypt the encrypted response envelope
+      await decryptResponse(raw);
+
+      await fetchMappingDates();
+    } catch (err) {
+      console.error("[handleUpload]", err);
+    } finally {
+      setUploading(false);
+    }
   };
 
+  // ─────────────────────────────────────────────────────────────
+  // API: /history/:id  +  /boiler-params  +  /coal-mill-params
+  // All GETs — responses encrypted (Layer 3) → decrypted by encFetch
+  // ─────────────────────────────────────────────────────────────
   const toggleSelection = async (item) => {
     if (selected.includes(item.run_id)) {
       setSelected(p => p.filter(id => id !== item.run_id));
       return;
     }
 
-    // Fetch all three in parallel if not already cached
     const promises = [];
 
     if (!datasets[item.run_id]) {
       promises.push(
-        axios.get(`${BASE_URL}/history/${item.run_id}`)
-          .then(res => setDatasets(p => ({ ...p, [item.run_id]: res.data })))
+        encFetch(`${BASE_URL}/history/${item.run_id}`)
+          .then(data => setDatasets(p => ({ ...p, [item.run_id]: data })))
       );
     }
     if (!boilerData[item.run_id]) {
       promises.push(
-        axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`)
-          .then(res => setBoilerData(p => ({ ...p, [item.run_id]: res.data })))
+        encFetch(`${BASE_URL}/history/${item.run_id}/boiler-params`)
+          .then(data => setBoilerData(p => ({ ...p, [item.run_id]: data })))
       );
     }
     if (!coalData[item.run_id]) {
       promises.push(
-        axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`)
-          .then(res => setCoalData(p => ({ ...p, [item.run_id]: res.data })))
+        encFetch(`${BASE_URL}/history/${item.run_id}/coal-mill-params`)
+          .then(data => setCoalData(p => ({ ...p, [item.run_id]: data })))
       );
     }
 
@@ -418,8 +477,13 @@ export default function App() {
               </div>
             ))}
             <div style={S.statItem}>
-              <span style={{ width:"6px", height:"6px", borderRadius:"50%", background:"#16a34a", display:"inline-block" }} />
-              <span style={S.statL}>LIVE</span>
+              {/* Green = crypto ready, amber = initialising */}
+              <span style={{
+                width:"6px", height:"6px", borderRadius:"50%",
+                background: cryptoReady ? "#16a34a" : "#d97706",
+                display:"inline-block",
+              }} />
+              <span style={S.statL}>{cryptoReady ? "LIVE" : "INIT"}</span>
             </div>
           </div>
         </div>
@@ -435,7 +499,11 @@ export default function App() {
         }}>
           <div style={S.sideSection}>
             <div style={S.secLabel}>INGEST DATA</div>
-            <label style={S.uploadBtn}>
+            <label style={{
+              ...S.uploadBtn,
+              opacity: cryptoReady ? 1 : 0.5,
+              pointerEvents: cryptoReady ? "auto" : "none",
+            }}>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M7 1v8M4 4l3-3 3 3M2 11h10" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -576,13 +644,13 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* ── TABS: 4 tabs now ── */}
+                  {/* Tabs */}
                   <div style={S.tabBar}>
                     {[
-                      { k:"graph",   l:"GRAPH"         },
-                      { k:"raw",     l:"RAW DATA"       },
-                      { k:"boiler",  l:"BOILER PARAMS"  },
-                      { k:"coal",    l:"COAL MILLS"     },
+                      { k:"graph",  l:"GRAPH"        },
+                      { k:"raw",    l:"RAW DATA"      },
+                      { k:"boiler", l:"BOILER PARAMS" },
+                      { k:"coal",   l:"COAL MILLS"    },
                     ].map(({ k, l }) => (
                       <button
                         key={k}

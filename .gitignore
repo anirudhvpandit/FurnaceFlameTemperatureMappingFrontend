@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Environment variables (never commit these — your keys live here)
+.env
+.env.local
+.env.*.local
+
+# Vite / editor
+*.local
+.vite/
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Mobile folder
+mobile/
