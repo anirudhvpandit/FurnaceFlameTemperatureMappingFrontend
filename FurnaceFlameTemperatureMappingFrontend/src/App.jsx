@@ -271,12 +271,32 @@ export default function App() {
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
 
   useEffect(() => {
-    const st = localStorage.getItem("selectedStation");
-    const un = localStorage.getItem("selectedUnit");
-    if (st) setSelectedStation(JSON.parse(st));
-    if (un) setSelectedUnit(JSON.parse(un));
-    fetchMappingDates();
-  }, []);
+  const st = localStorage.getItem("selectedStation");
+  const un = localStorage.getItem("selectedUnit");
+
+  if (st) setSelectedStation(JSON.parse(st));
+  if (un) setSelectedUnit(JSON.parse(un));
+
+  fetchMappingDates();
+  fetchHistory(); // ✅ ADD THIS
+}, []);
+
+const fetchHistory = async () => {
+  try {
+    const res = await axios.get(`${BASE_URL}/history`, {
+      params: {
+        station_id: 1,
+        unit_id: 1,
+      },
+    });
+
+    console.log("HISTORY:", res.data); // debug
+
+    setHistory(res.data || []);
+  } catch (err) {
+    console.error("History fetch error:", err);
+  }
+};
 
   useEffect(() => {
     if (startDate && endDate) fetchHistoryByDate();
@@ -290,17 +310,27 @@ export default function App() {
   };
 
   const fetchHistoryByDate = async () => {
-    try {
-      const res = await axios.get(`${BASE_URL}/history`, {
-        params: { station_id:1, unit_id:1, start_date:startDate, end_date:endDate }
-      });
-      setHistory(res.data);
-      setSelected([]);
-      setDatasets({});
-      setBoilerData({});
-      setCoalData({});
-    } catch (err) { console.error(err); }
-  };
+  try {
+    const res = await axios.get(`${BASE_URL}/history`, {
+      params: {
+        station_id: 1,
+        unit_id: 1,
+        start_date: startDate || null,
+        end_date: endDate || null,
+      },
+    });
+
+    console.log("FILTERED HISTORY:", res.data);
+
+    setHistory(res.data || []);
+    setSelected([]);
+    setDatasets({});
+    setBoilerData({});
+    setCoalData({});
+  } catch (err) {
+    console.error("Filtered fetch error:", err);
+  }
+};
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
@@ -472,12 +502,15 @@ export default function App() {
             <div style={{ display:"flex", flexDirection:"column", gap:"3px" }}>
               {history
                 .filter(item => {
-                  if (!startDate && !endDate) return true;
-                  const d = new Date(item.run_date || item.run_timestamp);
-                  if (startDate && d < new Date(startDate)) return false;
-                  if (endDate   && d > new Date(endDate))   return false;
-                  return true;
-                })
+  if (!startDate && !endDate) return true;
+
+  const d = new Date(item.run_date || item.run_timestamp);
+
+  if (startDate && d < new Date(startDate)) return false;
+  if (endDate && d > new Date(endDate)) return false;
+
+  return true;
+})
                 .map((item, idx) => {
                   const active = selected.includes(item.run_id);
                   return (
@@ -537,9 +570,14 @@ export default function App() {
               const maxTemp = Math.max(...temps);
               const minTemp = Math.min(...temps);
               const avgTemp = (temps.reduce((a,b) => a+b,0) / temps.length).toFixed(1);
-              const topRow  = runData.reduce((a,b) => b.elevation > a.elevation ? b : a, runData[0]);
-              const botRow  = runData.reduce((a,b) => b.elevation < a.elevation ? b : a, runData[0]);
-              const accents = ["#4f46e5","#d97706","#0891b2","#7c3aed","#dc2626"];
+              const topRow = runData.length
+  ? runData.reduce((a,b) => b.elevation > a.elevation ? b : a)
+  : null;
+
+
+const botRow = runData.length
+  ? runData.reduce((a,b) => b.elevation < a.elevation ? b : a)
+  : null;              const accents = ["#4f46e5","#d97706","#0891b2","#7c3aed","#dc2626"];
               const accent  = accents[runIdx % accents.length];
 
               return (
@@ -556,8 +594,8 @@ export default function App() {
                     </div>
                     <div style={S.kpiRow}>
                       {[
-                        { l:"PEAK",   v:`${Number(topRow.avg).toFixed(0)}°C`, c:"#7c3aed" },
-                        { l:"FLOOR",  v:`${Number(botRow.avg).toFixed(0)}°C`, c:"#4f46e5" },
+                        { l:"PEAK", v: topRow ? `${Number(topRow.avg || 0).toFixed(0)}°C` : "—" },
+                        { l:"FLOOR",  v: botRow ? `${Number(botRow.avg || 0).toFixed(0)}°C` : "—" , c:"#4f46e5" },
                         { l:"MAX",    v:`${maxTemp.toFixed(0)}°C`,            c:"#dc2626" },
                         { l:"MIN",    v:`${minTemp.toFixed(0)}°C`,            c:"#0891b2" },
                         { l:"AVG",    v:`${avgTemp}°C`,                       c:"#d97706" },
