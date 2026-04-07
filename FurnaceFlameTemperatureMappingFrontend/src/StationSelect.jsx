@@ -29,19 +29,19 @@ export default function StationSelect() {
   const fetchUnits = (stationId) => {
     if (stationId === 1) {
       setUnits([
-        { id: 1, name: "Unit 3" },
-        { id: 2, name: "Unit 4" },
-        { id: 3, name: "Unit 5" },
+        { id: 3, name: "Unit 3" },
+        { id: 4, name: "Unit 4" },
+        { id: 5, name: "Unit 5" },
       ]);
     } else if (stationId === 2) {
       setUnits([
-        { id: 1, name: "Unit 3" },
-        { id: 2, name: "Unit 4" },
-        { id: 3, name: "Unit 5" },
-        { id: 4, name: "Unit 6" },
-        { id: 5, name: "Unit 7" },
-        { id: 6, name: "Unit 8" },
-        { id: 7, name: "Unit 9" },
+        { id: 3, name: "Unit 3" },
+        { id: 4, name: "Unit 4" },
+        { id: 5, name: "Unit 5" },
+        { id: 6, name: "Unit 6" },
+        { id: 7, name: "Unit 7" },
+        { id: 8, name: "Unit 8" },
+        { id: 9, name: "Unit 9" },
       ]);
     } else if (stationId === 3) {
       setUnits([
@@ -53,27 +53,27 @@ export default function StationSelect() {
       ]);
     } else if (stationId === 4) {
       setUnits([
-        { id: 1, name: "Unit 6" },
-        { id: 2, name: "Unit 8" },
-        { id: 3, name: "Unit 9" },
-        { id: 4, name: "Unit 10" },
+        { id: 6, name: "Unit 6" },
+        { id: 8, name: "Unit 8" },
+        { id: 9, name: "Unit 9" },
+        { id: 10, name: "Unit 10" },
       ]);
     } else if (stationId === 5) {
       setUnits([
-        { id: 1, name: "Unit 3" },
-        { id: 2, name: "Unit 4" },
-        { id: 3, name: "Unit 5" },
+        { id: 3, name: "Unit 3" },
+        { id: 4, name: "Unit 4" },
+        { id: 5, name: "Unit 5" },
       ]);
     } else if (stationId === 6) {
       setUnits([
-        { id: 1, name: "Unit 3" },
-        { id: 2, name: "Unit 4" },
+        { id: 3, name: "Unit 3" },
+        { id: 4, name: "Unit 4" },
       ]);
     } else if (stationId === 7) {
       setUnits([
-        { id: 1, name: "Unit 6" },
-        { id: 2, name: "Unit 7" },
-        { id: 3, name: "Unit 8" },
+        { id: 6, name: "Unit 6" },
+        { id: 7, name: "Unit 7" },
+        { id: 8, name: "Unit 8" },
       ]);
     } else {
       setUnits([]);
