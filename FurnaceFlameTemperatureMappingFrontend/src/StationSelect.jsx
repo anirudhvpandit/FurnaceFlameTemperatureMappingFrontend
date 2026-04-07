@@ -21,6 +21,11 @@ export default function StationSelect() {
     ]);
   }, []);
 
+  useEffect(()=>{
+    localStorage.setItem("selectedStation", selectedStation);
+    localStorage.setItem("selectedUnit", selectedUnit?.id);
+  },[selectedStation, selectedUnit])
+
   const fetchUnits = (stationId) => {
     if (stationId === 1) {
       setUnits([

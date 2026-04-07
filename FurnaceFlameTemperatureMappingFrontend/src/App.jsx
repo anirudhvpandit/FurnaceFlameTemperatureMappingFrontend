@@ -325,13 +325,31 @@ export default function App() {
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
 
   useEffect(() => {
-    const st = localStorage.getItem("selectedStation");
-    const un = localStorage.getItem("selectedUnit");
-    if (st) setSelectedStation(JSON.parse(st));
-    if (un) setSelectedUnit(JSON.parse(un));
-    fetchMappingDates();
-    fetchHistory();
-  }, []);
+  const st = localStorage.getItem("selectedStation");
+  const un = localStorage.getItem("selectedUnit");
+
+  if (st) {
+    console.log(st);
+    
+    const parsedStation = JSON.parse(st);
+    console.log(parsedStation);
+    
+    setSelectedStation(parsedStation.name); // or whole object if needed
+  }
+
+
+  if (un) {
+    console.log(un);
+    
+    const parsedUnit = JSON.parse(un);
+    setSelectedUnit(parsedUnit.id);
+    console.log(parsedUnit);
+    
+  }
+
+  fetchMappingDates();
+  fetchHistory();
+}, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -344,8 +362,33 @@ export default function App() {
 
   const fetchHistory = async () => {
     try {
+      let st = localStorage.getItem("selectedStation");
+  let un = localStorage.getItem("selectedUnit");
+
+  if (st) {
+    console.log(st);
+    
+    const parsedStation = JSON.parse(st);
+    console.log(parsedStation);
+     st = parsedStation.name
+    
+    setSelectedStation(parsedStation.name); // or whole object if needed
+  }
+
+
+  if (un) {
+    console.log(un);
+    
+    const parsedUnit = JSON.parse(un);
+    setSelectedUnit(parsedUnit.id);
+    console.log(parsedUnit);
+    un = parsedUnit.id
+    
+  }
+      console.log("st",st);
+      
       const res = await axios.get(`${BASE_URL}/history`, {
-        params: { station_id: 1, unit_id: 1 },
+        params: { station_id: st, unit_id: un },
       });
       console.log("HISTORY:", res.data);
       setHistory(res.data || []);
@@ -367,10 +410,34 @@ export default function App() {
 
   const fetchHistoryByDate = async () => {
     try {
+      console.log(selectedStation,selectedUnit);
+      let st = localStorage.getItem("selectedStation");
+  let un = localStorage.getItem("selectedUnit");
+
+  if (st) {
+    console.log(st);
+    
+    const parsedStation = JSON.parse(st);
+    console.log(parsedStation);
+     st = parsedStation.name
+    
+    setSelectedStation(parsedStation.name); // or whole object if needed
+  }
+
+
+  if (un) {
+    console.log(un);
+    
+    const parsedUnit = JSON.parse(un);
+    setSelectedUnit(parsedUnit.id);
+    console.log(parsedUnit);
+    un = parsedUnit.id
+    
+  }
       const res = await axios.get(`${BASE_URL}/history`, {
         params: {
-          station_id: 1,
-          unit_id: 1,
+          station_id:st ,
+          unit_id: un,
           start_date: startDate || null,
           end_date: endDate || null,
         },
@@ -421,9 +488,10 @@ export default function App() {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("station_id", 1);
-      fd.append("unit_id", 1);
+      fd.append("unit_id", selectedUnit);
       fd.append("uploaded_by", "admin");
       fd.append("notes", "");
+      fd.append
       await axios.post(`${BASE_URL}/upload`, fd);
       await fetchMappingDates();
       setShowSuccessModal(true);

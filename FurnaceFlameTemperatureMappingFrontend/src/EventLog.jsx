@@ -1,24 +1,40 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
+
+const BASE_URL = "http://91.203.132.34:8000";
 
 export default function EventLog() {
   const [logs, setLogs] = useState([]);
-  const [view, setView] = useState("grid"); // grid | list
+  const [view, setView] = useState("grid");
 
-  // ── SIMULATED DATA ──
+  // 🔹 FETCH REAL DATA
   useEffect(() => {
-    const mock = Array.from({ length: 15 }).map((_, i) => ({
-      id: i + 1,
-      timestamp: new Date(Date.now() - i * 3600 * 1000),
-      file: `run_${1000 + i}.xlsx`,
-      station: ["BSL", "CSTPS", "NTPS"][i % 3],
-      unit: `Unit ${((i % 5) + 1)}`,
-      status: i % 5 === 0 ? "FAILED" : "SUCCESS",
-      size: (Math.random() * 5 + 1).toFixed(2) + " MB",
-      uploadedBy: ["admin", "operator", "engineer"][i % 3],
-    }));
-
-    setLogs(mock);
+    fetchLogs();
   }, []);
+
+  const fetchLogs = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/get-upload-log`);
+      const data = res.data;
+
+      const formatted = data.map((row) => ({
+        id: row.run_id,
+        timestamp: new Date(row.run_timestamp),
+        file: row.filename,
+        station: row.location,
+        unit: row.unit
+          ? `Unit ${row.unit}`
+          : `Unit ${row.unit_id}`,
+        status: "SUCCESS", // 🔁 change if you add failure logic
+        size: "-", // not available in DB
+        uploadedBy: row.uploaded_by,
+      }));
+
+      setLogs(formatted);
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+    }
+  };
 
   const successRate = logs.length
     ? Math.round(
@@ -37,7 +53,7 @@ export default function EventLog() {
           </div>
         </div>
 
-        {/* VIEW TOGGLE */}
+        {/* TOGGLE */}
         <div style={S.toggleWrap}>
           <button
             onClick={() => setView("grid")}
@@ -54,7 +70,7 @@ export default function EventLog() {
         </div>
       </div>
 
-      {/* KPI ROW */}
+      {/* KPI */}
       <div style={S.kpiRow}>
         <KPI label="TOTAL UPLOADS" value={logs.length} />
         <KPI label="SUCCESS RATE" value={`${successRate}%`} />
@@ -63,7 +79,9 @@ export default function EventLog() {
           value={logs.filter((l) => l.status === "FAILED").length}
           color="#dc2626"
         />
-        <KPI label="AVG FILE SIZE" value="3.2 MB" />
+        <KPI label="LATEST RUN">
+          {logs[0]?.timestamp?.toLocaleDateString() || "-"}
+        </KPI>
       </div>
 
       {/* CONTENT */}
@@ -78,7 +96,7 @@ export default function EventLog() {
   );
 }
 
-/* ───────────────── GRID VIEW ───────────────── */
+/* ───────── GRID VIEW ───────── */
 function GridView({ logs }) {
   return (
     <div style={S.grid}>
@@ -95,7 +113,7 @@ function GridView({ logs }) {
           </div>
 
           <div style={S.meta}>
-            {log.size} • {log.uploadedBy}
+            {log.uploadedBy}
           </div>
 
           <div
@@ -112,7 +130,7 @@ function GridView({ logs }) {
   );
 }
 
-/* ───────────────── LIST VIEW ───────────────── */
+/* ───────── LIST VIEW ───────── */
 function ListView({ logs }) {
   return (
     <table style={S.table}>
@@ -122,7 +140,6 @@ function ListView({ logs }) {
           <th style={S.th}>FILE</th>
           <th style={S.th}>STATION</th>
           <th style={S.th}>UNIT</th>
-          <th style={S.th}>SIZE</th>
           <th style={S.th}>USER</th>
           <th style={S.th}>STATUS</th>
         </tr>
@@ -137,7 +154,6 @@ function ListView({ logs }) {
             <td style={S.td}>{log.file}</td>
             <td style={S.td}>{log.station}</td>
             <td style={S.td}>{log.unit}</td>
-            <td style={S.td}>{log.size}</td>
             <td style={S.td}>{log.uploadedBy}</td>
             <td
               style={{
@@ -156,17 +172,19 @@ function ListView({ logs }) {
   );
 }
 
-/* ───────────────── KPI ───────────────── */
-function KPI({ label, value, color = "#4f46e5" }) {
+/* ───────── KPI ───────── */
+function KPI({ label, value, color = "#4f46e5", children }) {
   return (
     <div style={S.kpiCard}>
-      <div style={{ ...S.kpiValue, color }}>{value}</div>
+      <div style={{ ...S.kpiValue, color }}>
+        {value || children}
+      </div>
       <div style={S.kpiLabel}>{label}</div>
     </div>
   );
 }
 
-/* ───────────────── STYLES ───────────────── */
+/* ───────── STYLES (UNCHANGED) ───────── */
 const S = {
   page: {
     padding: "30px",
@@ -174,31 +192,26 @@ const S = {
     minHeight: "100vh",
     fontFamily: "Inter, sans-serif",
   },
-
   headerRow: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "24px",
   },
-
   title: {
     fontSize: "28px",
     fontWeight: "700",
     letterSpacing: "0.05em",
   },
-
   subtitle: {
     fontSize: "12px",
     color: "#6e6c96",
     letterSpacing: "0.15em",
   },
-
   toggleWrap: {
     display: "flex",
     gap: "8px",
   },
-
   toggleBtn: {
     padding: "8px 14px",
     border: "1px solid #ddd",
@@ -207,7 +220,6 @@ const S = {
     cursor: "pointer",
     fontSize: "12px",
   },
-
   toggleActive: {
     padding: "8px 14px",
     border: "1px solid #4f46e5",
@@ -217,93 +229,75 @@ const S = {
     cursor: "pointer",
     fontSize: "12px",
   },
-
   kpiRow: {
     display: "grid",
     gridTemplateColumns: "repeat(4, 1fr)",
     gap: "12px",
     marginBottom: "24px",
   },
-
   kpiCard: {
     background: "#fff",
     padding: "16px",
     borderRadius: "10px",
     border: "1px solid #e6e4f2",
   },
-
   kpiValue: {
     fontSize: "22px",
     fontWeight: "600",
   },
-
   kpiLabel: {
     fontSize: "10px",
     color: "#9a98b5",
     marginTop: "4px",
     letterSpacing: "0.1em",
   },
-
   tableWrap: {
     background: "#fff",
     borderRadius: "10px",
     border: "1px solid #e6e4f2",
     overflow: "hidden",
   },
-
-  /* GRID */
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: "12px",
     padding: "12px",
   },
-
   card: {
     background: "#fff",
     border: "1px solid #e6e4f2",
     borderRadius: "10px",
     padding: "14px",
   },
-
   time: {
     fontSize: "12px",
     color: "#6e6c96",
   },
-
   file: {
     fontWeight: "600",
     margin: "6px 0",
   },
-
   meta: {
     fontSize: "12px",
   },
-
   status: {
     marginTop: "8px",
     fontWeight: "600",
   },
-
-  /* TABLE */
   table: {
     width: "100%",
     borderCollapse: "collapse",
   },
-
   th: {
     textAlign: "left",
     fontSize: "10px",
     padding: "12px",
     background: "#f9f9ff",
     color: "#9a98b5",
-    letterSpacing: "0.1em",
   },
-
   tr: {
     borderBottom: "1px solid #f0eef8",
   },
-
   td: {
     padding: "12px",
     fontSize: "13px",
