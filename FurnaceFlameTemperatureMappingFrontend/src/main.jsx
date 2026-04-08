@@ -5,12 +5,14 @@ import './index.css'
 import App from './App.jsx'
 import StationSelect from './StationSelect.jsx'
 import EventLog from './EventLog.jsx'
+import LoginPage from './LoginPage.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<StationSelect />} />
+        <Route path="/" element={<LoginPage/>} />
+        <Route path="/station-select" element={<StationSelect />} />
         <Route path="/dashboard" element={<App />} />
         <Route path="/event-log" element={<EventLog />} />
       </Routes>

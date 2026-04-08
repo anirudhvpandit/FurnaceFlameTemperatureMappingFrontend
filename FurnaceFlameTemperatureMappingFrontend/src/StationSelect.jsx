@@ -9,6 +9,38 @@ export default function StationSelect() {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const navigate = useNavigate();
 
+  useEffect(()=>{
+    const location = localStorage.getItem("username");
+    if (location) {
+      setSelectedStation(location);
+      switch (location) {
+        case "BSL":
+          fetchUnits(1);
+          break;
+        case "CSTPS":
+          fetchUnits(2);
+          break;
+        case "KPKD":
+          fetchUnits(3);
+          break;
+        case "KTPS":
+          fetchUnits(4);
+          break;
+        case "NTPS":
+          fetchUnits(5);
+          break;
+        case "PARAS TPS":
+          fetchUnits(6);
+          break;
+        case "PARALI TPS":
+          fetchUnits(7);
+          break;
+        default:
+          break;
+      }
+    }
+  },[])
+
   useEffect(() => {
     setStations([
       { id: 1, name: "BSL" },
