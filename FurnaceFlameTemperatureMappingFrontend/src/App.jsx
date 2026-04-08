@@ -300,7 +300,8 @@ export default function App() {
   const HEADER_H    = 56;
   const PADDING_H   = 40;
   const CARD_CHROME = 170;
-  const chartHeight = Math.max(220, windowHeight - HEADER_H - PADDING_H - CARD_CHROME);
+  const availableHeight = windowHeight - HEADER_H - PADDING_H - CARD_CHROME;
+  const chartHeight = Math.max(220, Math.min(520, availableHeight));
 
   const [viewMode, setViewMode] = useState("runs");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -398,7 +399,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (startDate && endDate) fetchHistoryByDate();
+    if (startDate || endDate) fetchHistoryByDate();
   }, [startDate, endDate]);
 
   const fetchMappingDates = async () => {
@@ -696,6 +697,12 @@ export default function App() {
               const minElevation  = allElevations[0];
               const maxElevation  = allElevations[allElevations.length - 1];
 
+              const visibleKeys = Object.keys(COLORS).filter(k => visibleLines[k]);
+              const xValues = runData.flatMap(r => visibleKeys.map(key => Number(r[key]) || 0));
+              const xMin = xValues.length ? Math.min(...xValues) : 0;
+              const xMax = xValues.length ? Math.max(...xValues) : 100;
+              const xPadding = Math.max(10, (xMax - xMin) * 0.08);
+
               const temps   = runData.map(r => r.avg);
               const maxTemp = Math.max(...temps);
               const minTemp = Math.min(...temps);
@@ -751,9 +758,9 @@ export default function App() {
                   </div>
 
                   {getTab(id) === "graph" && (
-                    <div style={S.chartPanel}>
+                    <div style={{ ...S.chartPanel, maxHeight: "62vh" }}>
                       <div style={S.chartLabel}>THERMAL PROFILE — ELEVATION VS TEMPERATURE</div>
-                      <ResponsiveContainer width="100%" height={chartHeight}>
+                      <ResponsiveContainer width="100%" height={Math.min(chartHeight, windowHeight * 0.6)}>
                         <LineChart data={runData} layout="vertical">
                           <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
 
@@ -781,7 +788,7 @@ export default function App() {
 
                           <XAxis
                             type="number"
-                            domain={[d => d-100, d => d+100]}
+                            domain={[xMin - xPadding, xMax + xPadding]}
                             tick={{ fill:"#a0a0c0", fontSize:10, fontFamily:"'DM Mono'" }}
                             axisLine={false}
                             tickLine={false}
