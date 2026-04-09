@@ -326,32 +326,22 @@ export default function App() {
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
 
   useEffect(() => {
-  const st = localStorage.getItem("selectedStation");
-  const user = localStorage.getItem("username");
-  const un = localStorage.getItem("selectedUnit");
+    const st = localStorage.getItem("selectedStation");
+    const un = localStorage.getItem("selectedUnit");
 
-  if (st) {
-    console.log(st);
-    
-    const parsedStation = JSON.parse(st);
-    console.log(parsedStation);
-    
-    setSelectedStation(user); // or whole object if needed
-  }
+    if (st) {
+      const parsedStation = JSON.parse(st);
+      setSelectedStation(parsedStation.name);
+    }
 
+    if (un) {
+      const parsedUnit = JSON.parse(un);
+      setSelectedUnit(parsedUnit.name);
+    }
 
-  if (un) {
-    console.log(un);
-    
-    const parsedUnit = JSON.parse(un);
-    setSelectedUnit(parsedUnit.id);
-    console.log(parsedUnit);
-    
-  }
-
-  fetchMappingDates();
-  fetchHistory();
-}, []);
+    fetchMappingDates();
+    fetchHistory();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -375,7 +365,6 @@ export default function App() {
     console.log(parsedStation);
      st = parsedStation.name
     
-    setSelectedStation(user); // or whole object if needed
   }
 
 
@@ -383,8 +372,6 @@ export default function App() {
     console.log(un);
     
     const parsedUnit = JSON.parse(un);
-    setSelectedUnit(parsedUnit.id);
-    console.log(parsedUnit);
     un = parsedUnit.id
     
   }
@@ -593,7 +580,7 @@ export default function App() {
           {selectedStation && selectedUnit && (
             <div style={{ marginLeft:"auto", marginRight:"24px", textAlign:"right" }}>
               <div style={S.suLabel}>STATION · UNIT</div>
-              <div style={S.suVal}>{selectedStation.name} · {selectedUnit.name}</div>
+              <div style={S.suVal}>{selectedStation} · {selectedUnit}</div>
             </div>
           )}
           <div style={S.statsRow}>
