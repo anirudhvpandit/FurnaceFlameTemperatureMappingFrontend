@@ -9,40 +9,8 @@ export default function StationSelect() {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(()=>{
-    const location = localStorage.getItem("username");
-    if (location) {
-      setSelectedStation(location);
-      switch (location) {
-        case "BSL":
-          fetchUnits(1);
-          break;
-        case "CSTPS":
-          fetchUnits(2);
-          break;
-        case "KPKD":
-          fetchUnits(3);
-          break;
-        case "KTPS":
-          fetchUnits(4);
-          break;
-        case "NTPS":
-          fetchUnits(5);
-          break;
-        case "PARAS TPS":
-          fetchUnits(6);
-          break;
-        case "PARALI TPS":
-          fetchUnits(7);
-          break;
-        default:
-          break;
-      }
-    }
-  },[])
-
   useEffect(() => {
-    setStations([
+    const stationsList = [
       { id: 1, name: "BSL" },
       { id: 2, name: "CSTPS" },
       { id: 3, name: "KPKD" },
@@ -50,13 +18,23 @@ export default function StationSelect() {
       { id: 5, name: "NTPS" },
       { id: 6, name: "PARAS TPS" },
       { id: 7, name: "PARALI TPS" },
-    ]);
+    ];
+    setStations(stationsList);
+
+    const username = localStorage.getItem("username");
+    if (username) {
+      const station = stationsList.find(s => s.name === username);
+      if (station) {
+        setSelectedStation(station);
+        fetchUnits(station.id);
+      }
+    }
   }, []);
 
-  useEffect(()=>{
-    localStorage.setItem("selectedStation", selectedStation);
-    localStorage.setItem("selectedUnit", selectedUnit?.id);
-  },[selectedStation, selectedUnit])
+  useEffect(() => {
+    localStorage.setItem("selectedStation", JSON.stringify(selectedStation));
+    localStorage.setItem("selectedUnit", JSON.stringify(selectedUnit));
+  }, [selectedStation, selectedUnit]);
 
   const fetchUnits = (stationId) => {
     if (stationId === 1) {
