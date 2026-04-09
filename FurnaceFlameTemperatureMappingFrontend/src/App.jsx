@@ -393,7 +393,30 @@ export default function App() {
 
   const fetchMappingDates = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/mapping-dates`, { params:{ station_id:1, unit_id:1 } });
+      const location = localStorage.getItem("username");
+      const unit = localStorage.getItem("selectedUnit");
+      let st = localStorage.getItem("selectedStation");
+  let un = localStorage.getItem("selectedUnit");
+  let user = localStorage.getItem("username");
+
+  if (st) {
+    console.log(st);
+    
+    const parsedStation = JSON.parse(st);
+    console.log(parsedStation);
+     st = parsedStation.name
+    
+  }
+
+
+  if (un) {
+    console.log(un);
+    
+    const parsedUnit = JSON.parse(un);
+    un = parsedUnit.id
+    
+  }
+      const res = await axios.get(`${BASE_URL}/mapping-dates`, { params:{ station:location, unit: un} });
       setDataDates(new Set(res.data.map(r => r.run_date)));
     } catch (e) { console.error(e); }
   };
@@ -473,13 +496,35 @@ export default function App() {
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
+
+    let st = localStorage.getItem("selectedStation");
+  let un = localStorage.getItem("selectedUnit");
+  let user = localStorage.getItem("username");
+
+  if (st) {
+    console.log(st);
+    
+    const parsedStation = JSON.parse(st);
+    console.log(parsedStation);
+     st = parsedStation.name
+    
+  }
+
+
+  if (un) {
+    console.log(un);
+    
+    const parsedUnit = JSON.parse(un);
+    un = parsedUnit.id
+    
+  }
     if (!file) return;
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("station_id", 1);
-      fd.append("unit_id", selectedUnit);
+      fd.append("unit_id", un);
       fd.append("uploaded_by", "admin");
       fd.append("notes", "");
       fd.append
