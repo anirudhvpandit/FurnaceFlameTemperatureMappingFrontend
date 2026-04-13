@@ -583,6 +583,13 @@ export default function App() {
       }))
       .filter(r => r.elevation != null && r.elevation !== 0 && !isNaN(r.elevation));
 
+  const formatRunDate = (rawDate) => {
+    if (!rawDate) return "";
+    const parsed = new Date(rawDate);
+    if (isNaN(parsed)) return rawDate;
+    return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
@@ -724,7 +731,8 @@ export default function App() {
             {selected.map((id, runIdx) => {
               const dataset = datasets[id];
               if (!dataset) return null;
-
+              console.log("dataset",dataset);
+              
               const runData = buildRunData(dataset);
 
               // ── KEY CHANGE: deduplicated, sorted list of every elevation value ──
@@ -747,6 +755,9 @@ export default function App() {
 
               const accents = ["#4f46e5","#d97706","#0891b2","#7c3aed","#dc2626"];
               const accent  = accents[runIdx % accents.length];
+              const runMeta = history.find(r => r.run_id === id) || {};
+              const runTitleDate = formatRunDate(runMeta.run_date || dataset.run_date || runMeta.run_timestamp);
+              const runSubtitle = dataset.filename || runMeta.run_date || `RUN ${id}`;
 
               return (
                 <section key={id} style={S.runSection}>
@@ -754,13 +765,13 @@ export default function App() {
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"12px" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
                         <div style={{ width:"3px", height:"36px", background:accent, borderRadius:"2px", flexShrink:0 }} />
-                      <div>
-                        <div style={{ ...S.runTitle, color:"#1e1c3a" }}>
-                          {(dataset.filename||"").replace(/\.[^/.]+$/,"").toUpperCase()}
+                        <div>
+                          <div style={{ ...S.runTitle, color:"#1e1c3a" }}>
+                            {runTitleDate}
+                          </div>
+                          <div style={S.runSub}>{runSubtitle}</div>
                         </div>
-                        <div style={S.runSub}>{dataset.filename}</div>
                       </div>
-                    </div>
                       <button
                         onClick={() => deleteRun(id)}
                         style={S.deleteBtn}
@@ -771,8 +782,7 @@ export default function App() {
                     </div>
                     <div style={S.kpiRow}>
                       {[
-                        { l:"PEAK",   v: topRow ? `${Number(topRow.avg || 0).toFixed(0)}°C` : "—" },
-                        { l:"FLOOR",  v: botRow ? `${Number(botRow.avg || 0).toFixed(0)}°C` : "—", c:"#4f46e5" },
+                        
                         { l:"MAX",    v:`${maxTemp.toFixed(0)}°C`, c:"#dc2626" },
                         { l:"MIN",    v:`${minTemp.toFixed(0)}°C`, c:"#0891b2" },
                         { l:"AVG",    v:`${avgTemp}°C`,            c:"#d97706" },
