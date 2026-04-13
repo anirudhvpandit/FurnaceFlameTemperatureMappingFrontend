@@ -751,14 +751,23 @@ export default function App() {
               return (
                 <section key={id} style={S.runSection}>
                   <div style={S.runHeader}>
-                    <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-                      <div style={{ width:"3px", height:"36px", background:accent, borderRadius:"2px", flexShrink:0 }} />
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"12px" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+                        <div style={{ width:"3px", height:"36px", background:accent, borderRadius:"2px", flexShrink:0 }} />
                       <div>
                         <div style={{ ...S.runTitle, color:"#1e1c3a" }}>
                           {(dataset.filename||"").replace(/\.[^/.]+$/,"").toUpperCase()}
                         </div>
                         <div style={S.runSub}>{dataset.filename}</div>
                       </div>
+                    </div>
+                      <button
+                        onClick={() => deleteRun(id)}
+                        style={S.deleteBtn}
+                        title="Delete this run"
+                      >
+                        DELETE
+                      </button>
                     </div>
                     <div style={S.kpiRow}>
                       {[
@@ -977,6 +986,7 @@ const S = {
   tabBar:    { display:"flex", gap:"4px", padding:"10px 16px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
   tabBtn:    { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"5px 12px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0" },
   tabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
+  deleteBtn: { background:"#fff", border:"1px solid #f0eef8", color:"#dc2626", padding:"8px 12px", borderRadius:"8px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.12em", minWidth:"90px" },
 
   chartPanel: { padding:"20px", background:"#ffffff" },
   chartLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:"#c8c6e0", marginBottom:"16px" },
