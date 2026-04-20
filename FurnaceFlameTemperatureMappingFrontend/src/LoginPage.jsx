@@ -8,21 +8,28 @@ const LoginPage = () => {
     const navigate = useNavigate();
 
     const handleLogin = async () => {
-        try {
-            const response = await axios.post("http://91.203.132.34:8000/login", {
-                username,
-                password
-            });
-            if (response.status === 200) {
-                const data = response.data;
-                localStorage.setItem("username", data.username);
-            }
+    try {
+        const response = await axios.post("http://91.203.132.34:8000/login", {
+            username,
+            password
+        });
+
+        if (response.status === 200) {
+            const data = response.data;
+
+            // ✅ Store secure token instead of username
+            localStorage.setItem("authToken", data.token);
+
+            // Optional: store user metadata
+            localStorage.setItem("user", JSON.stringify(data.user));
+
             navigate("/station-select");
-        } catch (error) {
-            console.error("Login failed:", error);
-            alert("Login failed. Please check your credentials.");
         }
-    };
+    } catch (error) {
+        console.error("Login failed:", error);
+        alert("Login failed. Please check your credentials.");
+    }
+};
 
     const UI = {
         bg: "#f6f7fb",
