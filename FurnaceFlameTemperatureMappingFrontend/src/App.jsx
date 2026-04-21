@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "./api";
+import axios from "axios";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
   CartesianGrid, ResponsiveContainer,
@@ -324,13 +324,6 @@ export default function App() {
 
   const getTab = (id) => activeTab[id] ?? "graph";
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
-  useEffect(() => {
-  const token = localStorage.getItem("authToken");
-  if (!token) {
-    navigation("/");
-    return;
-  }
-}, []);
 
   useEffect(() => {
     const st = localStorage.getItem("selectedStation");
@@ -384,7 +377,7 @@ export default function App() {
   }
       console.log("st",st);
       
-      const res = await api.get(`${BASE_URL}/history`, {
+      const res = await axios.get(`${BASE_URL}/history`, {
         params: { station_id: user, unit_id: un },
       });
       console.log("HISTORY:", res.data);
@@ -423,7 +416,7 @@ export default function App() {
     un = parsedUnit.id
     
   }
-      const res = await api.get(`${BASE_URL}/mapping-dates`, { params:{ station:location, unit: un} });
+      const res = await axios.get(`${BASE_URL}/mapping-dates`, { params:{ station:location, unit: un} });
       setDataDates(new Set(res.data.map(r => r.run_date)));
     } catch (e) { console.error(e); }
   };
@@ -455,7 +448,7 @@ export default function App() {
     un = parsedUnit.id
     
   }
-      const res = await api.get(`${BASE_URL}/history`, {
+      const res = await axios.get(`${BASE_URL}/history`, {
         params: {
           station_id:user ,
           unit_id: un,
@@ -481,9 +474,9 @@ export default function App() {
       setSelected(ids);
 
       const [datasetsRes, boilerRes, coalRes] = await Promise.all([
-        Promise.all(data.map(item => api.get(`${BASE_URL}/history/${item.run_id}`))),
-        Promise.all(data.map(item => api.get(`${BASE_URL}/history/${item.run_id}/boiler-params`))),
-        Promise.all(data.map(item => api.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`))),
+        Promise.all(data.map(item => axios.get(`${BASE_URL}/history/${item.run_id}`))),
+        Promise.all(data.map(item => axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`))),
+        Promise.all(data.map(item => axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`))),
       ]);
 
       const newDatasets = {}, newBoiler = {}, newCoal = {};
@@ -535,7 +528,7 @@ export default function App() {
       fd.append("uploaded_by", "admin");
       fd.append("notes", "");
       fd.append
-      await api.post(`${BASE_URL}/upload`, fd);
+      await axios.post(`${BASE_URL}/upload`, fd);
       await fetchMappingDates();
       setShowSuccessModal(true);
       if (window.uploadModalTimer) clearTimeout(window.uploadModalTimer);
@@ -552,7 +545,7 @@ export default function App() {
   const deleteRun = async (run_id) => {
     if (!window.confirm("Are you sure you want to delete this run?")) return;
     try {
-      await api.delete(`${BASE_URL}/runs/${run_id}`);
+      await axios.delete(`${BASE_URL}/runs/${run_id}`);
       setHistory(prev => prev.filter(r => r.run_id !== run_id));
       setSelected(prev => prev.filter(id => id !== run_id));
       setDatasets(prev => { const c = { ...prev }; delete c[run_id]; return c; });
@@ -571,11 +564,11 @@ export default function App() {
     }
     const promises = [];
     if (!datasets[item.run_id])
-      promises.push(api.get(`${BASE_URL}/history/${item.run_id}`).then(res => setDatasets(p => ({ ...p, [item.run_id]: res.data }))));
+      promises.push(axios.get(`${BASE_URL}/history/${item.run_id}`).then(res => setDatasets(p => ({ ...p, [item.run_id]: res.data }))));
     if (!boilerData[item.run_id])
-      promises.push(api.get(`${BASE_URL}/history/${item.run_id}/boiler-params`).then(res => setBoilerData(p => ({ ...p, [item.run_id]: res.data }))));
+      promises.push(axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`).then(res => setBoilerData(p => ({ ...p, [item.run_id]: res.data }))));
     if (!coalData[item.run_id])
-      promises.push(api.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`).then(res => setCoalData(p => ({ ...p, [item.run_id]: res.data }))));
+      promises.push(axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`).then(res => setCoalData(p => ({ ...p, [item.run_id]: res.data }))));
     await Promise.all(promises);
     setSelected(p => [...p, item.run_id]);
   };
