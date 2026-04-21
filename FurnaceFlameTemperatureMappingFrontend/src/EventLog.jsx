@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-const BASE_URL = "http://91.203.132.34:8000";
+const BASE_URL = "https://91.203.132.34:8000";
 
 export default function EventLog() {
   const [logs, setLogs] = useState([]);
