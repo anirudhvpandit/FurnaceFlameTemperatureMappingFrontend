@@ -138,11 +138,11 @@ function CalPicker({ startDate, endDate, onStart, onEnd, dataDates }) {
     <div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px", marginBottom:"10px" }}>
         <div>
-          <div style={C.miniLabel}>FROM</div>
+          <div style={C.miniLabel}>GRAPH 1</div>
           <MiniCal view={v1} onNav={d => nav(1,d)} dataDates={dataDates} startDate={startDate} endDate={endDate} onPick={onStart} />
         </div>
         <div>
-          <div style={C.miniLabel}>TO</div>
+          <div style={C.miniLabel}>GRAPH 2</div>
           <MiniCal view={v2} onNav={d => nav(2,d)} dataDates={dataDates} startDate={startDate} endDate={endDate} onPick={onEnd} />
         </div>
       </div>
@@ -311,6 +311,7 @@ export default function App() {
   const [boilerData, setBoilerData]   = useState({});
   const [coalData, setCoalData]       = useState({});
   const [uploading, setUploading]     = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [visibleLines, setVisibleLines] = useState({ c1:true, c2:true, c3:true, c4:true, avg:true });
   const [activeTab, setActiveTab]     = useState({});
   const [startDate, setStartDate]     = useState("");
@@ -435,7 +436,7 @@ export default function App() {
     console.log(parsedStation);
      st = parsedStation.name
     
-    setSelectedStation(user); // or whole object if needed
+    setSelectedStation(user);
   }
 
 
@@ -541,6 +542,16 @@ export default function App() {
       e.target.value = "";
     }
   };
+
+  // ─── TEMPLATE DOWNLOAD ────────────────────────────────────────
+ const handleDownloadTemplate = () => {
+  const link = document.createElement("a");
+  link.href = "/template.xlsx";
+  link.setAttribute("download", "template.xlsx");
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
 
   const deleteRun = async (run_id) => {
     if (!window.confirm("Are you sure you want to delete this run?")) return;
@@ -670,6 +681,18 @@ export default function App() {
               {uploading ? "UPLOADING…" : "UPLOAD EXCEL"}
               <input type="file" onChange={handleUpload} accept=".xlsx" style={{ display:"none" }} />
             </label>
+
+            {/* ── DOWNLOAD TEMPLATE BUTTON ── */}
+            <button
+              onClick={handleDownloadTemplate}
+              disabled={downloading}
+              style={S.downloadBtn}
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {downloading ? "DOWNLOADING…" : "DOWNLOAD TEMPLATE"}
+            </button>
           </div>
 
           <div style={S.sideSection}>
@@ -735,7 +758,6 @@ export default function App() {
               
               const runData = buildRunData(dataset);
 
-              // ── KEY CHANGE: deduplicated, sorted list of every elevation value ──
               const allElevations = [...new Set(runData.map(r => r.elevation))].sort((a, b) => a - b);
               const minElevation  = allElevations[0];
               const maxElevation  = allElevations[allElevations.length - 1];
@@ -817,16 +839,6 @@ export default function App() {
                       <ResponsiveContainer width="100%" height={Math.min(chartHeight, windowHeight * 0.6)}>
                         <LineChart data={runData} layout="vertical">
                           <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
-
-                          {/*
-                            ── KEY CHANGES ON YAxis ────────────────────────────────
-                            ticks={allElevations}  passes every unique elevation
-                            interval={0}           forces ALL ticks to render,
-                                                   Recharts won't skip any
-                            width={48}             widens the axis so labels
-                                                   don't get clipped
-                            ────────────────────────────────────────────────────────
-                          */}
                           <YAxis
                             dataKey="elevation"
                             type="number"
@@ -839,7 +851,6 @@ export default function App() {
                             axisLine={false}
                             tickLine={false}
                           />
-
                           <XAxis
                             type="number"
                             domain={[xMin - xPadding, xMax + xPadding]}
@@ -973,8 +984,9 @@ const S = {
     position:"fixed", left:0, top:"56px", bottom:0,
     overflowY:"auto", transition:"transform 0.3s ease", zIndex:1000, width:"260px",
   },
-  secLabel:  { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.28em", color:"#c8c6e0", marginBottom:"10px", paddingTop:"2px" },
-  uploadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#4f46e5", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer" },
+  secLabel:    { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.28em", color:"#c8c6e0", marginBottom:"10px", paddingTop:"2px" },
+  uploadBtn:   { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#4f46e5", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer", marginBottom:"8px" },
+  downloadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#f0fdf4", border:"none", borderRadius:"6px", color:"#16a34a", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer", boxSizing:"border-box" },
 
   runCard:        { display:"flex", alignItems:"center", gap:"10px", padding:"8px 10px", borderRadius:"6px", cursor:"pointer", border:"0.5px solid transparent", position:"relative", opacity:0.6 },
   runCardActive:  { background:"#f5f4ff", borderColor:"#c7c4f8" },
