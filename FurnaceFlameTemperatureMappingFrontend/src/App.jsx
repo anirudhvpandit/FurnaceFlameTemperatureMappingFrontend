@@ -7,7 +7,7 @@ import {
 import img from "./assets/abhitech-logo.png";
 import { useNavigate, useNavigation } from "react-router-dom";
 
-const BASE_URL = "http://91.203.132.34:8000";
+const BASE_URL = "https://91.203.132.34:8000";
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────
 const UI = {
