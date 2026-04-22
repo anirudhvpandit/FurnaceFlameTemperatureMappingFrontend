@@ -5,7 +5,8 @@ import {
   CartesianGrid, ResponsiveContainer,
 } from "recharts";
 import img from "./assets/abhitech-logo.png";
-import { useNavigate, useNavigation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 
 const BASE_URL = "http://91.203.132.34:8080";
 
@@ -215,11 +216,11 @@ function BoilerParamsTable({ data }) {
                 <td style={{ ...S.td, color:"#4f46e5", fontWeight:500 }}>{fmt(row.l)}</td>
                 <td style={{ ...S.td, color:"#0891b2", fontWeight:500 }}>
                   {row.single ? "—" : fmt(row.r)}
-                </td>
-              </tr>
+                 </td>
+               </tr>
             ))}
           </tbody>
-        </table>
+         </table>
         </div>
       </div>
       <div>
@@ -353,33 +354,36 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Helper function to get station name from localStorage
+  const getStationName = () => {
+    const st = localStorage.getItem("selectedStation");
+    if (st) {
+      const parsedStation = JSON.parse(st);
+      return parsedStation.name || "";
+    }
+    return "";
+  };
+
+  // Helper function to get unit ID from localStorage
+  const getUnitId = () => {
+    const un = localStorage.getItem("selectedUnit");
+    if (un) {
+      const parsedUnit = JSON.parse(un);
+      return parsedUnit.id || "";
+    }
+    return "";
+  };
+
   const fetchHistory = async () => {
     try {
-      let st = localStorage.getItem("selectedStation");
-  let un = localStorage.getItem("selectedUnit");
-  let user = localStorage.getItem("username");
-
-  if (st) {
-    console.log(st);
-    
-    const parsedStation = JSON.parse(st);
-    console.log(parsedStation);
-     st = parsedStation.name
-    
-  }
-
-
-  if (un) {
-    console.log(un);
-    
-    const parsedUnit = JSON.parse(un);
-    un = parsedUnit.id
-    
-  }
-      console.log("st",st);
+      const stationName = getStationName();
+      const unitId = getUnitId();
+      
+      console.log("Station Name:", stationName);
+      console.log("Unit ID:", unitId);
       
       const res = await axios.get(`${BASE_URL}/history`, {
-        params: { station_id: user, unit_id: un },
+        params: { station_id: stationName, unit_id: unitId },
       });
       console.log("HISTORY:", res.data);
       setHistory(res.data || []);
@@ -394,65 +398,27 @@ export default function App() {
 
   const fetchMappingDates = async () => {
     try {
-      const location = localStorage.getItem("username");
-      const unit = localStorage.getItem("selectedUnit");
-      let st = localStorage.getItem("selectedStation");
-  let un = localStorage.getItem("selectedUnit");
-  let user = localStorage.getItem("username");
-
-  if (st) {
-    console.log(st);
-    
-    const parsedStation = JSON.parse(st);
-    console.log(parsedStation);
-     st = parsedStation.name
-    
-  }
-
-
-  if (un) {
-    console.log(un);
-    
-    const parsedUnit = JSON.parse(un);
-    un = parsedUnit.id
-    
-  }
-      const res = await axios.get(`${BASE_URL}/mapping-dates`, { params:{ station:location, unit: un} });
+      const stationName = getStationName();
+      const unitId = getUnitId();
+      
+      const res = await axios.get(`${BASE_URL}/mapping-dates`, { 
+        params: { station: stationName, unit: unitId }
+      });
       setDataDates(new Set(res.data.map(r => r.run_date)));
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error("Fetch mapping dates error:", e); 
+    }
   };
 
   const fetchHistoryByDate = async () => {
     try {
-      console.log(selectedStation,selectedUnit);
-      let st = localStorage.getItem("selectedStation");
-  let un = localStorage.getItem("selectedUnit");
-  let user = localStorage.getItem("username");
-
-  if (st) {
-    console.log(st);
-    
-    const parsedStation = JSON.parse(st);
-    console.log(parsedStation);
-     st = parsedStation.name
-    
-    setSelectedStation(user);
-  }
-
-
-  if (un) {
-    console.log(un);
-    
-    const parsedUnit = JSON.parse(un);
-    setSelectedUnit(parsedUnit.id);
-    console.log(parsedUnit);
-    un = parsedUnit.id
-    
-  }
+      const stationName = getStationName();
+      const unitId = getUnitId();
+      
       const res = await axios.get(`${BASE_URL}/history`, {
         params: {
-          station_id:user ,
-          unit_id: un,
+          station_id: stationName,
+          unit_id: unitId,
           start_date: startDate || null,
           end_date: endDate || null,
         },
@@ -497,38 +463,17 @@ export default function App() {
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
-
-    let st = localStorage.getItem("selectedStation");
-  let un = localStorage.getItem("selectedUnit");
-  let user = localStorage.getItem("username");
-
-  if (st) {
-    console.log(st);
+    const unitId = getUnitId();
     
-    const parsedStation = JSON.parse(st);
-    console.log(parsedStation);
-     st = parsedStation.name
-    
-  }
-
-
-  if (un) {
-    console.log(un);
-    
-    const parsedUnit = JSON.parse(un);
-    un = parsedUnit.id
-    
-  }
     if (!file) return;
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("station_id", 1);
-      fd.append("unit_id", un);
+      fd.append("station_id", getStationName());
+      fd.append("unit_id", unitId);
       fd.append("uploaded_by", "admin");
       fd.append("notes", "");
-      fd.append
       await axios.post(`${BASE_URL}/upload`, fd);
       await fetchMappingDates();
       setShowSuccessModal(true);
@@ -543,15 +488,57 @@ export default function App() {
     }
   };
 
-  // ─── TEMPLATE DOWNLOAD ────────────────────────────────────────
- const handleDownloadTemplate = () => {
-  const link = document.createElement("a");
-  link.href = "/template.xlsx";
-  link.setAttribute("download", "template.xlsx");
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-};
+  // ─── TEMPLATE DOWNLOAD WITH STATION AND UNIT ────────────────────────────────────────
+  const handleDownloadTemplate = async () => {
+    setDownloading(true);
+    try {
+      // Get station and unit from localStorage
+      let stationName = getStationName();
+      let unitName = "";
+      
+      const un = localStorage.getItem("selectedUnit");
+      if (un) {
+        const parsedUnit = JSON.parse(un);
+        unitName = parsedUnit.name || parsedUnit.id || "";
+      }
+      
+      // Fetch the template file
+      const response = await fetch("/template.xlsx");
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Read the workbook
+      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      
+      // Set values in cells A2 and B2
+      if (stationName) {
+        XLSX.utils.sheet_add_aoa(firstSheet, [[stationName]], { origin: "A2" });
+      }
+      if (unitName) {
+        XLSX.utils.sheet_add_aoa(firstSheet, [[unitName]], { origin: "B2" });
+      }
+      
+      // Write the modified workbook
+      const modifiedArrayBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([modifiedArrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      
+      // Download the file
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.setAttribute("download", `template_${stationName}_${unitName}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      
+    } catch (err) {
+      console.error("Template download failed:", err);
+      alert("Failed to download template. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const deleteRun = async (run_id) => {
     if (!window.confirm("Are you sure you want to delete this run?")) return;
@@ -804,7 +791,6 @@ export default function App() {
                     </div>
                     <div style={S.kpiRow}>
                       {[
-                        
                         { l:"MAX",    v:`${maxTemp.toFixed(0)}°C`, c:"#dc2626" },
                         { l:"MIN",    v:`${minTemp.toFixed(0)}°C`, c:"#0891b2" },
                         { l:"AVG",    v:`${avgTemp}°C`,            c:"#d97706" },
