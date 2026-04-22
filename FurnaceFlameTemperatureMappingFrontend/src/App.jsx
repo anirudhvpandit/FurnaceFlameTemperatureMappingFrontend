@@ -5,7 +5,8 @@ import {
   CartesianGrid, ResponsiveContainer,
 } from "recharts";
 import img from "./assets/abhitech-logo.png";
-import { useNavigate, useNavigation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 
 const BASE_URL = "http://91.203.132.34:8080";
 
@@ -215,8 +216,8 @@ function BoilerParamsTable({ data }) {
                 <td style={{ ...S.td, color:"#4f46e5", fontWeight:500 }}>{fmt(row.l)}</td>
                 <td style={{ ...S.td, color:"#0891b2", fontWeight:500 }}>
                   {row.single ? "—" : fmt(row.r)}
-                </td>
-              </tr>
+                 </td>
+               </tr>
             ))}
           </tbody>
         </table>
@@ -356,26 +357,21 @@ export default function App() {
   const fetchHistory = async () => {
     try {
       let st = localStorage.getItem("selectedStation");
-  let un = localStorage.getItem("selectedUnit");
-  let user = localStorage.getItem("username");
+      let un = localStorage.getItem("selectedUnit");
+      let user = localStorage.getItem("username");
 
-  if (st) {
-    console.log(st);
-    
-    const parsedStation = JSON.parse(st);
-    console.log(parsedStation);
-     st = parsedStation.name
-    
-  }
+      if (st) {
+        console.log(st);
+        const parsedStation = JSON.parse(st);
+        console.log(parsedStation);
+        st = parsedStation.name
+      }
 
-
-  if (un) {
-    console.log(un);
-    
-    const parsedUnit = JSON.parse(un);
-    un = parsedUnit.id
-    
-  }
+      if (un) {
+        console.log(un);
+        const parsedUnit = JSON.parse(un);
+        un = parsedUnit.id
+      }
       console.log("st",st);
       
       const res = await axios.get(`${BASE_URL}/history`, {
@@ -397,26 +393,21 @@ export default function App() {
       const location = localStorage.getItem("username");
       const unit = localStorage.getItem("selectedUnit");
       let st = localStorage.getItem("selectedStation");
-  let un = localStorage.getItem("selectedUnit");
-  let user = localStorage.getItem("username");
+      let un = localStorage.getItem("selectedUnit");
+      let user = localStorage.getItem("username");
 
-  if (st) {
-    console.log(st);
-    
-    const parsedStation = JSON.parse(st);
-    console.log(parsedStation);
-     st = parsedStation.name
-    
-  }
+      if (st) {
+        console.log(st);
+        const parsedStation = JSON.parse(st);
+        console.log(parsedStation);
+        st = parsedStation.name
+      }
 
-
-  if (un) {
-    console.log(un);
-    
-    const parsedUnit = JSON.parse(un);
-    un = parsedUnit.id
-    
-  }
+      if (un) {
+        console.log(un);
+        const parsedUnit = JSON.parse(un);
+        un = parsedUnit.id
+      }
       const res = await axios.get(`${BASE_URL}/mapping-dates`, { params:{ station:location, unit: un} });
       setDataDates(new Set(res.data.map(r => r.run_date)));
     } catch (e) { console.error(e); }
@@ -426,29 +417,24 @@ export default function App() {
     try {
       console.log(selectedStation,selectedUnit);
       let st = localStorage.getItem("selectedStation");
-  let un = localStorage.getItem("selectedUnit");
-  let user = localStorage.getItem("username");
+      let un = localStorage.getItem("selectedUnit");
+      let user = localStorage.getItem("username");
 
-  if (st) {
-    console.log(st);
-    
-    const parsedStation = JSON.parse(st);
-    console.log(parsedStation);
-     st = parsedStation.name
-    
-    setSelectedStation(user);
-  }
+      if (st) {
+        console.log(st);
+        const parsedStation = JSON.parse(st);
+        console.log(parsedStation);
+        st = parsedStation.name
+        setSelectedStation(user);
+      }
 
-
-  if (un) {
-    console.log(un);
-    
-    const parsedUnit = JSON.parse(un);
-    setSelectedUnit(parsedUnit.id);
-    console.log(parsedUnit);
-    un = parsedUnit.id
-    
-  }
+      if (un) {
+        console.log(un);
+        const parsedUnit = JSON.parse(un);
+        setSelectedUnit(parsedUnit.id);
+        console.log(parsedUnit);
+        un = parsedUnit.id
+      }
       const res = await axios.get(`${BASE_URL}/history`, {
         params: {
           station_id:user ,
@@ -499,26 +485,21 @@ export default function App() {
     const file = e.target.files[0];
 
     let st = localStorage.getItem("selectedStation");
-  let un = localStorage.getItem("selectedUnit");
-  let user = localStorage.getItem("username");
+    let un = localStorage.getItem("selectedUnit");
+    let user = localStorage.getItem("username");
 
-  if (st) {
-    console.log(st);
-    
-    const parsedStation = JSON.parse(st);
-    console.log(parsedStation);
-     st = parsedStation.name
-    
-  }
+    if (st) {
+      console.log(st);
+      const parsedStation = JSON.parse(st);
+      console.log(parsedStation);
+      st = parsedStation.name
+    }
 
-
-  if (un) {
-    console.log(un);
-    
-    const parsedUnit = JSON.parse(un);
-    un = parsedUnit.id
-    
-  }
+    if (un) {
+      console.log(un);
+      const parsedUnit = JSON.parse(un);
+      un = parsedUnit.id
+    }
     if (!file) return;
     setUploading(true);
     try {
@@ -528,7 +509,6 @@ export default function App() {
       fd.append("unit_id", un);
       fd.append("uploaded_by", "admin");
       fd.append("notes", "");
-      fd.append
       await axios.post(`${BASE_URL}/upload`, fd);
       await fetchMappingDates();
       setShowSuccessModal(true);
@@ -543,15 +523,64 @@ export default function App() {
     }
   };
 
-  // ─── TEMPLATE DOWNLOAD ────────────────────────────────────────
- const handleDownloadTemplate = () => {
-  const link = document.createElement("a");
-  link.href = "/template.xlsx";
-  link.setAttribute("download", "template.xlsx");
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-};
+  // ─── TEMPLATE DOWNLOAD WITH STATION AND UNIT ────────────────────────────────────────
+  const handleDownloadTemplate = async () => {
+    setDownloading(true);
+    try {
+      // Get station and unit from localStorage
+      let stationName = "";
+      let unitName = "";
+      
+      const st = localStorage.getItem("selectedStation");
+      const un = localStorage.getItem("selectedUnit");
+      
+      if (st) {
+        const parsedStation = JSON.parse(st);
+        stationName = parsedStation.name || "";
+      }
+      
+      if (un) {
+        const parsedUnit = JSON.parse(un);
+        unitName = parsedUnit.name || parsedUnit.id || "";
+      }
+      
+      // Fetch the template file
+      const response = await fetch("/template.xlsx");
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Read the workbook
+      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      
+      // Set values in cells A2 and B2
+      if (stationName) {
+        XLSX.utils.sheet_add_aoa(firstSheet, [[stationName]], { origin: "A2" });
+      }
+      if (unitName) {
+        XLSX.utils.sheet_add_aoa(firstSheet, [[unitName]], { origin: "B2" });
+      }
+      
+      // Write the modified workbook
+      const modifiedArrayBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([modifiedArrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      
+      // Download the file
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.setAttribute("download", `template_${stationName}_${unitName}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      
+    } catch (err) {
+      console.error("Template download failed:", err);
+      alert("Failed to download template. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const deleteRun = async (run_id) => {
     if (!window.confirm("Are you sure you want to delete this run?")) return;
