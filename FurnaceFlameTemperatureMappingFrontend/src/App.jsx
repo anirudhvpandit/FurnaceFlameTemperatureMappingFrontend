@@ -376,7 +376,7 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.clear();
-    navigation("/login");
+    navigation("/");
   };
 
   const fetchHistory = async () => {
@@ -735,9 +735,7 @@ export default function App() {
                 >
                   RUN ARCHIVE
                 </button>
-                <button onClick={() => navigation("/event-log")}>
-                  EVENT LOG
-                </button>
+                
               </div>
             </div>
           </div>
