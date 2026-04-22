@@ -108,6 +108,13 @@ export default function StationSelect() {
     }
   };
 
+  const handleLogout = () => {
+    // Clear all localStorage items
+    localStorage.clear();
+    // Navigate to login page
+    navigate("/");
+  };
+
   return (
     <>
       <div style={{ minHeight: "100vh", background: "#ededf5" }}>
@@ -115,7 +122,7 @@ export default function StationSelect() {
           <div style={styles.headerInner}>
             <div style={styles.logoBlock}>
               <div style={styles.logoMark}>
-                <img style={styles.logoImage} src={img} />
+                <img style={styles.logoImage} src={img} alt="logo" />
               </div>
               <div>
                 <div style={styles.brandName}>
@@ -126,6 +133,16 @@ export default function StationSelect() {
                 </div>
               </div>
             </div>
+            
+            {/* Logout Button */}
+            <button onClick={handleLogout} style={styles.logoutButton}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              LOGOUT
+            </button>
           </div>
         </header>
 
@@ -228,11 +245,13 @@ const styles = {
     background: "rgba(238, 237, 245, 0.95)",
     position: "sticky",
     top: 0,
+    zIndex: 100,
   },
   headerInner: {
     display: "flex",
-    justifyContent: "center",
-    padding: "16px",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "16px 24px",
   },
   logoBlock: {
     display: "flex",
@@ -256,6 +275,21 @@ const styles = {
   brandTagline: {
     fontSize: "10px",
     color: "#666",
+  },
+  logoutButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "8px 16px",
+    background: "#dc2626",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: "600",
+    letterSpacing: "0.5px",
+    transition: "all 0.2s ease",
   },
   mainContent: {
     padding: "40px",

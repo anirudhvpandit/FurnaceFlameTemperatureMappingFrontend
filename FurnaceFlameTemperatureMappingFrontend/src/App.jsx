@@ -216,11 +216,11 @@ function BoilerParamsTable({ data }) {
                 <td style={{ ...S.td, color:"#4f46e5", fontWeight:500 }}>{fmt(row.l)}</td>
                 <td style={{ ...S.td, color:"#0891b2", fontWeight:500 }}>
                   {row.single ? "—" : fmt(row.r)}
-                 </td>
-               </tr>
+                  </td>
+                </tr>
             ))}
           </tbody>
-         </table>
+        </table>
         </div>
       </div>
       <div>
@@ -374,6 +374,11 @@ export default function App() {
     return "";
   };
 
+  const handleLogout = () => {
+    localStorage.clear();
+    navigation("/login");
+  };
+
   const fetchHistory = async () => {
     try {
       const stationName = getStationName();
@@ -489,10 +494,9 @@ export default function App() {
   };
 
   // ─── TEMPLATE DOWNLOAD WITH STATION AND UNIT ────────────────────────────────────────
-  const handleDownloadTemplate = async () => {
+  const handleDownloadTemplate1 = async () => {
     setDownloading(true);
     try {
-      // Get station and unit from localStorage
       let stationName = getStationName();
       let unitName = "";
       
@@ -502,15 +506,12 @@ export default function App() {
         unitName = parsedUnit.name || parsedUnit.id || "";
       }
       
-      // Fetch the template file
       const response = await fetch("/template.xlsx");
       const arrayBuffer = await response.arrayBuffer();
       
-      // Read the workbook
       const workbook = XLSX.read(arrayBuffer, { type: "array" });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       
-      // Set values in cells A2 and B2
       if (stationName) {
         XLSX.utils.sheet_add_aoa(firstSheet, [[stationName]], { origin: "A2" });
       }
@@ -518,11 +519,9 @@ export default function App() {
         XLSX.utils.sheet_add_aoa(firstSheet, [[unitName]], { origin: "B2" });
       }
       
-      // Write the modified workbook
       const modifiedArrayBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
       const blob = new Blob([modifiedArrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       
-      // Download the file
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.href = url;
@@ -539,6 +538,15 @@ export default function App() {
       setDownloading(false);
     }
   };
+
+  const handleDownloadTemplate = () => {
+  const link = document.createElement("a");
+  link.href = "/template.xlsx";
+  link.setAttribute("download", "template.xlsx");
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
 
   const deleteRun = async (run_id) => {
     if (!window.confirm("Are you sure you want to delete this run?")) return;
@@ -615,10 +623,10 @@ export default function App() {
       {/* ── HEADER ── */}
       <header style={S.header}>
         <div style={S.headerInner}>
-          <button onClick={() => setSidebarOpen(o => !o)} style={S.hamburger}>
-            {[0,1,2].map(i => <span key={i} style={S.hLine} />)}
-          </button>
-          <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
+            <button onClick={() => setSidebarOpen(o => !o)} style={S.hamburger}>
+              {[0,1,2].map(i => <span key={i} style={S.hLine} />)}
+            </button>
             <div style={S.logoMark}>
               <img src={img} alt="" style={{ maxWidth:"70%", maxHeight:"70%", objectFit:"contain" }} />
             </div>
@@ -627,12 +635,26 @@ export default function App() {
               <div style={S.brandTag}>FURNACE FLAME TEMPERATURE MAPPING SYSTEM</div>
             </div>
           </div>
-          {selectedStation && selectedUnit && (
-            <div style={{ marginLeft:"auto", marginRight:"24px", textAlign:"right" }}>
-              <div style={S.suLabel}>STATION · UNIT</div>
-              <div style={S.suVal}>{selectedStation} · {selectedUnit}</div>
-            </div>
-          )}
+          
+          <div style={{ display:"flex", alignItems:"center", gap:"24px" }}>
+            {selectedStation && selectedUnit && (
+              <div style={{ textAlign:"right" }}>
+                <div style={S.suLabel}>STATION · UNIT</div>
+                <div style={S.suVal}>{selectedStation} · {selectedUnit}</div>
+              </div>
+            )}
+            
+            {/* Logout Button */}
+            <button onClick={handleLogout} style={S.logoutButton}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              LOGOUT
+            </button>
+          </div>
+          
           <div style={S.statsRow}>
             {[
               { n: history.length,  l:"RUNS"     },
@@ -669,7 +691,6 @@ export default function App() {
               <input type="file" onChange={handleUpload} accept=".xlsx" style={{ display:"none" }} />
             </label>
 
-            {/* ── DOWNLOAD TEMPLATE BUTTON ── */}
             <button
               onClick={handleDownloadTemplate}
               disabled={downloading}
@@ -952,7 +973,7 @@ const S = {
 
   header:      { background:"#ffffff", borderBottom:"1px solid #e8e6f4", position:"sticky", top:0, zIndex:50, boxShadow:"0 1px 0 rgba(79,70,229,0.06)" },
   hamburger:   { background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", gap:"4px", padding:"4px" },
-  headerInner: { display:"flex", alignItems:"center", gap:"16px", padding:"10px 20px", flexWrap:"wrap", justifyContent:"space-between" },
+  headerInner: { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 20px", flexWrap:"wrap" },
   hLine:       { display:"block", width:"18px", height:"1.5px", background:"#9896c0" },
   logoMark:    { width:"36px", height:"36px", border:"1px solid #e2e1f0", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5fb", flexShrink:0 },
   brandName:   { fontSize:"clamp(12px, 2vw, 18px)" },
@@ -963,6 +984,22 @@ const S = {
   statItem:    { display:"flex", alignItems:"center", gap:"6px" },
   statN:       { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", color:"#4f46e5", lineHeight:1 },
   statL:       { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.15em", color:"#b0aed0" },
+
+  logoutButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "8px 16px",
+    background: "#dc2626",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: "600",
+    letterSpacing: "0.5px",
+    transition: "all 0.2s ease",
+  },
 
   sideSection: { padding:"16px 14px", borderBottom:"1px solid #f0eef8" },
   sidebar: {
