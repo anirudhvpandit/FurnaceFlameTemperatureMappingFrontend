@@ -505,7 +505,7 @@ export default function App() {
     }
 
     const response = await fetch(
-      `http://91.203.132.34:8080/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
+      `https://91.203.132.34:8000/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
     );
 
     if (!response.ok) throw new Error("Server error");
