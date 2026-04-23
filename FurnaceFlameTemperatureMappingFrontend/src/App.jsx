@@ -8,7 +8,7 @@ import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 
-const BASE_URL = "http://91.203.132.34:8080";
+const BASE_URL = "https://91.203.132.34:8000";
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────
 const UI = {
