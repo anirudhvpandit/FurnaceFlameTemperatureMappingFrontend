@@ -467,31 +467,30 @@ export default function App() {
   };
 
   const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    const unitId = getUnitId();
-    
-    if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("station_id", getStationName());
-      fd.append("unit_id", unitId);
-      fd.append("uploaded_by", "admin");
-      fd.append("notes", "");
-      await axios.post(`${BASE_URL}/upload`, fd);
-      await fetchMappingDates();
-      setShowSuccessModal(true);
-      if (window.uploadModalTimer) clearTimeout(window.uploadModalTimer);
-      window.uploadModalTimer = setTimeout(() => setShowSuccessModal(false), 2500);
-    } catch (err) {
-      console.error("Upload failed:", err);
-      alert("Upload failed");
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  };
+  const file = e.target.files[0];
+  const unitId = getUnitId();
+  if (!file) return;
+  setUploading(true);
+  try {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("station_id", 1);              // ← hardcode 1 or get numeric station id
+    fd.append("unit_id", unitId);
+    fd.append("uploaded_by", "admin");
+    fd.append("notes", "");
+    await axios.post(`${BASE_URL}/upload`, fd);
+    await fetchMappingDates();
+    setShowSuccessModal(true);
+    if (window.uploadModalTimer) clearTimeout(window.uploadModalTimer);
+    window.uploadModalTimer = setTimeout(() => setShowSuccessModal(false), 2500);
+  } catch (err) {
+    console.error("Upload failed:", err);
+    alert("Upload failed");
+  } finally {
+    setUploading(false);
+    e.target.value = "";
+  }
+};
 
   // ─── TEMPLATE DOWNLOAD WITH STATION AND UNIT ────────────────────────────────────────
   const handleDownloadTemplate= async () => {
@@ -506,7 +505,7 @@ export default function App() {
     }
 
     const response = await fetch(
-      `http://127.0.0.1:8000/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
+      `http://91.203.132.34:8080/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
     );
 
     if (!response.ok) throw new Error("Server error");
