@@ -494,52 +494,42 @@ export default function App() {
   };
 
   // ─── TEMPLATE DOWNLOAD WITH STATION AND UNIT ────────────────────────────────────────
-  const handleDownloadTemplate1 = async () => {
-    setDownloading(true);
-    try {
-      let stationName = getStationName();
-      let unitName = "";
-      
-      const un = localStorage.getItem("selectedUnit");
-      if (un) {
-        const parsedUnit = JSON.parse(un);
-        unitName = parsedUnit.name || parsedUnit.id || "";
-      }
-      
-      const response = await fetch("/template.xlsx");
-      const arrayBuffer = await response.arrayBuffer();
-      
-      const workbook = XLSX.read(arrayBuffer, { type: "array" });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      
-      if (stationName) {
-        XLSX.utils.sheet_add_aoa(firstSheet, [[stationName]], { origin: "A2" });
-      }
-      if (unitName) {
-        XLSX.utils.sheet_add_aoa(firstSheet, [[unitName]], { origin: "B2" });
-      }
-      
-      const modifiedArrayBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([modifiedArrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.href = url;
-      link.setAttribute("download", `template_${stationName}_${unitName}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      
-    } catch (err) {
-      console.error("Template download failed:", err);
-      alert("Failed to download template. Please try again.");
-    } finally {
-      setDownloading(false);
+  const handleDownloadTemplate= async () => {
+  setDownloading(true);
+  try {
+    let stationName = getStationName();
+    let unitNumber = "";
+    const un = localStorage.getItem("selectedUnit");
+    if (un) {
+      const parsedUnit = JSON.parse(un);
+      unitNumber = parsedUnit.id || parsedUnit.name || "";
     }
-  };
 
-  const handleDownloadTemplate = () => {
+    const response = await fetch(
+      `http://127.0.0.1:8000/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
+    );
+
+    if (!response.ok) throw new Error("Server error");
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `FTM_template_${stationName}_Unit${unitNumber}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+  } catch (err) {
+    console.error("Template download failed:", err);
+    alert("Failed to download template. Please try again.");
+  } finally {
+    setDownloading(false);
+  }
+};
+
+  const handleDownloadTemplate1 = () => {
   const link = document.createElement("a");
   link.href = "/template.xlsx";
   link.setAttribute("download", "template.xlsx");
