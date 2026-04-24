@@ -8,29 +8,24 @@ import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 
-const BASE_URL = "https://91.203.132.34:8000";
+const BASE_URL = "http://91.203.132.34:8080";
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────
 const UI = {
   bg: "#f6f7fb",
   panel: "#ffffff",
   soft: "#f1f2f8",
-
   text: "#12121a",
   muted: "#6e6c96",
   faint: "#b0aed0",
-
   primary: "#4f46e5",
   secondary: "#7c3aed",
   accent: "#d97706",
   danger: "#dc2626",
   success: "#16a34a",
-
   border: "#e6e4f2",
-
   radius: "12px",
   radiusSm: "6px",
-
   shadowSoft: "0 4px 20px rgba(0,0,0,0.06)",
   shadowCard: "0 6px 24px rgba(79,70,229,0.08)",
 };
@@ -46,15 +41,15 @@ const CORNER_LABELS = {
   c1: "Corner 1", c2: "Corner 2", c3: "Corner 3", c4: "Corner 4", avg: "Average",
 };
 
-// ─── WINDOW HEIGHT HOOK ───────────────────────────────────────
-function useWindowHeight() {
-  const [height, setHeight] = useState(window.innerHeight);
+// ─── WINDOW SIZE HOOK ─────────────────────────────────────────
+function useWindowSize() {
+  const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   useEffect(() => {
-    const handle = () => setHeight(window.innerHeight);
+    const handle = () => setSize({ width: window.innerWidth, height: window.innerHeight });
     window.addEventListener("resize", handle);
     return () => window.removeEventListener("resize", handle);
   }, []);
-  return height;
+  return size;
 }
 
 // ─── CALENDAR ─────────────────────────────────────────────────
@@ -63,17 +58,11 @@ const DOWS   = ["S","M","T","W","T","F","S"];
 function pad2(n) { return String(n).padStart(2,"0"); }
 function toDS(y,m,d) { return `${y}-${pad2(m+1)}-${pad2(d)}`; }
 
-function MiniCal({ view, onNav, dataDates, startDate, endDate, onPick }) {
+function MiniCal({ view, onNav, dataDates, selectedDate, onPick }) {
   const { y, m } = view;
   const first = new Date(y,m,1).getDay();
   const days  = new Date(y,m+1,0).getDate();
   const prev  = new Date(y,m,0).getDate();
-
-  function rc(ds) {
-    if (ds === startDate || ds === endDate) return "sel";
-    if (startDate && endDate && ds > startDate && ds < endDate) return "inrange";
-    return "";
-  }
 
   const cells = [];
   for (let i = 0; i < first; i++) cells.push({ d: prev-first+1+i, ds:"", other:true });
@@ -89,8 +78,8 @@ function MiniCal({ view, onNav, dataDates, startDate, endDate, onPick }) {
       <div style={C.calGrid}>
         {DOWS.map((d,i) => <div key={i} style={C.dow}>{d}</div>)}
         {cells.map(({ d, ds, other }, i) => {
-          const r  = other ? "" : rc(ds);
-          const hd = !other && dataDates.has(ds);
+          const isSel = !other && ds === selectedDate;
+          const hd    = !other && dataDates.has(ds);
           return (
             <div
               key={i}
@@ -98,8 +87,7 @@ function MiniCal({ view, onNav, dataDates, startDate, endDate, onPick }) {
               style={{
                 ...C.day,
                 ...(other ? C.dayOther : {}),
-                ...(r === "sel"     ? C.daySel  : {}),
-                ...(r === "inrange" ? C.dayRange : {}),
+                ...(isSel ? C.daySel  : {}),
                 cursor: other ? "default" : "pointer",
                 position: "relative",
               }}
@@ -110,7 +98,7 @@ function MiniCal({ view, onNav, dataDates, startDate, endDate, onPick }) {
                   position:"absolute", bottom:"2px", left:"50%",
                   transform:"translateX(-50%)", width:"4px", height:"4px",
                   borderRadius:"50%",
-                  background: r === "sel" ? "#fff" : "#dc2626",
+                  background: isSel ? "#fff" : "#dc2626",
                   display:"block",
                 }} />
               )}
@@ -122,10 +110,11 @@ function MiniCal({ view, onNav, dataDates, startDate, endDate, onPick }) {
   );
 }
 
-function CalPicker({ startDate, endDate, onStart, onEnd, dataDates }) {
+function CalPicker({ graph1Date, graph2Date, onGraph1, onGraph2, dataDates }) {
   const now = new Date();
   const [v1, setV1] = useState({ y: now.getFullYear(), m: now.getMonth() - 1 < 0 ? 11 : now.getMonth() - 1 });
   const [v2, setV2] = useState({ y: now.getFullYear(), m: now.getMonth() });
+
   function nav(which, dir) {
     const set = which === 1 ? setV1 : setV2;
     set(p => {
@@ -135,16 +124,17 @@ function CalPicker({ startDate, endDate, onStart, onEnd, dataDates }) {
       return { y: yy, m: mm };
     });
   }
+
   return (
     <div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px", marginBottom:"10px" }}>
         <div>
           <div style={C.miniLabel}>GRAPH 1</div>
-          <MiniCal view={v1} onNav={d => nav(1,d)} dataDates={dataDates} startDate={startDate} endDate={endDate} onPick={onStart} />
+          <MiniCal view={v1} onNav={d => nav(1, d)} dataDates={dataDates} selectedDate={graph1Date} onPick={onGraph1} />
         </div>
         <div>
           <div style={C.miniLabel}>GRAPH 2</div>
-          <MiniCal view={v2} onNav={d => nav(2,d)} dataDates={dataDates} startDate={startDate} endDate={endDate} onPick={onEnd} />
+          <MiniCal view={v2} onNav={d => nav(2, d)} dataDates={dataDates} selectedDate={graph2Date} onPick={onGraph2} />
         </div>
       </div>
       <div style={{ display:"flex", gap:"14px" }}>
@@ -164,7 +154,6 @@ const C = {
   day:       { textAlign:"center", padding:"4px 1px", fontSize:"10px", borderRadius:"3px", color:"#6e6c96", fontFamily:"'DM Mono',monospace" },
   dayOther:  { color:"#d4d2e8" },
   daySel:    { background:"#4f46e5", color:"#fff", borderRadius:"3px" },
-  dayRange:  { background:"#eeeeff", color:"#4f46e5" },
   miniLabel: { fontSize:"8px", letterSpacing:"0.14em", color:"#b0aed0", marginBottom:"5px", fontFamily:"'DM Mono',monospace" },
   legItem:   { display:"flex", alignItems:"center", gap:"5px", fontSize:"9px", color:"#a0a0c0", letterSpacing:"0.06em", fontFamily:"'DM Mono',monospace" },
   legDot:    { display:"inline-block", width:"6px", height:"6px", borderRadius:"50%", flexShrink:0 },
@@ -201,49 +190,49 @@ function BoilerParamsTable({ data }) {
       <div>
         <div style={S.subLabel}>BOILER & MILL PARAMETERS</div>
         <div style={{ overflowX: "auto", width: "100%" }}>
-        <table style={S.table}>
-          <thead>
-            <tr>
-              <th style={S.th}>PARAMETER</th>
-              <th style={S.th}>L</th>
-              <th style={S.th}>R</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leftRows.map(row => (
-              <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
-                <td style={S.td}>{row.label}</td>
-                <td style={{ ...S.td, color:"#4f46e5", fontWeight:500 }}>{fmt(row.l)}</td>
-                <td style={{ ...S.td, color:"#0891b2", fontWeight:500 }}>
-                  {row.single ? "—" : fmt(row.r)}
+          <table style={S.table}>
+            <thead>
+              <tr>
+                <th style={S.th}>PARAMETER</th>
+                <th style={S.th}>L</th>
+                <th style={S.th}>R</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leftRows.map(row => (
+                <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
+                  <td style={S.td}>{row.label}</td>
+                  <td style={{ ...S.td, color:"#4f46e5", fontWeight:500 }}>{fmt(row.l)}</td>
+                  <td style={{ ...S.td, color:"#0891b2", fontWeight:500 }}>
+                    {row.single ? "—" : fmt(row.r)}
                   </td>
                 </tr>
-            ))}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
       <div>
         <div style={S.subLabel}>FLUE GAS TEMPERATURES</div>
         <div style={{ overflowX: "auto", width: "100%" }}>
-        <table style={S.table}>
-          <thead>
-            <tr>
-              <th style={S.th}>PARAMETER</th>
-              <th style={S.th}>L</th>
-              <th style={S.th}>R</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fgRows.map(row => (
-              <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
-                <td style={S.td}>{row.label}</td>
-                <td style={{ ...S.td, color:"#d97706", fontWeight:500 }}>{fmt(row.l)}</td>
-                <td style={{ ...S.td, color:"#7c3aed", fontWeight:500 }}>{fmt(row.r)}</td>
+          <table style={S.table}>
+            <thead>
+              <tr>
+                <th style={S.th}>PARAMETER</th>
+                <th style={S.th}>L</th>
+                <th style={S.th}>R</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {fgRows.map(row => (
+                <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
+                  <td style={S.td}>{row.label}</td>
+                  <td style={{ ...S.td, color:"#d97706", fontWeight:500 }}>{fmt(row.l)}</td>
+                  <td style={{ ...S.td, color:"#7c3aed", fontWeight:500 }}>{fmt(row.r)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -256,11 +245,11 @@ function CoalMillTable({ data }) {
     return <div style={S.noData}>No coal mill parameters recorded for this run.</div>;
 
   const rows = [
-    { key: "coal_flow_tph",    label: "Coal Flow (TPH)"      },
-    { key: "pa_flow_tph",      label: "PA Flow (TPH)"        },
-    { key: "mill_dp_mmwc",     label: "Mill DP (mmwc)"       },
+    { key: "coal_flow_tph",    label: "Coal Flow (TPH)"       },
+    { key: "pa_flow_tph",      label: "PA Flow (TPH)"         },
+    { key: "mill_dp_mmwc",     label: "Mill DP (mmwc)"        },
     { key: "mill_outlet_temp", label: "Mill Outlet Temp (°C)" },
-    { key: "mill_current_amp", label: "Mill Current (Amp)"   },
+    { key: "mill_current_amp", label: "Mill Current (Amp)"    },
   ];
 
   const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
@@ -296,32 +285,32 @@ function CoalMillTable({ data }) {
 
 // ─── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
-  const windowHeight = useWindowHeight();
+  const { width: windowWidth, height: windowHeight } = useWindowSize();
 
-  const HEADER_H    = 56;
-  const PADDING_H   = 40;
-  const CARD_CHROME = 170;
-  const availableHeight = windowHeight - HEADER_H - PADDING_H - CARD_CHROME;
-  const chartHeight = Math.max(220, Math.min(520, availableHeight));
+  // Fixed chart height — identical on every screen size
+  const CHART_HEIGHT = 320;
 
-  const [viewMode, setViewMode] = useState("runs");
+  const [viewMode, setViewMode]                 = useState("runs");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [history, setHistory]         = useState([]);
-  const [selected, setSelected]       = useState([]);
-  const [datasets, setDatasets]       = useState({});
-  const [boilerData, setBoilerData]   = useState({});
-  const [coalData, setCoalData]       = useState({});
-  const [uploading, setUploading]     = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [visibleLines, setVisibleLines] = useState({ c1:true, c2:true, c3:true, c4:true, avg:true });
-  const [activeTab, setActiveTab]     = useState({});
-  const [startDate, setStartDate]     = useState("");
-  const [endDate, setEndDate]         = useState("");
-  const [dataDates, setDataDates]     = useState(new Set());
-  const [selectedStation, setSelectedStation] = useState(null);
-  const [selectedUnit, setSelectedUnit]       = useState(null);
-  const [sidebarOpen, setSidebarOpen]         = useState(true);
-  const [dateError, setDateError]     = useState("");
+  const [history, setHistory]                   = useState([]);
+  const [selected, setSelected]                 = useState([]);
+  const [datasets, setDatasets]                 = useState({});
+  const [boilerData, setBoilerData]             = useState({});
+  const [coalData, setCoalData]                 = useState({});
+  const [uploading, setUploading]               = useState(false);
+  const [downloading, setDownloading]           = useState(false);
+  const [visibleLines, setVisibleLines]         = useState({ c1:true, c2:true, c3:true, c4:true, avg:true });
+  const [activeTab, setActiveTab]               = useState({});
+
+  // Two independent date pickers
+  const [graph1Date, setGraph1Date] = useState("");
+  const [graph2Date, setGraph2Date] = useState("");
+  const [dateError, setDateError]   = useState("");
+
+  const [dataDates, setDataDates]               = useState(new Set());
+  const [selectedStation, setSelectedStation]   = useState(null);
+  const [selectedUnit, setSelectedUnit]         = useState(null);
+  const [sidebarOpen, setSidebarOpen]           = useState(true);
   const navigation = useNavigate();
 
   const getTab = (id) => activeTab[id] ?? "graph";
@@ -330,17 +319,8 @@ export default function App() {
   useEffect(() => {
     const st = localStorage.getItem("selectedStation");
     const un = localStorage.getItem("selectedUnit");
-
-    if (st) {
-      const parsedStation = JSON.parse(st);
-      setSelectedStation(parsedStation.name);
-    }
-
-    if (un) {
-      const parsedUnit = JSON.parse(un);
-      setSelectedUnit(parsedUnit.name);
-    }
-
+    if (st) setSelectedStation(JSON.parse(st).name);
+    if (un) setSelectedUnit(JSON.parse(un).name);
     fetchMappingDates();
     fetchHistory();
   }, []);
@@ -354,24 +334,14 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Helper function to get station name from localStorage
   const getStationName = () => {
     const st = localStorage.getItem("selectedStation");
-    if (st) {
-      const parsedStation = JSON.parse(st);
-      return parsedStation.name || "";
-    }
-    return "";
+    return st ? JSON.parse(st).name || "" : "";
   };
 
-  // Helper function to get unit ID from localStorage
   const getUnitId = () => {
     const un = localStorage.getItem("selectedUnit");
-    if (un) {
-      const parsedUnit = JSON.parse(un);
-      return parsedUnit.id || "";
-    }
-    return "";
+    return un ? JSON.parse(un).id || "" : "";
   };
 
   const handleLogout = () => {
@@ -381,196 +351,141 @@ export default function App() {
 
   const fetchHistory = async () => {
     try {
-      const stationName = getStationName();
-      const unitId = getUnitId();
-      
-      console.log("Station Name:", stationName);
-      console.log("Unit ID:", unitId);
-      
       const res = await axios.get(`${BASE_URL}/history`, {
-        params: { station_id: stationName, unit_id: unitId },
+        params: { station_id: getStationName(), unit_id: getUnitId() },
       });
-      console.log("HISTORY:", res.data);
       setHistory(res.data || []);
     } catch (err) {
       console.error("History fetch error:", err);
     }
   };
 
-  useEffect(() => {
-    if (startDate || endDate) fetchHistoryByDate();
-  }, [startDate, endDate]);
+  const fetchRunsForDate = async (date, slotIndex) => {
+    if (!date) return;
+    try {
+      const res = await axios.get(`${BASE_URL}/history`, {
+        params: { station_id: getStationName(), unit_id: getUnitId(), start_date: date, end_date: date },
+      });
+
+      const data = (res.data || []).filter(item =>
+        (item.run_date || item.run_timestamp || "").slice(0, 10) === date
+      );
+      if (data.length === 0) return;
+
+      const item = data[0];
+
+      const [dsRes, boilerRes, coalRes] = await Promise.all([
+        axios.get(`${BASE_URL}/history/${item.run_id}`),
+        axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`),
+        axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`),
+      ]);
+
+      setHistory(prev  => prev.find(r => r.run_id === item.run_id) ? prev : [...prev, item]);
+      setDatasets(p    => ({ ...p, [item.run_id]: dsRes.data     }));
+      setBoilerData(p  => ({ ...p, [item.run_id]: boilerRes.data }));
+      setCoalData(p    => ({ ...p, [item.run_id]: coalRes.data   }));
+
+      setSelected(prev => {
+        const next = [...prev];
+        next[slotIndex] = item.run_id;
+        return next.filter(Boolean);
+      });
+    } catch (err) {
+      console.error("Date fetch error:", err);
+    }
+  };
 
   const fetchMappingDates = async () => {
     try {
-      const stationName = getStationName();
-      const unitId = getUnitId();
-      
-      const res = await axios.get(`${BASE_URL}/mapping-dates`, { 
-        params: { station: stationName, unit: unitId }
+      const res = await axios.get(`${BASE_URL}/mapping-dates`, {
+        params: { station: getStationName(), unit: getUnitId() }
       });
       setDataDates(new Set(res.data.map(r => r.run_date)));
-    } catch (e) { 
-      console.error("Fetch mapping dates error:", e); 
+    } catch (e) {
+      console.error("Fetch mapping dates error:", e);
     }
   };
 
-  const fetchHistoryByDate = async () => {
-    try {
-      const stationName = getStationName();
-      const unitId = getUnitId();
-      
-      const res = await axios.get(`${BASE_URL}/history`, {
-        params: {
-          station_id: stationName,
-          unit_id: unitId,
-          start_date: startDate || null,
-          end_date: endDate || null,
-        },
-      });
+  const handleGraph1Pick = (ds) => {
+    if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
+    setDateError(""); setGraph1Date(ds); fetchRunsForDate(ds, 0);
+  };
 
-      let data = res.data || [];
-
-      if (startDate || endDate) {
-        data = data.filter(item => {
-          const d = (item.run_date || item.run_timestamp || "").slice(0, 10);
-          if (startDate && endDate) return d === startDate || d === endDate;
-          if (startDate) return d === startDate;
-          if (endDate) return d === endDate;
-          return true;
-        });
-      }
-
-      setHistory(data);
-      const ids = data.map(r => r.run_id);
-      setSelected(ids);
-
-      const [datasetsRes, boilerRes, coalRes] = await Promise.all([
-        Promise.all(data.map(item => axios.get(`${BASE_URL}/history/${item.run_id}`))),
-        Promise.all(data.map(item => axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`))),
-        Promise.all(data.map(item => axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`))),
-      ]);
-
-      const newDatasets = {}, newBoiler = {}, newCoal = {};
-      data.forEach((item, i) => {
-        newDatasets[item.run_id] = datasetsRes[i].data;
-        newBoiler[item.run_id]   = boilerRes[i].data;
-        newCoal[item.run_id]     = coalRes[i].data;
-      });
-
-      setDatasets(newDatasets);
-      setBoilerData(newBoiler);
-      setCoalData(newCoal);
-    } catch (err) {
-      console.error("Filtered fetch error:", err);
-    }
+  const handleGraph2Pick = (ds) => {
+    if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
+    setDateError(""); setGraph2Date(ds); fetchRunsForDate(ds, 1);
   };
 
   const handleUpload = async (e) => {
-  const file = e.target.files[0];
-  const unitId = getUnitId();
-  if (!file) return;
-  setUploading(true);
-  try {
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("station_id", 1);              // ← hardcode 1 or get numeric station id
-    fd.append("unit_id", unitId);
-    fd.append("uploaded_by", "admin");
-    fd.append("notes", "");
-    await axios.post(`${BASE_URL}/upload`, fd);
-    await fetchMappingDates();
-    setShowSuccessModal(true);
-    if (window.uploadModalTimer) clearTimeout(window.uploadModalTimer);
-    window.uploadModalTimer = setTimeout(() => setShowSuccessModal(false), 2500);
-  } catch (err) {
-    console.error("Upload failed:", err);
-    alert("Upload failed");
-  } finally {
-    setUploading(false);
-    e.target.value = "";
-  }
-};
-
-  // ─── TEMPLATE DOWNLOAD WITH STATION AND UNIT ────────────────────────────────────────
-  const handleDownloadTemplate= async () => {
-  setDownloading(true);
-  try {
-    let stationName = getStationName();
-    let unitNumber = "";
-    const un = localStorage.getItem("selectedUnit");
-    if (un) {
-      const parsedUnit = JSON.parse(un);
-      unitNumber = parsedUnit.id || parsedUnit.name || "";
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("station_id", 1);
+      fd.append("unit_id", getUnitId());
+      fd.append("uploaded_by", "admin");
+      fd.append("notes", "");
+      await axios.post(`${BASE_URL}/upload`, fd);
+      await fetchMappingDates();
+      setShowSuccessModal(true);
+      if (window.uploadModalTimer) clearTimeout(window.uploadModalTimer);
+      window.uploadModalTimer = setTimeout(() => setShowSuccessModal(false), 2500);
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
     }
+  };
 
-    const response = await fetch(
-      `https://91.203.132.34:8000/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
-    );
-
-    if (!response.ok) throw new Error("Server error");
-
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `FTM_template_${stationName}_Unit${unitNumber}.xlsx`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-
-  } catch (err) {
-    console.error("Template download failed:", err);
-    alert("Failed to download template. Please try again.");
-  } finally {
-    setDownloading(false);
-  }
-};
-
-  const handleDownloadTemplate1 = () => {
-  const link = document.createElement("a");
-  link.href = "/template.xlsx";
-  link.setAttribute("download", "template.xlsx");
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-};
+  const handleDownloadTemplate = async () => {
+    setDownloading(true);
+    try {
+      const stationName = getStationName();
+      const un = localStorage.getItem("selectedUnit");
+      const unitNumber = un ? JSON.parse(un).id || JSON.parse(un).name || "" : "";
+      const response = await fetch(
+        `http://91.203.132.34:8080/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
+      );
+      if (!response.ok) throw new Error("Server error");
+      const blob = await response.blob();
+      const url  = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `FTM_template_${stationName}_Unit${unitNumber}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Template download failed:", err);
+      alert("Failed to download template. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const deleteRun = async (run_id) => {
     if (!window.confirm("Are you sure you want to delete this run?")) return;
     try {
       await axios.delete(`${BASE_URL}/runs/${run_id}`);
-      setHistory(prev => prev.filter(r => r.run_id !== run_id));
-      setSelected(prev => prev.filter(id => id !== run_id));
-      setDatasets(prev => { const c = { ...prev }; delete c[run_id]; return c; });
+      setHistory(prev    => prev.filter(r => r.run_id !== run_id));
+      setSelected(prev   => prev.filter(id => id !== run_id));
+      setDatasets(prev   => { const c = { ...prev }; delete c[run_id]; return c; });
       setBoilerData(prev => { const c = { ...prev }; delete c[run_id]; return c; });
-      setCoalData(prev => { const c = { ...prev }; delete c[run_id]; return c; });
+      setCoalData(prev   => { const c = { ...prev }; delete c[run_id]; return c; });
     } catch (err) {
       console.error("Delete failed:", err);
       alert("Failed to delete run");
     }
   };
 
-  const toggleSelection = async (item) => {
-    if (selected.includes(item.run_id)) {
-      setSelected(p => p.filter(id => id !== item.run_id));
-      return;
-    }
-    const promises = [];
-    if (!datasets[item.run_id])
-      promises.push(axios.get(`${BASE_URL}/history/${item.run_id}`).then(res => setDatasets(p => ({ ...p, [item.run_id]: res.data }))));
-    if (!boilerData[item.run_id])
-      promises.push(axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`).then(res => setBoilerData(p => ({ ...p, [item.run_id]: res.data }))));
-    if (!coalData[item.run_id])
-      promises.push(axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`).then(res => setCoalData(p => ({ ...p, [item.run_id]: res.data }))));
-    await Promise.all(promises);
-    setSelected(p => [...p, item.run_id]);
-  };
-
   const buildRunData = (ds) =>
     ds.elevation
-      .map((el,i) => ({
+      .map((el, i) => ({
         elevation: Number(el),
         c1: Number(ds.corner1[i]), c2: Number(ds.corner2[i]),
         c3: Number(ds.corner3[i]), c4: Number(ds.corner4[i]),
@@ -595,16 +510,18 @@ export default function App() {
         </div>
         {payload.map(e => (
           <div key={e.dataKey} style={S.ttRow}>
-            <span style={{ ...S.ttDot, background:e.color }} />
+            <span style={{ ...S.ttDot, background: e.color }} />
             <span style={S.ttKey}>{CORNER_LABELS[e.dataKey]}</span>
-            <span style={{ ...S.ttNum, color:e.color }}>{Number(e.value).toFixed(1)}°C</span>
+            <span style={{ ...S.ttNum, color: e.color }}>{Number(e.value).toFixed(1)}°C</span>
           </div>
         ))}
       </div>
     );
   };
 
-  const SIDEBAR_W = 268;
+  const SIDEBAR_W    = 268;
+  const MAIN_PADDING = 16;
+  const GAP          = 12;
 
   return (
     <div style={{ background:"#f0eff8", minHeight:"100vh" }}>
@@ -624,7 +541,7 @@ export default function App() {
               <div style={S.brandTag}>FURNACE FLAME TEMPERATURE MAPPING SYSTEM</div>
             </div>
           </div>
-          
+
           <div style={{ display:"flex", alignItems:"center", gap:"24px" }}>
             {selectedStation && selectedUnit && (
               <div style={{ textAlign:"right" }}>
@@ -632,8 +549,6 @@ export default function App() {
                 <div style={S.suVal}>{selectedStation} · {selectedUnit}</div>
               </div>
             )}
-            
-            {/* Logout Button */}
             <button onClick={handleLogout} style={S.logoutButton}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -643,7 +558,7 @@ export default function App() {
               LOGOUT
             </button>
           </div>
-          
+
           <div style={S.statsRow}>
             {[
               { n: history.length,  l:"RUNS"     },
@@ -679,12 +594,7 @@ export default function App() {
               {uploading ? "UPLOADING…" : "UPLOAD EXCEL"}
               <input type="file" onChange={handleUpload} accept=".xlsx" style={{ display:"none" }} />
             </label>
-
-            <button
-              onClick={handleDownloadTemplate}
-              disabled={downloading}
-              style={S.downloadBtn}
-            >
+            <button onClick={handleDownloadTemplate} disabled={downloading} style={S.downloadBtn}>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -695,17 +605,11 @@ export default function App() {
           <div style={S.sideSection}>
             <div style={S.secLabel}>FILTER BY DATE</div>
             <CalPicker
-              startDate={startDate}
-              endDate={endDate}
+              graph1Date={graph1Date}
+              graph2Date={graph2Date}
               dataDates={dataDates}
-              onStart={(ds) => {
-                if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
-                setDateError(""); setStartDate(ds);
-              }}
-              onEnd={(ds) => {
-                if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
-                setDateError(""); setEndDate(ds);
-              }}
+              onGraph1={handleGraph1Pick}
+              onGraph2={handleGraph2Pick}
             />
             {dateError && (
               <div style={{ marginTop:"8px", color:"#dc2626", fontSize:"10px", fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em" }}>
@@ -724,7 +628,6 @@ export default function App() {
                 >
                   RUN ARCHIVE
                 </button>
-                
               </div>
             </div>
           </div>
@@ -733,71 +636,108 @@ export default function App() {
         {/* ── MAIN ── */}
         <main style={{
           flex: 1,
-          marginLeft: sidebarOpen && window.innerWidth > 768 ? SIDEBAR_W : 0,
+          marginLeft: sidebarOpen ? SIDEBAR_W : 0,
           transition: "margin-left 0.3s ease",
-          padding: "clamp(12px, 2vw, 20px)",
+          padding: `${MAIN_PADDING}px`,
           minHeight: "calc(100vh - 56px)",
+          boxSizing: "border-box",
+          // Allow horizontal scroll on very tiny screens rather than breaking layout
+          overflowX: "auto",
         }}>
-          {selected.length === 0 && (
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"50vh", gap:"16px" }}>
-              <img src={img} alt="" style={{ width:"48px", opacity:0.3 }} />
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.2em", color:"#c8c6e0" }}>SELECT A RUN TO ANALYZE</div>
-            </div>
-          )}
 
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(480px, 1fr))", gap:"16px" }}>
-            {selected.map((id, runIdx) => {
-              const dataset = datasets[id];
-              if (!dataset) return null;
-              console.log("dataset",dataset);
-              
-              const runData = buildRunData(dataset);
+          {/*
+            ── ALWAYS 2 EQUAL COLUMNS ──────────────────────────────────
+            gridTemplateColumns: "1fr 1fr" with minmax(0,1fr) prevents
+            content from blowing out the column. On any screen size the
+            two panels share the available space equally and shrink together.
+            A minimum column width of 220px triggers horizontal scroll
+            instead of crushing the content unreadably small.
+          */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(220px,1fr) minmax(220px,1fr)",
+            gap: `${GAP}px`,
+            width: "100%",
+            minWidth: 0,
+            boxSizing: "border-box",
+          }}>
+            {[0, 1].map(slotIdx => {
+              const id      = selected[slotIdx];
+              const dataset = id ? datasets[id] : null;
 
+              const graphLabel = slotIdx === 0 ? "GRAPH 1" : "GRAPH 2";
+              const accent     = slotIdx === 0 ? "#4f46e5" : "#d97706";
+
+              // ── Empty placeholder ──
+              if (!id || !dataset) {
+                return (
+                  <section
+                    key={`empty-${slotIdx}`}
+                    style={{
+                      ...S.runSection,
+                      minHeight: "180px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexDirection: "column",
+                      gap: "10px",
+                      opacity: 0.45,
+                    }}
+                  >
+                    <div style={{ width:"3px", height:"28px", background:accent, borderRadius:"2px" }} />
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:accent }}>
+                      {graphLabel}
+                    </div>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"13px", letterSpacing:"0.2em", color:"#c8c6e0" }}>
+                      SELECT A DATE
+                    </div>
+                  </section>
+                );
+              }
+
+              // ── Populated panel ──
+              const runData       = buildRunData(dataset);
               const allElevations = [...new Set(runData.map(r => r.elevation))].sort((a, b) => a - b);
               const minElevation  = allElevations[0];
               const maxElevation  = allElevations[allElevations.length - 1];
 
               const visibleKeys = Object.keys(COLORS).filter(k => visibleLines[k]);
-              const xValues = runData.flatMap(r => visibleKeys.map(key => Number(r[key]) || 0));
-              const xMin = xValues.length ? Math.min(...xValues) : 0;
-              const xMax = xValues.length ? Math.max(...xValues) : 100;
-              const xPadding = Math.max(10, (xMax - xMin) * 0.08);
+              const xValues     = runData.flatMap(r => visibleKeys.map(key => Number(r[key]) || 0));
+              const xMin        = xValues.length ? Math.min(...xValues) : 0;
+              const xMax        = xValues.length ? Math.max(...xValues) : 100;
+              const xPadding    = Math.max(10, (xMax - xMin) * 0.08);
 
               const temps   = runData.map(r => r.avg);
               const maxTemp = Math.max(...temps);
               const minTemp = Math.min(...temps);
-              const avgTemp = (temps.reduce((a,b) => a+b,0) / temps.length).toFixed(1);
-              const topRow  = runData.length ? runData.reduce((a,b) => b.elevation > a.elevation ? b : a) : null;
-              const botRow  = runData.length ? runData.reduce((a,b) => b.elevation < a.elevation ? b : a) : null;
+              const avgTemp = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1);
 
-              const accents = ["#4f46e5","#d97706","#0891b2","#7c3aed","#dc2626"];
-              const accent  = accents[runIdx % accents.length];
-              const runMeta = history.find(r => r.run_id === id) || {};
+              const runMeta      = history.find(r => r.run_id === id) || {};
               const runTitleDate = formatRunDate(runMeta.run_date || dataset.run_date || runMeta.run_timestamp);
-              const runSubtitle = dataset.filename || runMeta.run_date || `RUN ${id}`;
+              const runSubtitle  = dataset.filename || runMeta.run_date || `RUN ${id}`;
 
               return (
-                <section key={id} style={S.runSection}>
+                <section key={id} style={{ ...S.runSection, minWidth: 0 }}>
+                  {/* Header */}
                   <div style={S.runHeader}>
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"12px" }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-                        <div style={{ width:"3px", height:"36px", background:accent, borderRadius:"2px", flexShrink:0 }} />
-                        <div>
-                          <div style={{ ...S.runTitle, color:"#1e1c3a" }}>
-                            {runTitleDate}
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
+                        <div style={{ width:"3px", height:"32px", background:accent, borderRadius:"2px", flexShrink:0 }} />
+                        <div style={{ minWidth:0 }}>
+                          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:accent, marginBottom:"2px" }}>
+                            {graphLabel}
                           </div>
+                          <div style={{ ...S.runTitle, color:"#1e1c3a" }}>{runTitleDate}</div>
                           <div style={S.runSub}>{runSubtitle}</div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => deleteRun(id)}
-                        style={S.deleteBtn}
-                        title="Delete this run"
-                      >
+                      <button onClick={() => deleteRun(id)} style={S.deleteBtn} title="Delete this run">
                         DELETE
                       </button>
                     </div>
-                    <div style={S.kpiRow}>
+
+                    {/* KPI row — always 4 equal columns */}
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1px", marginTop:"10px" }}>
                       {[
                         { l:"MAX",    v:`${maxTemp.toFixed(0)}°C`, c:"#dc2626" },
                         { l:"MIN",    v:`${minTemp.toFixed(0)}°C`, c:"#0891b2" },
@@ -812,6 +752,7 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Tab bar */}
                   <div style={S.tabBar}>
                     {[
                       { k:"graph",  l:"GRAPH"        },
@@ -827,39 +768,46 @@ export default function App() {
                     ))}
                   </div>
 
+                  {/* Graph tab */}
                   {getTab(id) === "graph" && (
-                    <div style={{ ...S.chartPanel, maxHeight: "62vh" }}>
+                    <div style={S.chartPanel}>
                       <div style={S.chartLabel}>THERMAL PROFILE — ELEVATION VS TEMPERATURE</div>
-                      <ResponsiveContainer width="100%" height={Math.min(chartHeight, windowHeight * 0.6)}>
-                        <LineChart data={runData} layout="vertical">
-                          <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
-                          <YAxis
-                            dataKey="elevation"
-                            type="number"
-                            domain={[minElevation, maxElevation]}
-                            ticks={allElevations}
-                            interval={0}
-                            reversed
-                            width={48}
-                            tick={{ fill:"#a0a0c0", fontSize:10, fontFamily:"'DM Mono'" }}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <XAxis
-                            type="number"
-                            domain={[xMin - xPadding, xMax + xPadding]}
-                            tick={{ fill:"#a0a0c0", fontSize:10, fontFamily:"'DM Mono'" }}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <Tooltip content={<CustomTooltip />} />
-                          {visibleLines.c1  && <Line type="monotone" dataKey="c1"  stroke={COLORS.c1}  dot={false} strokeWidth={2} />}
-                          {visibleLines.c2  && <Line type="monotone" dataKey="c2"  stroke={COLORS.c2}  dot={false} strokeWidth={2} />}
-                          {visibleLines.c3  && <Line type="monotone" dataKey="c3"  stroke={COLORS.c3}  dot={false} strokeWidth={2} />}
-                          {visibleLines.c4  && <Line type="monotone" dataKey="c4"  stroke={COLORS.c4}  dot={false} strokeWidth={2} />}
-                          {visibleLines.avg && <Line type="monotone" dataKey="avg" stroke={COLORS.avg} dot={false} strokeWidth={3} />}
-                        </LineChart>
-                      </ResponsiveContainer>
+                      {/*
+                        Fixed pixel height — same value (CHART_HEIGHT) on every screen.
+                        ResponsiveContainer width="100%" fills the column naturally.
+                      */}
+                      <div style={{ width:"100%", height: CHART_HEIGHT }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={runData} layout="vertical">
+                            <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
+                            <YAxis
+                              dataKey="elevation"
+                              type="number"
+                              domain={[minElevation, maxElevation]}
+                              ticks={allElevations}
+                              interval={0}
+                              reversed
+                              width={44}
+                              tick={{ fill:"#a0a0c0", fontSize:9, fontFamily:"'DM Mono'" }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <XAxis
+                              type="number"
+                              domain={[xMin - xPadding, xMax + xPadding]}
+                              tick={{ fill:"#a0a0c0", fontSize:9, fontFamily:"'DM Mono'" }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            {visibleLines.c1  && <Line type="monotone" dataKey="c1"  stroke={COLORS.c1}  dot={false} strokeWidth={2} />}
+                            {visibleLines.c2  && <Line type="monotone" dataKey="c2"  stroke={COLORS.c2}  dot={false} strokeWidth={2} />}
+                            {visibleLines.c3  && <Line type="monotone" dataKey="c3"  stroke={COLORS.c3}  dot={false} strokeWidth={2} />}
+                            {visibleLines.c4  && <Line type="monotone" dataKey="c4"  stroke={COLORS.c4}  dot={false} strokeWidth={2} />}
+                            {visibleLines.avg && <Line type="monotone" dataKey="avg" stroke={COLORS.avg} dot={false} strokeWidth={3} />}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                       <div style={S.filterBar}>
                         {Object.keys(COLORS).map(k => (
                           <button
@@ -877,6 +825,7 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Raw data tab */}
                   {getTab(id) === "raw" && (
                     <div style={S.tablePanel}>
                       <div style={S.chartLabel}>RAW MEASUREMENT DATA</div>
@@ -890,7 +839,7 @@ export default function App() {
                             </tr>
                           </thead>
                           <tbody>
-                            {runData.map((row,i) => (
+                            {runData.map((row, i) => (
                               <tr key={i} style={{ borderBottom:"0.5px solid #eeecf8" }}>
                                 <td style={S.td}>{row.elevation}m</td>
                                 <td style={S.td}>{row.c1}</td>
@@ -906,6 +855,7 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Boiler tab */}
                   {getTab(id) === "boiler" && (
                     <div style={S.tablePanel}>
                       <div style={S.chartLabel}>BOILER & MILL PARAMETERS</div>
@@ -913,13 +863,13 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Coal tab */}
                   {getTab(id) === "coal" && (
                     <div style={S.tablePanel}>
                       <div style={S.chartLabel}>COAL MILL PARAMETERS</div>
                       <CoalMillTable data={coalData[id]} />
                     </div>
                   )}
-
                 </section>
               );
             })}
@@ -932,9 +882,7 @@ export default function App() {
           <div style={S.modal}>
             <div style={S.modalIcon}>✓</div>
             <div style={S.modalTitle}>UPLOAD SUCCESSFUL</div>
-            <div style={S.modalText}>
-              Your file has been processed and added to the run archive.
-            </div>
+            <div style={S.modalText}>Your file has been processed and added to the run archive.</div>
           </div>
         </div>
       )}
@@ -950,11 +898,7 @@ const S = {
     display:"flex", alignItems:"center", justifyContent:"center", zIndex:100,
   },
   modal:      { width:"90%", maxWidth:"360px", padding:"24px" },
-  modalIcon:  {
-    width:"50px", height:"50px", borderRadius:"50%", background:"#16a34a",
-    color:"#fff", display:"flex", alignItems:"center", justifyContent:"center",
-    fontSize:"24px", margin:"0 auto 12px",
-  },
+  modalIcon:  { width:"50px", height:"50px", borderRadius:"50%", background:"#16a34a", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"24px", margin:"0 auto 12px" },
   modalTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#16a34a" },
   modalText:  { fontFamily:"'DM Mono',monospace", fontSize:"11px", color:"#6e6c96", marginTop:"8px", letterSpacing:"0.05em" },
 
@@ -963,7 +907,7 @@ const S = {
   headerInner: { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 20px", flexWrap:"wrap" },
   hLine:       { display:"block", width:"18px", height:"1.5px", background:"#9896c0" },
   logoMark:    { width:"36px", height:"36px", border:"1px solid #e2e1f0", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5fb", flexShrink:0 },
-  brandName:   { fontSize:"clamp(12px, 2vw, 18px)" },
+  brandName:   { fontSize:"clamp(10px, 1.4vw, 17px)", fontWeight:"600" },
   brandTag:    { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0", marginTop:"3px" },
   suLabel:     { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.18em", color:"#b0aed0" },
   suVal:       { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", color:"#4f46e5", letterSpacing:"0.08em" },
@@ -972,31 +916,50 @@ const S = {
   statN:       { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", color:"#4f46e5", lineHeight:1 },
   statL:       { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.15em", color:"#b0aed0" },
 
-  logoutButton: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "8px 16px",
-    background: "#dc2626",
-    color: "#ffffff",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: "600",
-    letterSpacing: "0.5px",
-    transition: "all 0.2s ease",
-  },
+  logoutButton: { display:"flex", alignItems:"center", gap:"8px", padding:"8px 14px", background:"#dc2626", color:"#ffffff", border:"none", borderRadius:"6px", cursor:"pointer", fontSize:"11px", fontWeight:"600", letterSpacing:"0.5px", flexShrink:0 },
 
+  sidebar:     { background:"#ffffff", borderRight:"1px solid #e8e6f4", position:"fixed", left:0, top:"56px", bottom:0, overflowY:"auto", transition:"transform 0.3s ease", zIndex:1000, width:"260px" },
   sideSection: { padding:"16px 14px", borderBottom:"1px solid #f0eef8" },
-  sidebar: {
-    background:"#ffffff", borderRight:"1px solid #e8e6f4",
-    position:"fixed", left:0, top:"56px", bottom:0,
-    overflowY:"auto", transition:"transform 0.3s ease", zIndex:1000, width:"260px",
-  },
   secLabel:    { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.28em", color:"#c8c6e0", marginBottom:"10px", paddingTop:"2px" },
   uploadBtn:   { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#4f46e5", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer", marginBottom:"8px" },
   downloadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#f0fdf4", border:"none", borderRadius:"6px", color:"#16a34a", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer", boxSizing:"border-box" },
+
+  runSection:  { background:"#ffffff", border:"1px solid #e8e6f4", borderRadius:"10px", overflow:"hidden" },
+  runHeader:   { padding:"12px 14px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
+  runTitle:    { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(12px,1.1vw,16px)", letterSpacing:"0.04em", color:"#1e1c3a" },
+  runSub:      { fontFamily:"'DM Mono',monospace", fontSize:"8px", color:"#c8c6e0", marginTop:"3px", letterSpacing:"0.06em" },
+  kpiCard:     { background:"#f5f4ff", padding:"7px 4px", textAlign:"center", borderRadius:"4px" },
+  kpiVal:      { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(12px,1vw,15px)", letterSpacing:"0.05em", lineHeight:1 },
+  kpiLbl:      { fontFamily:"'DM Mono',monospace", fontSize:"7px", letterSpacing:"0.15em", color:"#b0aed0", marginTop:"3px" },
+
+  tabBar:    { display:"flex", gap:"3px", padding:"8px 10px", borderBottom:"1px solid #f0eef8", background:"#faf9ff", flexWrap:"wrap" },
+  tabBtn:    { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.08em", padding:"4px 7px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0" },
+  tabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
+  deleteBtn: { background:"#fff", border:"1px solid #f0eef8", color:"#dc2626", padding:"5px 9px", borderRadius:"6px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.1em", flexShrink:0 },
+
+  chartPanel: { padding:"14px", background:"#ffffff" },
+  chartLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#c8c6e0", marginBottom:"10px" },
+  filterBar:  { display:"flex", gap:"4px", marginTop:"10px", flexWrap:"wrap" },
+  filterBtn:  { border:"0.5px solid", padding:"3px 7px", fontSize:"8px", fontFamily:"'DM Mono',monospace", letterSpacing:"0.07em", cursor:"pointer", borderRadius:"4px" },
+
+  tablePanel: { padding:"14px", background:"#ffffff" },
+  subLabel:   { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#c8c6e0", marginBottom:"10px" },
+  table:      { width:"100%", borderCollapse:"collapse", fontFamily:"'DM Mono',monospace", fontSize:"10px" },
+  th:         { padding:"6px 8px", textAlign:"left", fontSize:"8px", letterSpacing:"0.15em", color:"#c8c6e0", borderBottom:"1px solid #f0eef8", fontWeight:400 },
+  td:         { padding:"6px 8px", color:"#6e6c96" },
+  noData:     { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", padding:"16px 0", letterSpacing:"0.08em" },
+
+  tooltip: { background:"#ffffff", border:"1px solid #e8e6f4", padding:"10px 12px", minWidth:"150px", borderRadius:"6px", boxShadow:"0 4px 20px rgba(79,70,229,0.08)" },
+  ttHead:  { display:"flex", justifyContent:"space-between", marginBottom:"6px", paddingBottom:"6px", borderBottom:"1px solid #f0eef8" },
+  ttLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0" },
+  ttVal:   { fontFamily:"'Bebas Neue',sans-serif", fontSize:"14px", color:"#4f46e5" },
+  ttRow:   { display:"flex", alignItems:"center", gap:"6px", marginBottom:"3px" },
+  ttDot:   { width:"5px", height:"5px", borderRadius:"50%", flexShrink:0 },
+  ttKey:   { fontFamily:"'DM Mono',monospace", fontSize:"8px", color:"#b0aed0", flex:1 },
+  ttNum:   { fontFamily:"'DM Mono',monospace", fontSize:"9px", fontWeight:"500" },
+
+  navBtn:       { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"7px 12px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0", textAlign:"left" },
+  navBtnActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
 
   runCard:        { display:"flex", alignItems:"center", gap:"10px", padding:"8px 10px", borderRadius:"6px", cursor:"pointer", border:"0.5px solid transparent", position:"relative", opacity:0.6 },
   runCardActive:  { background:"#f5f4ff", borderColor:"#c7c4f8" },
@@ -1005,42 +968,4 @@ const S = {
   runName:        { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#3a3860", letterSpacing:"0.04em", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" },
   runDate:        { fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#c8c6e0", marginTop:"2px" },
   runIdx:         { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", letterSpacing:"0.1em" },
-
-  runSection:  { background:"#ffffff", border:"1px solid #e8e6f4", borderRadius:"10px", overflow:"hidden" },
-  runHeader:   { padding:"16px 20px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
-  runTitle:    { fontSize:"clamp(12px, 1.5vw, 18px)" },
-  runSub:      { fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#c8c6e0", marginTop:"4px", letterSpacing:"0.06em" },
-  kpiRow:      { display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(90px, 1fr))", gap:"1px", marginTop:"12px" },
-  kpiCard:     { background:"#f5f4ff", padding:"10px 8px", textAlign:"center", borderRadius:"4px" },
-  kpiVal:      { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(13px,1.5vw,17px)", letterSpacing:"0.05em", lineHeight:1 },
-  kpiLbl:      { fontFamily:"'DM Mono',monospace", fontSize:"7px", letterSpacing:"0.18em", color:"#b0aed0", marginTop:"4px" },
-
-  tabBar:    { display:"flex", gap:"4px", padding:"10px 16px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
-  tabBtn:    { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"5px 12px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0" },
-  tabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
-  deleteBtn: { background:"#fff", border:"1px solid #f0eef8", color:"#dc2626", padding:"8px 12px", borderRadius:"8px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.12em", minWidth:"90px" },
-
-  chartPanel: { padding:"20px", background:"#ffffff" },
-  chartLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:"#c8c6e0", marginBottom:"16px" },
-  filterBar:  { display:"flex", gap:"6px", marginTop:"14px", flexWrap:"wrap" },
-  filterBtn:  { border:"0.5px solid", padding:"4px 10px", fontSize:"9px", fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em", cursor:"pointer", borderRadius:"4px" },
-
-  tablePanel: { padding:"20px", background:"#ffffff" },
-  subLabel:   { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:"#c8c6e0", marginBottom:"12px" },
-  table:      { width:"100%", borderCollapse:"collapse", fontFamily:"'DM Mono',monospace", fontSize:"11px" },
-  th:         { padding:"8px 12px", textAlign:"left", fontSize:"8px", letterSpacing:"0.18em", color:"#c8c6e0", borderBottom:"1px solid #f0eef8", fontWeight:400 },
-  td:         { padding:"8px 12px", color:"#6e6c96" },
-  noData:     { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", padding:"20px 0", letterSpacing:"0.08em" },
-
-  tooltip: { background:"#ffffff", border:"1px solid #e8e6f4", padding:"12px 14px", minWidth:"180px", borderRadius:"6px", boxShadow:"0 4px 20px rgba(79,70,229,0.08)" },
-  ttHead:  { display:"flex", justifyContent:"space-between", marginBottom:"8px", paddingBottom:"8px", borderBottom:"1px solid #f0eef8" },
-  ttLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0" },
-  ttVal:   { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", color:"#4f46e5" },
-  ttRow:   { display:"flex", alignItems:"center", gap:"8px", marginBottom:"4px" },
-  ttDot:   { width:"5px", height:"5px", borderRadius:"50%", flexShrink:0 },
-  ttKey:   { fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#b0aed0", flex:1 },
-  ttNum:   { fontFamily:"'DM Mono',monospace", fontSize:"10px", fontWeight:"500" },
-
-  navBtn:       { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"7px 12px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0", textAlign:"left" },
-  navBtnActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
 };
