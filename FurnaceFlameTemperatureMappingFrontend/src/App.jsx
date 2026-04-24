@@ -8,7 +8,7 @@ import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 
-const BASE_URL = "http://91.203.132.34:8080";
+const BASE_URL = "https://91.203.132.34:8000"; // ✅ use HTTPS
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────
 const UI = {
@@ -448,7 +448,7 @@ export default function App() {
       const un = localStorage.getItem("selectedUnit");
       const unitNumber = un ? JSON.parse(un).id || JSON.parse(un).name || "" : "";
       const response = await fetch(
-        `http://91.203.132.34:8080/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
+        `https://91.203.132.34:8000/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
       );
       if (!response.ok) throw new Error("Server error");
       const blob = await response.blob();
