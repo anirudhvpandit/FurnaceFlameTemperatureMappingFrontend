@@ -9,7 +9,7 @@ const LoginPage = () => {
 
     const handleLogin = async () => {
         try {
-            const response = await axios.post("http://91.203.132.34:8080/login", {
+            const response = await axios.post("https://91.203.132.34:8000/login", {
                 username,
                 password
             });
