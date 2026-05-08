@@ -7,6 +7,8 @@ export default function StationSelect() {
   const [selectedStation, setSelectedStation] = useState(null);
   const [units, setUnits] = useState([]);
   const [selectedUnit, setSelectedUnit] = useState(null);
+  const [userLocation, setUserLocation] = useState(null); // 'admin' or 'user'
+  const [username, setUsername] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,9 +23,29 @@ export default function StationSelect() {
     ];
     setStations(stationsList);
 
-    const username = localStorage.getItem("username");
-    if (username) {
-      const station = stationsList.find(s => s.name === username);
+    const storedUsername = localStorage.getItem("username");
+    const storedLocation = localStorage.getItem("location");
+    
+    setUsername(storedUsername);
+    
+    // Determine user role
+    if (storedLocation === "all") {
+      setUserLocation("all");
+      // Admin can select any station, so don't auto-select
+      setSelectedStation(null);
+      setUnits([]);
+    } else if (storedLocation && storedLocation !== "all") {
+      setUserLocation(storedLocation);
+      // Regular user - find their assigned station
+      const station = stationsList.find(s => s.name === storedLocation);
+      if (station) {
+        setSelectedStation(station);
+        fetchUnits(station.id);
+      }
+    } else if (storedUsername) {
+      // Fallback: check if username matches a station
+      setUserLocation("storedLocation");
+      const station = stationsList.find(s => s.name === storedLocation);
       if (station) {
         setSelectedStation(station);
         fetchUnits(station.id);
@@ -91,6 +113,10 @@ export default function StationSelect() {
   };
 
   const handleStationSelect = (station) => {
+    // Only allow station selection if user is admin
+    if (userLocation !== "all") {
+      return;
+    }
     setSelectedStation(station);
     setSelectedUnit(null);
     fetchUnits(station.id);
@@ -134,6 +160,18 @@ export default function StationSelect() {
               </div>
             </div>
             
+            {/* User Role Badge */}
+            <div style={styles.userInfo}>
+              <div style={styles.userRoleBadge}>
+                {userLocation === "all" ? "ADMIN" : "👤 USER"}
+              </div>
+              {username && (
+                <div style={styles.usernameDisplay}>
+                  {username}
+                </div>
+              )}
+            </div>
+
             {/* Logout Button */}
             <button onClick={handleLogout} style={styles.logoutButton}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -152,46 +190,70 @@ export default function StationSelect() {
               SELECT STATION & UNIT
             </div>
 
+            {/* Station Selection Section */}
             <div style={styles.selectionSection}>
-              <div style={styles.sectionLabel}>STATION</div>
+              <div style={styles.sectionLabel}>
+                STATION
+                {userLocation !== "all" && (
+                  <span style={styles.lockedBadge}> 🔒 Locked</span>
+                )}
+              </div>
+              
+              {userLocation !== "all" && selectedStation && (
+                <div style={styles.currentStationInfo}>
+                  <span>📍 Currently assigned to: </span>
+                  <strong>{selectedStation.name}</strong>
+                </div>
+              )}
+              
               <div style={styles.buttonGrid}>
                 {stations.map((station) => {
                   const isSelected = selectedStation?.id === station.id;
-                  const shouldBlur =
-                    selectedStation && !isSelected;
+                  const isDisabled = userLocation !== "all" && !isSelected;
+                  const shouldBlur = selectedStation && !isSelected && userLocation !== "all";
 
                   return (
                     <button
                       key={station.id}
                       onClick={() => handleStationSelect(station)}
+                      disabled={isDisabled}
                       style={{
                         ...styles.selectionButton,
                         background: isSelected ? "#0000d9" : "#ffffff",
                         color: isSelected ? "#ffffff" : "#12121a",
                         borderColor: isSelected ? "#0000d9" : "#d1cfe0",
                         filter: shouldBlur ? "blur(3px)" : "none",
-                        opacity: shouldBlur ? 0.4 : 1,
+                        opacity: shouldBlur ? 0.4 : isDisabled ? 0.5 : 1,
                         transform: isSelected ? "scale(1.05)" : "scale(1)",
+                        cursor: isDisabled ? "not-allowed" : "pointer",
                       }}
                     >
                       {station.name}
+                      {isSelected && userLocation !== "all" && (
+                        <span style={styles.lockIcon}> 🔒</span>
+                      )}
                     </button>
                   );
                 })}
               </div>
+              
+              {userLocation !== "all" && (
+                <div style={styles.restrictionNote}>
+                  ⚠️ Station selection is locked. Only administrators can change stations.
+                </div>
+              )}
             </div>
 
+            {/* Unit Selection Section */}
             {selectedStation && (
               <div style={styles.selectionSection}>
                 <div style={styles.sectionLabel}>
                   UNIT — {selectedStation.name}
                 </div>
-
                 <div style={styles.buttonGrid}>
                   {units.map((unit) => {
                     const isSelected = selectedUnit?.id === unit.id;
-                    const shouldBlur =
-                      selectedUnit && !isSelected;
+                    const shouldBlur = selectedUnit && !isSelected;
 
                     return (
                       <button
@@ -228,6 +290,7 @@ export default function StationSelect() {
                   selectedStation && selectedUnit
                     ? "#ffffff"
                     : "#85849a",
+                cursor: selectedStation && selectedUnit ? "pointer" : "not-allowed",
               }}
             >
               PROCEED TO DASHBOARD
@@ -252,6 +315,8 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "16px 24px",
+    gap: "16px",
+    flexWrap: "wrap",
   },
   logoBlock: {
     display: "flex",
@@ -275,6 +340,28 @@ const styles = {
   brandTagline: {
     fontSize: "10px",
     color: "#666",
+  },
+  userInfo: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginLeft: "auto",
+  },
+  userRoleBadge: {
+    padding: "6px 12px",
+    borderRadius: "20px",
+    fontSize: "11px",
+    fontWeight: "bold",
+    letterSpacing: "0.5px",
+    background: "#2d3748",
+    color: "#ffffff",
+  },
+  usernameDisplay: {
+    padding: "4px 8px",
+    fontSize: "12px",
+    color: "#4a5568",
+    background: "#e2e8f0",
+    borderRadius: "6px",
   },
   logoutButton: {
     display: "flex",
@@ -311,6 +398,25 @@ const styles = {
   sectionLabel: {
     fontSize: "12px",
     marginBottom: "10px",
+    fontWeight: "bold",
+  },
+  lockedBadge: {
+    fontSize: "11px",
+    color: "#e53e3e",
+  },
+  currentStationInfo: {
+    fontSize: "13px",
+    marginBottom: "15px",
+    padding: "8px 12px",
+    background: "#e0f2fe",
+    borderRadius: "8px",
+    display: "inline-block",
+  },
+  restrictionNote: {
+    fontSize: "11px",
+    color: "#e53e3e",
+    marginTop: "10px",
+    fontStyle: "italic",
   },
   buttonGrid: {
     display: "flex",
@@ -323,10 +429,23 @@ const styles = {
     border: "1px solid #ccc",
     cursor: "pointer",
     transition: "all 0.2s ease",
+    borderRadius: "4px",
+    fontWeight: "500",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  lockIcon: {
+    fontSize: "10px",
   },
   proceedButton: {
     padding: "12px 24px",
     border: "none",
     cursor: "pointer",
+    borderRadius: "6px",
+    fontWeight: "600",
+    fontSize: "14px",
+    transition: "all 0.2s ease",
+    marginTop: "20px",
   },
 };
