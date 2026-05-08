@@ -15,7 +15,11 @@ const LoginPage = () => {
             });
             if (response.status === 200) {
                 const data = response.data;
+                console.log(data);
+                
                 localStorage.setItem("username", data.username);
+                localStorage.setItem("location",data.location);
+                localStorage.setItem("role", data.role);
             }
             navigate("/station-select");
         } catch (error) {
