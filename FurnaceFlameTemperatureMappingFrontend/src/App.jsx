@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
@@ -7,21 +7,300 @@ import {
 import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
 
-const BASE_URL = "https://91.203.132.34:8000";
+const BASE_URL = "http://91.203.132.34:8080";
+
+// ─── INGEST (NO FILE) HELPERS ──────────────────────────────────
+const DEFAULT_ELEVATION_COLS = ["Corner 1", "Corner 2", "Corner 3", "Corner 4", "Corner 5", "Corner 6", "Corner 7"];
+const DEFAULT_COAL_MILLS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const MAX_MILLS = 10;
+
+function clamp(n, min, max) {
+  const x = Number(n);
+  if (Number.isNaN(x)) return min;
+  return Math.min(max, Math.max(min, x));
+}
+
+function safeNum(v) {
+  if (v === "" || v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function nextCornerLabel(existing) {
+  const nums = existing
+    .map((c) => (String(c).match(/(\d+)/) ? Number(String(c).match(/(\d+)/)[1]) : null))
+    .filter((n) => Number.isFinite(n));
+  const next = nums.length ? Math.max(...nums) + 1 : existing.length + 1;
+  return `Corner ${next}`;
+}
+
+function createEmptyRunDraft({ stationName, unitId }) {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const date = `${yyyy}-${mm}-${dd}`;
+  const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+  return {
+    meta: {
+      station: stationName || "",
+      unit_id: unitId || "",
+      run_date: date,
+      run_time: time,
+      load_mw: "",
+      total_coal_flow_tph: "",
+      total_air_flow_tph: "",
+      burner_tilt_deg: "",
+      coal_mills_in_service_count: "",
+      coal_mills_in_service: "",
+      oil_guns_in_service_count: "",
+      oil_guns_in_service: "",
+      notes: "",
+    },
+    elevation: {
+      columns: [...DEFAULT_ELEVATION_COLS],
+      rows: [
+        { elevation_m: "56.4", values: Object.fromEntries(DEFAULT_ELEVATION_COLS.map((c) => [c, ""])) },
+      ],
+    },
+    boiler: {
+      main_steam_pressure_l: "", main_steam_pressure_r: "",
+      main_steam_flow_l: "", main_steam_flow_r: "",
+      superheat_spray_l: "", superheat_spray_r: "",
+      reheat_spray_l: "", reheat_spray_r: "",
+      o2_aph_inlet_pcr_l: "", o2_aph_inlet_pcr_r: "",
+      wind_box_dp_l: "", wind_box_dp_r: "",
+      total_pa_flow: "",
+      total_fd_fan_flow: "",
+      total_pa_to_windbox_flow: "",
+    },
+    flueGas: {
+      fg_temp_after_dpsh_l: "", fg_temp_after_dpsh_r: "",
+      fg_temp_after_psh_l: "", fg_temp_after_psh_r: "",
+      fg_temp_after_rh_l: "", fg_temp_after_rh_r: "",
+      fg_temp_after_hsh_l: "", fg_temp_after_hsh_r: "",
+      fg_temp_after_eco_l: "", fg_temp_after_eco_r: "",
+      fg_temp_after_aph_l: "", fg_temp_after_aph_r: "",
+    },
+    coalMills: {
+      mills: [...DEFAULT_COAL_MILLS],
+      byMill: Object.fromEntries(DEFAULT_COAL_MILLS.map((m) => [m, {
+        coal_flow_tph: "",
+        pa_flow_tph: "",
+        mill_dp_mmwc: "",
+        mill_outlet_temp: "",
+        mill_current_amp: "",
+      }])),
+    },
+  };
+}
+
+function buildUploadPayload(draft) {
+  const cols = draft.elevation.columns;
+  const cleanRows = (draft.elevation.rows || [])
+    .map((r) => {
+      const elevation_m = safeNum(r.elevation_m);
+      if (elevation_m == null) return null;
+      const values = cols.map((c) => safeNum(r.values?.[c]));
+      const present = values.filter((v) => v != null);
+      const avg = present.length ? present.reduce((a, b) => a + b, 0) / present.length : null;
+      return { elevation_m, values: Object.fromEntries(cols.map((c, i) => [c, values[i]])), average: avg };
+    })
+    .filter(Boolean);
+
+  const coal = (draft.coalMills.mills || []).map((mill) => ({
+    mill,
+    coal_flow_tph: safeNum(draft.coalMills.byMill?.[mill]?.coal_flow_tph),
+    pa_flow_tph: safeNum(draft.coalMills.byMill?.[mill]?.pa_flow_tph),
+    mill_dp_mmwc: safeNum(draft.coalMills.byMill?.[mill]?.mill_dp_mmwc),
+    mill_outlet_temp: safeNum(draft.coalMills.byMill?.[mill]?.mill_outlet_temp),
+    mill_current_amp: safeNum(draft.coalMills.byMill?.[mill]?.mill_current_amp),
+  }));
+
+  return {
+    station_id: draft.meta.station || null,
+    unit_id: draft.meta.unit_id || null,
+    uploaded_by: localStorage.getItem("username") || "admin",
+    notes: draft.meta.notes || "",
+    run_meta: {
+      run_date: draft.meta.run_date || null,
+      run_time: draft.meta.run_time || null,
+      load_mw: safeNum(draft.meta.load_mw),
+      total_coal_flow_tph: safeNum(draft.meta.total_coal_flow_tph),
+      total_air_flow_tph: safeNum(draft.meta.total_air_flow_tph),
+      burner_tilt_deg: safeNum(draft.meta.burner_tilt_deg),
+      coal_mills_in_service_count: safeNum(draft.meta.coal_mills_in_service_count),
+      coal_mills_in_service: String(draft.meta.coal_mills_in_service || "").trim() || null,
+      oil_guns_in_service_count: safeNum(draft.meta.oil_guns_in_service_count),
+      oil_guns_in_service: String(draft.meta.oil_guns_in_service || "").trim() || null,
+    },
+    elevation_profile: {
+      columns: cols,
+      rows: cleanRows,
+    },
+    boiler_params: {
+      main_steam_pressure_l: safeNum(draft.boiler.main_steam_pressure_l),
+      main_steam_pressure_r: safeNum(draft.boiler.main_steam_pressure_r),
+      main_steam_flow_l: safeNum(draft.boiler.main_steam_flow_l),
+      main_steam_flow_r: safeNum(draft.boiler.main_steam_flow_r),
+      superheat_spray_l: safeNum(draft.boiler.superheat_spray_l),
+      superheat_spray_r: safeNum(draft.boiler.superheat_spray_r),
+      reheat_spray_l: safeNum(draft.boiler.reheat_spray_l),
+      reheat_spray_r: safeNum(draft.boiler.reheat_spray_r),
+      o2_aph_inlet_pcr_l: safeNum(draft.boiler.o2_aph_inlet_pcr_l),
+      o2_aph_inlet_pcr_r: safeNum(draft.boiler.o2_aph_inlet_pcr_r),
+      wind_box_dp_l: safeNum(draft.boiler.wind_box_dp_l),
+      wind_box_dp_r: safeNum(draft.boiler.wind_box_dp_r),
+      total_pa_flow: safeNum(draft.boiler.total_pa_flow),
+      total_fd_fan_flow: safeNum(draft.boiler.total_fd_fan_flow),
+      total_pa_to_windbox_flow: safeNum(draft.boiler.total_pa_to_windbox_flow),
+    },
+    flue_gas_temps: {
+      fg_temp_after_dpsh_l: safeNum(draft.flueGas.fg_temp_after_dpsh_l),
+      fg_temp_after_dpsh_r: safeNum(draft.flueGas.fg_temp_after_dpsh_r),
+      fg_temp_after_psh_l: safeNum(draft.flueGas.fg_temp_after_psh_l),
+      fg_temp_after_psh_r: safeNum(draft.flueGas.fg_temp_after_psh_r),
+      fg_temp_after_rh_l: safeNum(draft.flueGas.fg_temp_after_rh_l),
+      fg_temp_after_rh_r: safeNum(draft.flueGas.fg_temp_after_rh_r),
+      fg_temp_after_hsh_l: safeNum(draft.flueGas.fg_temp_after_hsh_l),
+      fg_temp_after_hsh_r: safeNum(draft.flueGas.fg_temp_after_hsh_r),
+      fg_temp_after_eco_l: safeNum(draft.flueGas.fg_temp_after_eco_l),
+      fg_temp_after_eco_r: safeNum(draft.flueGas.fg_temp_after_eco_r),
+      fg_temp_after_aph_l: safeNum(draft.flueGas.fg_temp_after_aph_l),
+      fg_temp_after_aph_r: safeNum(draft.flueGas.fg_temp_after_aph_r),
+    },
+    coal_mill_params: coal,
+  };
+}
+
+// ─── BACKEND EXCEL DOWNLOAD HELPER ────────────────────────────
+async function downloadExcelFromBackend(runsArray, fallbackFilename = "FTM_export.xlsx") {
+  try {
+    const payload = {
+      runs: runsArray
+    };
+    
+    const response = await fetch(`${BASE_URL}/generate-excel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Server error ${response.status}: ${errText}`);
+    }
+
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    let filename = fallbackFilename;
+    
+    if (match && match[1]) {
+      filename = match[1].replace(/['"]/g, "");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+    
+    return true;
+  } catch (error) {
+    console.error("Download failed:", error);
+    throw error;
+  }
+}
+
+function buildGeneratePayload({ runMeta, dataset, boiler, coal, stationName, unitId }) {
+  const cornerKeys = Object.keys(dataset || {})
+    .filter((k) => k.match(/^c\d+$/))
+    .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+
+  const columns = cornerKeys.map((k) => `Corner ${k.replace("c", "")}`);
+
+  const rows = (dataset?.elevation || []).map((el, i) => {
+    const values = {};
+    cornerKeys.forEach((k) => {
+      const v = dataset[k]?.[i];
+      values[`Corner ${k.replace("c", "")}`] = v != null ? Number(v) : null;
+    });
+    const avgRaw = dataset.average?.[i] ?? dataset.avg_val?.[i] ?? dataset.avg?.[i];
+    const average = avgRaw != null ? Number(avgRaw) : null;
+    return { elevation_m: Number(el), values, average };
+  }).filter((r) => !isNaN(r.elevation_m));
+
+  const boiler_params = {};
+  const flue_gas_temps = {};
+  const bp = boiler || {};
+  const boilerKeys = [
+    "main_steam_pressure_l", "main_steam_pressure_r",
+    "main_steam_flow_l", "main_steam_flow_r",
+    "superheat_spray_l", "superheat_spray_r",
+    "reheat_spray_l", "reheat_spray_r",
+    "o2_aph_inlet_pcr_l", "o2_aph_inlet_pcr_r",
+    "wind_box_dp_l", "wind_box_dp_r",
+    "total_pa_flow",
+  ];
+  const flueKeys = [
+    "fg_temp_after_dpsh_l", "fg_temp_after_dpsh_r",
+    "fg_temp_after_psh_l", "fg_temp_after_psh_r",
+    "fg_temp_after_rh_l", "fg_temp_after_rh_r",
+    "fg_temp_after_hsh_l", "fg_temp_after_hsh_r",
+    "fg_temp_after_eco_l", "fg_temp_after_eco_r",
+    "fg_temp_after_aph_l", "fg_temp_after_aph_r",
+  ];
+  boilerKeys.forEach((k) => { boiler_params[k] = bp[k] ?? null; });
+  flueKeys.forEach((k) => { flue_gas_temps[k] = bp[k] ?? null; });
+
+  const coal_mill_params = (Array.isArray(coal) ? coal : []).map((m) => ({
+    mill: m.mill,
+    coal_flow_tph: m.coal_flow_tph ?? null,
+    pa_flow_tph: m.pa_flow_tph ?? null,
+    mill_dp_mmwc: m.mill_dp_mmwc ?? null,
+    mill_outlet_temp: m.mill_outlet_temp ?? null,
+    mill_current_amp: m.mill_current_amp ?? null,
+  }));
+
+  const rawDate = runMeta.run_date || runMeta.run_timestamp || "";
+  const dateStr = rawDate.slice(0, 10);
+
+  return {
+    station: stationName || runMeta.location || "",
+    unit_id: unitId,
+    run_meta: {
+      run_date: dateStr,
+      run_time: runMeta.run_time || "",
+      load_mw: runMeta.load_mw ?? null,
+      total_coal_flow_tph: runMeta.total_coal_flow_tph ?? null,
+      total_air_flow_tph: runMeta.total_air_flow_tph ?? null,
+      burner_tilt_deg: runMeta.burner_tilt_position ?? runMeta.burner_tilt_deg ?? null,
+      coal_mills_in_service_count: runMeta.coal_mills_in_service ?? null,
+      coal_mills_in_service: runMeta.coal_mills_in_service_label ?? "",
+      oil_guns_in_service_count: runMeta.oil_guns_in_service ?? null,
+      oil_guns_in_service: runMeta.oil_guns_in_service_label ?? "",
+    },
+    elevation_profile: { columns, rows },
+    boiler_params,
+    flue_gas_temps,
+    coal_mill_params,
+  };
+}
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────
 const CORNER_COLORS = [
-  "#4f46e5", // c1
-  "#f59e0b", // c2
-  "#06b6d4", // c3
-  "#8b5cf6", // c4
-  "#ec4899", // c5
-  "#10b981", // c6
-  "#f97316", // c7
-  "#6366f1", // c8
+  "#4f46e5", "#f59e0b", "#06b6d4", "#8b5cf6",
+  "#ec4899", "#10b981", "#f97316", "#6366f1",
 ];
 
-// ─── WINDOW SIZE HOOK ─────────────────────────────────────────
 function useWindowSize() {
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   useEffect(() => {
@@ -32,7 +311,6 @@ function useWindowSize() {
   return size;
 }
 
-// ─── CALENDAR ─────────────────────────────────────────────────
 const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 const DOWS   = ["S","M","T","W","T","F","S"];
 function pad2(n) { return String(n).padStart(2,"0"); }
@@ -140,7 +418,6 @@ const C = {
   legDot:    { display:"inline-block", width:"6px", height:"6px", borderRadius:"50%", flexShrink:0 },
 };
 
-// ─── BOILER PARAMS TABLE ──────────────────────────────────────
 function BoilerParamsTable({ data }) {
   if (!data || Object.keys(data).length === 0)
     return <div style={S.noData}>No boiler parameters recorded for this run.</div>;
@@ -220,7 +497,6 @@ function BoilerParamsTable({ data }) {
   );
 }
 
-// ─── COAL MILL TABLE ──────────────────────────────────────────
 function CoalMillTable({ data }) {
   if (!data || data.length === 0)
     return <div style={S.noData}>No coal mill parameters recorded for this run.</div>;
@@ -264,75 +540,75 @@ function CoalMillTable({ data }) {
   );
 }
 
-// ─── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
-  const { width: windowWidth, height: windowHeight } = useWindowSize();
+  const { width: windowWidth } = useWindowSize();
+  const isNarrow = windowWidth < 760;
+  const isMobileSheet = windowWidth < 1100;
 
   const CHART_HEIGHT = 320;
 
   const [viewMode, setViewMode]                 = useState("runs");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showIngestModal, setShowIngestModal]   = useState(false);
+  const [showReportModal, setShowReportModal]   = useState(false);
   const [history, setHistory]                   = useState([]);
   const [selected, setSelected]                 = useState([]);
   const [datasets, setDatasets]                 = useState({});
   const [boilerData, setBoilerData]             = useState({});
   const [coalData, setCoalData]                 = useState({});
   const [uploading, setUploading]               = useState(false);
-  const [downloading, setDownloading]           = useState(false);
+  const [reportDownloading, setReportDownloading] = useState(false);
+  const [runDownloading, setRunDownloading]     = useState({});
   const [visibleLines, setVisibleLines]         = useState({});
   const [activeTab, setActiveTab]               = useState({});
   const [isAdmin, setIsAdmin]                   = useState(false);
-  const [userLocation, setUserLocation]         = useState("all"); 
+  const [userLocation, setUserLocation]         = useState("all");
 
   const [graph1Date, setGraph1Date] = useState("");
   const [graph2Date, setGraph2Date] = useState("");
   const [dateError, setDateError]   = useState("");
 
-  const [dataDates, setDataDates]               = useState(new Set());
-  const [selectedStation, setSelectedStation]   = useState(null);
-  const [selectedUnit, setSelectedUnit]         = useState(null);
-  const [sidebarOpen, setSidebarOpen]           = useState(true);
+  const [reportFromDate, setReportFromDate] = useState("");
+  const [reportToDate, setReportToDate]     = useState("");
+  const [reportError, setReportError]       = useState("");
+
+  const [dataDates, setDataDates]             = useState(new Set());
+  const [selectedStation, setSelectedStation] = useState(null);
+  const [selectedUnit, setSelectedUnit]       = useState(null);
+  const [sidebarOpen, setSidebarOpen]         = useState(true);
   const navigation = useNavigate();
+
+  const [ingestTab, setIngestTab] = useState("run");
+  const [runDraft, setRunDraft] = useState(() => createEmptyRunDraft({
+    stationName: (localStorage.getItem("selectedStation") ? JSON.parse(localStorage.getItem("selectedStation")).name : ""),
+    unitId: (localStorage.getItem("selectedUnit") ? JSON.parse(localStorage.getItem("selectedUnit")).id : ""),
+  }));
 
   const getTab = (id) => activeTab[id] ?? "graph";
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
 
-  // Build run data with proper null handling
   const buildRunData = (dataset) => {
     if (!dataset || !dataset.elevation) return [];
-    
-    const cornerKeys = Object.keys(dataset).filter(key => 
-      key.match(/^c\d+$/) || key.match(/^corner\d+$/)
-    ).sort((a, b) => {
-      const numA = parseInt(a.match(/\d+/)[0]);
-      const numB = parseInt(b.match(/\d+/)[0]);
-      return numA - numB;
-    });
-    
+    const cornerKeys = Object.keys(dataset)
+      .filter(k => k.match(/^c\d+$/))
+      .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
     return dataset.elevation
       .map((el, i) => {
         const point = {
           elevation: Number(el),
-          avg: dataset.average ? Number(dataset.average[i]) : 
-               dataset.avg_val ? Number(dataset.avg_val[i]) : 
-               dataset.avg ? Number(dataset.avg[i]) : 0,
+          avg: dataset.average ? Number(dataset.average[i])
+             : dataset.avg_val ? Number(dataset.avg_val[i])
+             : dataset.avg ? Number(dataset.avg[i]) : 0,
         };
-        
-        cornerKeys.forEach(key => {
-          const value = dataset[key] ? dataset[key][i] : null;
-          if (value != null && !isNaN(Number(value))) {
-            point[key] = Number(value);
-          } else {
-            point[key] = null;
-          }
+        cornerKeys.forEach(k => {
+          const v = dataset[k]?.[i];
+          point[k] = (v != null && !isNaN(Number(v))) ? Number(v) : null;
         });
-        
         return point;
       })
       .filter(r => r.elevation != null && r.elevation !== 0 && !isNaN(r.elevation));
   };
 
-  // Check admin status on mount
   useEffect(() => {
     const location = localStorage.getItem("location");
     const role = localStorage.getItem("role");
@@ -358,23 +634,19 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Initialize visible lines when datasets change
   useEffect(() => {
     selected.forEach(runId => {
       const dataset = datasets[runId];
       if (dataset && !visibleLines[runId]) {
         const runData = buildRunData(dataset);
-        const existingCorners = Object.keys(runData[0] || {}).filter(key => 
-          key.match(/^c\d+$/)
-        );
-        
+        const existingCorners = Object.keys(runData[0] || {}).filter(k => k.match(/^c\d+$/));
         if (existingCorners.length > 0) {
           setVisibleLines(prev => ({
             ...prev,
             [runId]: {
-              ...Object.fromEntries(existingCorners.map(key => [key, true])),
-              avg: true
-            }
+              ...Object.fromEntries(existingCorners.map(k => [k, true])),
+              avg: true,
+            },
           }));
         }
       }
@@ -385,15 +657,26 @@ export default function App() {
     const st = localStorage.getItem("selectedStation");
     return st ? JSON.parse(st).name || "" : "";
   };
-
   const getUnitId = () => {
     const un = localStorage.getItem("selectedUnit");
     return un ? JSON.parse(un).id || "" : "";
+  };
+  const getUnitName = () => {
+    const un = localStorage.getItem("selectedUnit");
+    return un ? JSON.parse(un).name || JSON.parse(un).id || "" : "";
   };
 
   const handleLogout = () => {
     localStorage.clear();
     navigation("/");
+  };
+
+  const openIngest = () => {
+    if (!isAdmin) { alert("Only administrators can upload data."); return; }
+    setRunDraft(createEmptyRunDraft({ stationName: getStationName(), unitId: getUnitId() }));
+    setIngestTab("run");
+    setSidebarOpen(false);
+    setShowIngestModal(true);
   };
 
   const fetchHistory = async () => {
@@ -402,9 +685,7 @@ export default function App() {
         params: { station_id: getStationName(), unit_id: getUnitId() },
       });
       setHistory(res.data || []);
-    } catch (err) {
-      console.error("History fetch error:", err);
-    }
+    } catch (err) { console.error("History fetch error:", err); }
   };
 
   const fetchRunsForDate = async (date, slotIndex) => {
@@ -413,129 +694,192 @@ export default function App() {
       const res = await axios.get(`${BASE_URL}/history`, {
         params: { station_id: getStationName(), unit_id: getUnitId(), start_date: date, end_date: date },
       });
-
       const data = (res.data || []).filter(item =>
         (item.run_date || item.run_timestamp || "").slice(0, 10) === date
       );
       if (data.length === 0) return;
-
       const item = data[0];
-
       const [dsRes, boilerRes, coalRes] = await Promise.all([
         axios.get(`${BASE_URL}/history/${item.run_id}`),
         axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`),
         axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`),
       ]);
-
       setHistory(prev => prev.find(r => r.run_id === item.run_id) ? prev : [...prev, item]);
       setDatasets(p => ({ ...p, [item.run_id]: dsRes.data }));
       setBoilerData(p => ({ ...p, [item.run_id]: boilerRes.data }));
       setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
-
       setSelected(prev => {
         const next = [...prev];
         next[slotIndex] = item.run_id;
         return next.filter(Boolean);
       });
-    } catch (err) {
-      console.error("Date fetch error:", err);
-    }
+    } catch (err) { console.error("Date fetch error:", err); }
   };
 
   const fetchMappingDates = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/mapping-dates`, {
-        params: { station: getStationName(), unit: getUnitId() }
+        params: { station: getStationName(), unit: getUnitId() },
       });
       setDataDates(new Set(res.data.map(r => r.run_date)));
-    } catch (e) {
-      console.error("Fetch mapping dates error:", e);
-    }
+    } catch (e) { console.error("Fetch mapping dates error:", e); }
   };
 
   const handleGraph1Pick = (ds) => {
-    if (!dataDates.has(ds)) { 
-      setDateError("N/A — No data available for selected date"); 
-      return; 
-    }
-    setDateError(""); 
-    setGraph1Date(ds); 
-    fetchRunsForDate(ds, 0);
+    if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
+    setDateError(""); setGraph1Date(ds); fetchRunsForDate(ds, 0);
   };
-
   const handleGraph2Pick = (ds) => {
-    if (!dataDates.has(ds)) { 
-      setDateError("N/A — No data available for selected date"); 
-      return; 
-    }
-    setDateError(""); 
-    setGraph2Date(ds); 
-    fetchRunsForDate(ds, 1);
+    if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
+    setDateError(""); setGraph2Date(ds); fetchRunsForDate(ds, 1);
   };
 
-  const handleUpload = async (e) => {
-    if (!isAdmin) {
-      alert("Only administrators can upload data.");
-      return;
+  const handleDownloadSingleRun = async (runId) => {
+    const dataset  = datasets[runId];
+    const runMeta  = history.find(r => r.run_id === runId) || {};
+    const boiler   = boilerData[runId];
+    const coal     = coalData[runId];
+
+    if (!dataset) { alert("Run data not loaded yet."); return; }
+
+    setRunDownloading(p => ({ ...p, [runId]: true }));
+    try {
+      const payload = buildGeneratePayload({
+        runMeta,
+        dataset,
+        boiler,
+        coal,
+        stationName: getStationName(),
+        unitId: getUnitId(),
+      });
+      
+      await downloadExcelFromBackend(
+        [payload],
+        `FTM_${getStationName()}_Unit${getUnitId()}_${(runMeta.run_date || "").slice(0, 10)}.xlsx`
+      );
+    } catch (err) {
+      console.error("Single run download failed:", err);
+      alert(`Download failed: ${err.message}`);
+    } finally {
+      setRunDownloading(p => ({ ...p, [runId]: false }));
     }
-    
-    const file = e.target.files[0];
-    if (!file) return;
+  };
+
+  const handleDownloadReport = async () => {
+    setReportError("");
+    if (!reportFromDate || !reportToDate) {
+      setReportError("Please select both FROM and TO dates."); return;
+    }
+    if (reportFromDate > reportToDate) {
+      setReportError("FROM date must be before or equal to TO date."); return;
+    }
+
+    setReportDownloading(true);
+    try {
+      const histRes = await axios.get(`${BASE_URL}/history`, {
+        params: { station_id: getStationName(), unit_id: getUnitId() },
+      });
+      const toISO = (raw) => {
+        if (!raw) return "";
+        const s = String(raw).slice(0, 10);
+        if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
+        const d = new Date(raw);
+        return !isNaN(d) ? d.toISOString().slice(0, 10) : "";
+      };
+      const runs = (histRes.data || []).filter(item => {
+        const d = toISO(item.run_date || item.run_timestamp);
+        return d >= reportFromDate && d <= reportToDate;
+      });
+
+      if (runs.length === 0) {
+        setReportError("No data found for the selected date range.");
+        setReportDownloading(false);
+        return;
+      }
+
+      runs.sort((a, b) => {
+        const da = toISO(a.run_date || a.run_timestamp);
+        const db = toISO(b.run_date || b.run_timestamp);
+        return da.localeCompare(db);
+      });
+
+      const runsData = await Promise.all(
+        runs.map(async (item) => {
+          try {
+            const [dsRes, boilerRes, coalRes] = await Promise.all([
+              axios.get(`${BASE_URL}/history/${item.run_id}`),
+              axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`),
+              axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`),
+            ]);
+            return { runMeta: item, dataset: dsRes.data, boiler: boilerRes.data, coal: coalRes.data };
+          } catch (e) {
+            console.error(`Failed run ${item.run_id}`, e);
+            return null;
+          }
+        })
+      );
+      
+      const validRuns = runsData.filter(Boolean);
+      if (validRuns.length === 0) {
+        setReportError("Failed to fetch run data. Please try again.");
+        setReportDownloading(false);
+        return;
+      }
+
+      const payloads = validRuns.map(({ runMeta, dataset, boiler, coal }) => {
+        return buildGeneratePayload({
+          runMeta, dataset, boiler, coal,
+          stationName: getStationName(),
+          unitId: getUnitId(),
+        });
+      });
+
+      await downloadExcelFromBackend(
+        payloads,
+        `FTM_${getStationName()}_Unit${getUnitId()}_${reportFromDate}_to_${reportToDate}.xlsx`
+      );
+
+      setShowReportModal(false);
+      setReportFromDate("");
+      setReportToDate("");
+    } catch (err) {
+      console.error("Report download failed:", err);
+      setReportError(`Failed to generate report: ${err.message}`);
+    } finally {
+      setReportDownloading(false);
+    }
+  };
+
+  const submitRunDraft = async () => {
+    if (!isAdmin) { alert("Only administrators can upload data."); return; }
+    const payload = buildUploadPayload(runDraft);
+    if (!payload.run_meta?.run_date || !payload.run_meta?.run_time) {
+      alert("Please set run date & time."); return;
+    }
+    if (!payload.elevation_profile?.rows?.length) {
+      alert("Please add at least one elevation row with values."); return;
+    }
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("station_id", 1);
-      fd.append("unit_id", getUnitId());
-      fd.append("uploaded_by", "admin");
-      fd.append("notes", "");
-      await axios.post(`${BASE_URL}/upload`, fd);
+      await axios.post(`${BASE_URL}/upload-run`, payload, {
+        headers: { "Content-Type": "application/json" },
+      });
+      setShowIngestModal(false);
       await fetchMappingDates();
+      await fetchHistory();
       setShowSuccessModal(true);
       if (window.uploadModalTimer) clearTimeout(window.uploadModalTimer);
       window.uploadModalTimer = setTimeout(() => setShowSuccessModal(false), 2500);
     } catch (err) {
       console.error("Upload failed:", err);
-      alert("Upload failed");
+      alert(err?.response?.data?.detail || err?.response?.data?.message || "Upload failed");
     } finally {
       setUploading(false);
-      e.target.value = "";
-    }
-  };
-
-  const handleDownloadTemplate = async () => {
-    setDownloading(true);
-    try {
-      const stationName = getStationName();
-      const un = localStorage.getItem("selectedUnit");
-      const unitNumber = un ? JSON.parse(un).id || JSON.parse(un).name || "" : "";
-      const response = await fetch(
-        `${BASE_URL}/download-template?location=${encodeURIComponent(stationName)}&unit=${encodeURIComponent(unitNumber)}`
-      );
-      if (!response.ok) throw new Error("Server error");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `FTM_template_${stationName}_Unit${unitNumber}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Template download failed:", err);
-      alert("Failed to download template. Please try again.");
-    } finally {
-      setDownloading(false);
     }
   };
 
   const deleteRun = async (run_id) => {
-    if (!isAdmin) {
-      alert("Only administrators can delete data.");
-      return;
-    }
-    
+    if (!isAdmin) { alert("Only administrators can delete data."); return; }
     if (!window.confirm("Are you sure you want to delete this run?")) return;
     try {
       await axios.delete(`${BASE_URL}/runs/${run_id}`);
@@ -555,7 +899,7 @@ export default function App() {
     if (!rawDate) return "";
     const parsed = new Date(rawDate);
     if (isNaN(parsed)) return rawDate;
-    return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return parsed.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -567,14 +911,13 @@ export default function App() {
           <span style={S.ttVal}>{label}m</span>
         </div>
         {payload.map(e => {
-          if (e.value === null || e.value === undefined) return null;
-          
-          const cornerMatch = e.dataKey.match(/^c(\d+)$/);
-          const label = cornerMatch ? `Corner ${cornerMatch[1]}` : e.dataKey === 'avg' ? 'Average' : e.dataKey;
+          if (e.value == null) return null;
+          const cm = e.dataKey.match(/^c(\d+)$/);
+          const lbl = cm ? `Corner ${cm[1]}` : e.dataKey === "avg" ? "Average" : e.dataKey;
           return (
             <div key={e.dataKey} style={S.ttRow}>
               <span style={{ ...S.ttDot, background: e.color }} />
-              <span style={S.ttKey}>{label}</span>
+              <span style={S.ttKey}>{lbl}</span>
               <span style={{ ...S.ttNum, color: e.color }}>{Number(e.value).toFixed(1)}°C</span>
             </div>
           );
@@ -586,11 +929,11 @@ export default function App() {
   const SIDEBAR_W = 268;
   const MAIN_PADDING = 16;
   const GAP = 12;
+  const sidebarEffectiveOpen = sidebarOpen && !showIngestModal;
 
   return (
     <div style={{ background:"#f0eff8", minHeight:"100vh" }}>
 
-      {/* HEADER */}
       <header style={S.header}>
         <div style={S.headerInner}>
           <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
@@ -613,11 +956,9 @@ export default function App() {
                 <div style={S.suVal}>{selectedStation} · {selectedUnit}</div>
               </div>
             )}
-            
             {isAdmin && userLocation === "all" && (
               <div style={S.adminBadge}>👑 ADMIN</div>
             )}
-            
             <button onClick={handleLogout} style={S.logoutButton}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -647,31 +988,35 @@ export default function App() {
       </header>
 
       <div style={{ display:"flex" }}>
-
-        {/* SIDEBAR */}
         <aside style={{
           ...S.sidebar,
           width: SIDEBAR_W,
-          transform: sidebarOpen ? "translateX(0)" : `translateX(-${SIDEBAR_W}px)`,
+          transform: sidebarEffectiveOpen ? "translateX(0)" : `translateX(-${SIDEBAR_W}px)`,
         }}>
           {isAdmin && (
             <div style={S.sideSection}>
               <div style={S.secLabel}>INGEST DATA</div>
-              <label style={{ ...S.uploadBtn, opacity: uploading ? 0.7 : 1, cursor: "pointer" }}>
+              <button onClick={openIngest} disabled={uploading} style={{ ...S.uploadBtn, cursor: uploading ? "not-allowed" : "pointer" }}>
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M7 1v8M4 4l3-3 3 3M2 11h10" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                {uploading ? "UPLOADING…" : "UPLOAD EXCEL"}
-                <input type="file" onChange={handleUpload} accept=".xlsx" style={{ display:"none" }} />
-              </label>
-              <button onClick={handleDownloadTemplate} disabled={downloading} style={S.downloadBtn}>
-                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                {downloading ? "DOWNLOADING…" : "DOWNLOAD TEMPLATE"}
+                {uploading ? "UPLOADING…" : "CREATE FTM RECORD"}
               </button>
             </div>
           )}
+
+          <div style={S.sideSection}>
+            <div style={S.secLabel}>DOWNLOAD REPORT</div>
+            <button
+              onClick={() => { setShowReportModal(true); setReportError(""); }}
+              style={S.downloadBtn}
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              DOWNLOAD REPORT
+            </button>
+          </div>
 
           <div style={S.sideSection}>
             <div style={S.secLabel}>FILTER BY DATE</div>
@@ -705,17 +1050,15 @@ export default function App() {
           </div>
         </aside>
 
-        {/* MAIN */}
         <main style={{
           flex: 1,
-          marginLeft: sidebarOpen ? SIDEBAR_W : 0,
+          marginLeft: sidebarEffectiveOpen ? SIDEBAR_W : 0,
           transition: "margin-left 0.3s ease",
           padding: `${MAIN_PADDING}px`,
           minHeight: "calc(100vh - 56px)",
           boxSizing: "border-box",
           overflowX: "auto",
         }}>
-
           <div style={{
             display: "grid",
             gridTemplateColumns: "minmax(220px,1fr) minmax(220px,1fr)",
@@ -727,13 +1070,12 @@ export default function App() {
             {[0, 1].map(slotIdx => {
               const id = selected[slotIdx];
               const dataset = id ? datasets[id] : null;
-
               const graphLabel = slotIdx === 0 ? "GRAPH 1" : "GRAPH 2";
               const accent = slotIdx === 0 ? "#4f46e5" : "#d97706";
 
               if (!id || !dataset) {
                 return (
-                  <section key={`empty-${slotIdx}`} style={{ ...S.runSection, minHeight: "180px", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "10px", opacity: 0.45 }}>
+                  <section key={`empty-${slotIdx}`} style={{ ...S.runSection, minHeight:"180px", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:"10px", opacity:0.45 }}>
                     <div style={{ width:"3px", height:"28px", background:accent, borderRadius:"2px" }} />
                     <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:accent }}>{graphLabel}</div>
                     <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"13px", letterSpacing:"0.2em", color:"#c8c6e0" }}>SELECT A DATE</div>
@@ -746,38 +1088,29 @@ export default function App() {
               const minElevation = allElevations[0];
               const maxElevation = allElevations[allElevations.length - 1];
 
-              const allCornerKeys = Object.keys(runData[0] || {}).filter(key => key.match(/^c\d+$/)).sort((a, b) => {
-                const numA = parseInt(a.match(/\d+/)[0]);
-                const numB = parseInt(b.match(/\d+/)[0]);
-                return numA - numB;
-              });
-              
-              const cornerKeys = allCornerKeys.filter(key => {
-                return runData.some(point => point[key] !== null && point[key] !== undefined);
-              });
+              const allCornerKeys = Object.keys(runData[0] || {})
+                .filter(k => k.match(/^c\d+$/))
+                .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+              const cornerKeys = allCornerKeys.filter(k =>
+                runData.some(p => p[k] !== null && p[k] !== undefined)
+              );
 
               const dynamicColors = {
-                ...Object.fromEntries(cornerKeys.map((key, i) => [key, CORNER_COLORS[i % CORNER_COLORS.length]])),
-                avg: "#ef4444"
+                ...Object.fromEntries(cornerKeys.map((k, i) => [k, CORNER_COLORS[i % CORNER_COLORS.length]])),
+                avg: "#ef4444",
               };
-
               const dynamicLabels = {
-                ...Object.fromEntries(cornerKeys.map(key => {
-                  const num = key.match(/\d+/)[0];
-                  return [key, `Corner ${num}`];
-                })),
-                avg: "Average"
+                ...Object.fromEntries(cornerKeys.map(k => [k, `Corner ${k.match(/\d+/)[0]}`])),
+                avg: "Average",
               };
 
               const currentVisibleLines = visibleLines[id] || {
-                ...Object.fromEntries(cornerKeys.map(key => [key, true])),
-                avg: true
+                ...Object.fromEntries(cornerKeys.map(k => [k, true])),
+                avg: true,
               };
-              
               const visibleKeys = cornerKeys.filter(k => currentVisibleLines[k]);
-
-              const visibleDataPoints = runData.flatMap(r => 
-                visibleKeys.map(key => r[key]).filter(v => v !== null && v !== undefined)
+              const visibleDataPoints = runData.flatMap(r =>
+                visibleKeys.map(k => r[k]).filter(v => v !== null && v !== undefined)
               );
               const xMin = visibleDataPoints.length ? Math.min(...visibleDataPoints) : 0;
               const xMax = visibleDataPoints.length ? Math.max(...visibleDataPoints) : 100;
@@ -791,9 +1124,10 @@ export default function App() {
               const runMeta = history.find(r => r.run_id === id) || {};
               const runTitleDate = formatRunDate(runMeta.run_date || dataset.run_date || runMeta.run_timestamp);
               const runSubtitle = dataset.filename || runMeta.run_date || `RUN ${id}`;
+              const isDownloadingThisRun = !!runDownloading[id];
 
               return (
-                <section key={id} style={{ ...S.runSection, minWidth: 0 }}>
+                <section key={id} style={{ ...S.runSection, minWidth:0 }}>
                   <div style={S.runHeader}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
@@ -804,17 +1138,42 @@ export default function App() {
                           <div style={S.runSub}>{runSubtitle}</div>
                         </div>
                       </div>
-                      {isAdmin && (
-                        <button onClick={() => deleteRun(id)} style={S.deleteBtn} title="Delete this run">DELETE</button>
-                      )}
+
+                      <div style={{ display:"flex", gap:"6px", flexShrink:0 }}>
+                        <button
+                          onClick={() => handleDownloadSingleRun(id)}
+                          disabled={isDownloadingThisRun}
+                          style={{
+                            ...S.downloadRunBtn,
+                            opacity: isDownloadingThisRun ? 0.65 : 1,
+                            cursor: isDownloadingThisRun ? "not-allowed" : "pointer",
+                          }}
+                          title="Download this run as Excel"
+                        >
+                          {isDownloadingThisRun ? (
+                            <span style={{ display:"inline-block", width:"9px", height:"9px", border:"1.5px solid rgba(22,163,74,0.3)", borderTopColor:"#16a34a", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
+                          ) : (
+                            <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8">
+                              <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                          {isDownloadingThisRun ? "…" : "XLSX"}
+                        </button>
+
+                        {isAdmin && (
+                          <button onClick={() => deleteRun(id)} style={S.deleteBtn} title="Delete this run">
+                            DELETE
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1px", marginTop:"10px" }}>
                       {[
                         { l:"MAX", v:`${maxTemp.toFixed(0)}°C`, c:"#dc2626" },
                         { l:"MIN", v:`${minTemp.toFixed(0)}°C`, c:"#0891b2" },
-                        { l:"AVG", v:`${avgTemp}°C`, c:"#d97706" },
-                        { l:"LEVELS", v: runData.length, c:"#6e6c96" },
+                        { l:"AVG", v:`${avgTemp}°C`,            c:"#d97706" },
+                        { l:"LEVELS", v:runData.length,          c:"#6e6c96" },
                       ].map(kpi => (
                         <div key={kpi.l} style={S.kpiCard}>
                           <div style={{ ...S.kpiVal, color:kpi.c }}>{kpi.v}</div>
@@ -826,10 +1185,10 @@ export default function App() {
 
                   <div style={S.tabBar}>
                     {[
-                      { k:"graph", l:"GRAPH" },
-                      { k:"raw", l:"RAW DATA" },
+                      { k:"graph",  l:"GRAPH"        },
+                      { k:"raw",    l:"RAW DATA"      },
                       { k:"boiler", l:"BOILER PARAMS" },
-                      { k:"coal", l:"COAL MILLS" },
+                      { k:"coal",   l:"COAL MILLS"    },
                     ].map(({ k, l }) => (
                       <button key={k} onClick={() => setTab(id, k)} style={{ ...S.tabBtn, ...(getTab(id) === k ? S.tabActive : {}) }}>{l}</button>
                     ))}
@@ -838,21 +1197,31 @@ export default function App() {
                   {getTab(id) === "graph" && (
                     <div style={S.chartPanel}>
                       <div style={S.chartLabel}>THERMAL PROFILE — ELEVATION VS TEMPERATURE</div>
-                      <div style={{ width:"100%", height: CHART_HEIGHT }}>
+                      <div style={{ width:"100%", height:CHART_HEIGHT }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={runData} layout="vertical">
                             <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
                             <YAxis dataKey="elevation" type="number" domain={[minElevation, maxElevation]} ticks={allElevations} interval={0} reversed width={44} tick={{ fill:"#a0a0c0", fontSize:9, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
                             <XAxis type="number" domain={[xMin - xPadding, xMax + xPadding]} tick={{ fill:"#a0a0c0", fontSize:9, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
                             <Tooltip content={<CustomTooltip />} />
-                            {cornerKeys.map(key => currentVisibleLines[key] && (<Line key={key} type="monotone" dataKey={key} stroke={dynamicColors[key]} dot={false} strokeWidth={2} connectNulls={false} />))}
-                            {currentVisibleLines.avg && (<Line type="monotone" dataKey="avg" stroke={dynamicColors.avg} dot={false} strokeWidth={3} connectNulls={false} />)}
+                            {cornerKeys.map(k => currentVisibleLines[k] && (
+                              <Line key={k} type="monotone" dataKey={k} stroke={dynamicColors[k]} dot={false} strokeWidth={2} connectNulls={false} />
+                            ))}
+                            {currentVisibleLines.avg && (
+                              <Line type="monotone" dataKey="avg" stroke={dynamicColors.avg} dot={false} strokeWidth={3} connectNulls={false} />
+                            )}
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
                       <div style={S.filterBar}>
                         {Object.keys(dynamicColors).map(k => (
-                          <button key={k} onClick={() => setVisibleLines(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [k]: !(prev[id]?.[k] ?? true) } }))} style={{ ...S.filterBtn, background: currentVisibleLines[k] ? dynamicColors[k] + "18" : "#f5f5fb", borderColor: currentVisibleLines[k] ? dynamicColors[k] : "#e2e1f0", color: currentVisibleLines[k] ? dynamicColors[k] : "#a0a0c0" }}>{dynamicLabels[k]}</button>
+                          <button
+                            key={k}
+                            onClick={() => setVisibleLines(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [k]: !(prev[id]?.[k] ?? true) } }))}
+                            style={{ ...S.filterBtn, background: currentVisibleLines[k] ? dynamicColors[k] + "18" : "#f5f5fb", borderColor: currentVisibleLines[k] ? dynamicColors[k] : "#e2e1f0", color: currentVisibleLines[k] ? dynamicColors[k] : "#a0a0c0" }}
+                          >
+                            {dynamicLabels[k]}
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -866,7 +1235,7 @@ export default function App() {
                           <thead>
                             <tr>
                               <th style={S.th}>ELEVATION (M)</th>
-                              {cornerKeys.map(key => (<th key={key} style={S.th}>{dynamicLabels[key]}</th>))}
+                              {cornerKeys.map(k => <th key={k} style={S.th}>{dynamicLabels[k]}</th>)}
                               <th style={S.th}>AVERAGE</th>
                             </tr>
                           </thead>
@@ -874,7 +1243,7 @@ export default function App() {
                             {runData.map((row, i) => (
                               <tr key={i} style={{ borderBottom:"0.5px solid #eeecf8" }}>
                                 <td style={S.td}>{row.elevation}m</td>
-                                {cornerKeys.map(key => (<td key={key} style={S.td}>{row[key] !== null && row[key] !== undefined ? row[key] : "—"}</td>))}
+                                {cornerKeys.map(k => <td key={k} style={S.td}>{row[k] ?? "—"}</td>)}
                                 <td style={{ ...S.td, color:"#d97706", fontWeight:500 }}>{row.avg}</td>
                               </tr>
                             ))}
@@ -909,40 +1278,426 @@ export default function App() {
           <div style={S.modal}>
             <div style={S.modalIcon}>✓</div>
             <div style={S.modalTitle}>UPLOAD SUCCESSFUL</div>
-            <div style={S.modalText}>Your file has been processed and added to the run archive.</div>
+            <div style={S.modalText}>Run data has been saved and added to the run archive.</div>
           </div>
         </div>
       )}
+
+      {showReportModal && (
+        <div style={S.modalOverlay} onMouseDown={(e) => { if (e.target === e.currentTarget) setShowReportModal(false); }}>
+          <div style={{ ...S.modal, maxWidth:"420px", textAlign:"left" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"16px" }}>
+              <div>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#1e1c3a" }}>DOWNLOAD REPORT</div>
+                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", marginTop:"3px", letterSpacing:"0.08em" }}>
+                  Single Excel file with separate sheets for each run
+                </div>
+              </div>
+              <button onClick={() => setShowReportModal(false)} style={{ border:"1px solid #eee", background:"#fff", borderRadius:"10px", width:"32px", height:"32px", cursor:"pointer", color:"#6e6c96", fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"14px" }}>
+              <div style={S.field}>
+                <div style={S.fieldLabel}>FROM DATE</div>
+                <input type="date" value={reportFromDate} onChange={e => { setReportFromDate(e.target.value); setReportError(""); }} style={{ ...S.fieldInput, fontSize:"13px" }} />
+              </div>
+              <div style={S.field}>
+                <div style={S.fieldLabel}>TO DATE</div>
+                <input type="date" value={reportToDate} onChange={e => { setReportToDate(e.target.value); setReportError(""); }} style={{ ...S.fieldInput, fontSize:"13px" }} />
+              </div>
+            </div>
+
+            {reportError && (
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#dc2626", letterSpacing:"0.08em", marginBottom:"12px", padding:"8px 10px", background:"#fff1f2", borderRadius:"6px", border:"1px solid #fecdd3" }}>
+                {reportError}
+              </div>
+            )}
+
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#b0aed0", letterSpacing:"0.06em", marginBottom:"14px", padding:"8px 10px", background:"#f5f4ff", borderRadius:"6px" }}>
+              Station: <strong style={{ color:"#4f46e5" }}>{getStationName() || "—"}</strong> · Unit: <strong style={{ color:"#4f46e5" }}>{getUnitName() || "—"}</strong>
+            </div>
+
+            <div style={{ display:"flex", gap:"8px", justifyContent:"flex-end" }}>
+              <button onClick={() => setShowReportModal(false)} style={S.secondaryBtn}>CANCEL</button>
+              <button
+                onClick={handleDownloadReport}
+                disabled={reportDownloading}
+                style={{ ...S.primaryBtn, opacity: reportDownloading ? 0.7 : 1, display:"flex", alignItems:"center", gap:"6px" }}
+              >
+                {reportDownloading ? (
+                  <>
+                    <span style={{ display:"inline-block", width:"10px", height:"10px", border:"2px solid rgba(255,255,255,0.3)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
+                    GENERATING…
+                  </>
+                ) : (
+                  <>
+                    <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    DOWNLOAD XLSX
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showIngestModal && (
+        <div style={S.ingestOverlay} onMouseDown={(e) => { if (e.target === e.currentTarget) setShowIngestModal(false); }}>
+          <div style={{ ...S.ingestSheet, padding: isNarrow ? 0 : "16px" }}>
+            <div style={{
+              ...S.ingestModal,
+              width: "min(980px, 100%)",
+              height: isNarrow ? "100%" : "auto",
+              maxHeight: isNarrow ? "100%" : "min(92vh, 860px)",
+              borderRadius: isNarrow ? 0 : "14px",
+            }} role="dialog" aria-modal="true">
+
+              <div style={{ ...S.ingestHeader, position:"sticky", top:0, zIndex:3 }}>
+                <div>
+                  <div style={S.ingestTitle}>BASIC INFORMATION</div>
+                  <div style={S.ingestSub}>Step {["run","elevation","boiler","flue","mills"].indexOf(ingestTab) + 1} of 5 — Fill the highlighted Excel fields</div>
+                </div>
+                <button onClick={() => setShowIngestModal(false)} style={S.ingestClose} aria-label="Close">✕</button>
+              </div>
+
+              <div style={{ ...S.ingestTabs, position:"sticky", top:64, zIndex:2, overflowX: isNarrow ? "auto" : "visible", WebkitOverflowScrolling:"touch", flexWrap: isNarrow ? "nowrap" : S.ingestTabs.flexWrap }}>
+                {[
+                  { k:"run", l:"1. RUN" },
+                  { k:"elevation", l:"2. ELEVATION" },
+                  { k:"boiler", l:"3. BOILER" },
+                  { k:"flue", l:"4. FLUE GAS" },
+                  { k:"mills", l:"5. COAL MILLS" },
+                ].map(t => (
+                  <button key={t.k} onClick={() => setIngestTab(t.k)} style={{ ...S.ingestTabBtn, ...(ingestTab === t.k ? S.ingestTabActive : {}) }}>{t.l}</button>
+                ))}
+              </div>
+
+              <div style={{ ...S.ingestBody, padding: isNarrow ? "12px 10px 10px" : S.ingestBody.padding }}>
+                {ingestTab === "run" && (
+                  <div style={{ ...S.ingestGrid, gridTemplateColumns: isNarrow ? "1fr" : S.ingestGrid.gridTemplateColumns }}>
+                    {[
+                      { k:"run_date", l:"DATE", type:"date" },
+                      { k:"run_time", l:"TIME", type:"time" },
+                      { k:"load_mw", l:"LOAD (MW)", type:"number" },
+                      { k:"total_coal_flow_tph", l:"TOTAL COAL FLOW (TPH)", type:"number" },
+                      { k:"total_air_flow_tph", l:"TOTAL AIR FLOW (TPH)", type:"number" },
+                      { k:"burner_tilt_deg", l:"BURNER TILT (DEG)", type:"number" },
+                      { k:"coal_mills_in_service_count", l:"COAL MILLS IN SERVICE (COUNT)", type:"number" },
+                      { k:"coal_mills_in_service", l:"COAL MILLS IN SERVICE (E.G. ABDEFG)", type:"text" },
+                      { k:"oil_guns_in_service_count", l:"OIL GUNS IN SERVICE (COUNT)", type:"number" },
+                      { k:"oil_guns_in_service", l:"OIL GUNS IN SERVICE (E.G. 10,27,24,17)", type:"text" },
+                      { k:"notes", l:"NOTES", type:"text", span: isNarrow ? 1 : 2 },
+                    ].map(f => (
+                      <div key={f.k} style={{ ...S.field, gridColumn: f.span ? `span ${f.span}` : undefined }}>
+                        <div style={S.fieldLabel}>{f.l}</div>
+                        <input
+                          type={f.type}
+                          inputMode={f.type === "number" ? "decimal" : undefined}
+                          value={runDraft.meta[f.k]}
+                          onChange={(e) => setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } }))}
+                          style={{ ...S.fieldInput, padding: isNarrow ? "12px 12px" : S.fieldInput.padding, fontSize: isNarrow ? "15px" : S.fieldInput.fontSize }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {ingestTab === "elevation" && (
+                  <div>
+                    <div style={S.ingestToolbar}>
+                      <div style={S.helperText}>Add/remove corner columns & elevation rows, then enter temperatures by elevation.</div>
+                      
+                      {/* Corner Controls */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#b0aed0", letterSpacing: "0.08em" }}>CORNERS</span>
+                        <div style={{ display: "flex", gap: "2px" }}>
+                          <button 
+                            style={{ ...S.smallBtn, borderRadius: "10px 0 0 10px", padding: "8px 8px" }} 
+                            onClick={() => setRunDraft(p => {
+                              const next = nextCornerLabel(p.elevation.columns);
+                              const columns = [...p.elevation.columns, next];
+                              const rows = p.elevation.rows.map(r => ({ ...r, values: { ...r.values, [next]: "" } }));
+                              return { ...p, elevation: { ...p.elevation, columns, rows } };
+                            })}
+                            title="Add Corner"
+                          >
+                            +
+                          </button>
+                          <button 
+                            style={{ ...S.smallBtn, borderRadius: "0 10px 10px 0", padding: "8px 8px", opacity: runDraft.elevation.columns.length <= 1 ? 0.5 : 1 }} 
+                            disabled={runDraft.elevation.columns.length <= 1}
+                            onClick={() => setRunDraft(p => {
+                              const columns = p.elevation.columns.slice(0, -1);
+                              const removed = p.elevation.columns[p.elevation.columns.length - 1];
+                              const rows = p.elevation.rows.map(r => { const v = { ...(r.values || {}) }; delete v[removed]; return { ...r, values: v }; });
+                              return { ...p, elevation: { ...p.elevation, columns, rows } };
+                            })}
+                            title="Remove Corner"
+                          >
+                            −
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Elevation Row Controls */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "4px", marginLeft: "12px" }}>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#b0aed0", letterSpacing: "0.08em" }}>ROWS</span>
+                        <div style={{ display: "flex", gap: "2px" }}>
+                          <button 
+                            style={{ ...S.smallBtn, borderRadius: "10px 0 0 10px", padding: "8px 8px" }}
+                            onClick={() => setRunDraft(p => {
+                              const values = Object.fromEntries(p.elevation.columns.map((c) => [c, ""]));
+                              return { ...p, elevation: { ...p.elevation, rows: [...p.elevation.rows, { elevation_m: "", values }] } };
+                            })}
+                            title="Add Elevation Row"
+                          >
+                            +
+                          </button>
+                          <button 
+                            style={{ ...S.smallBtn, borderRadius: "0 10px 10px 0", padding: "8px 8px", opacity: runDraft.elevation.rows.length <= 1 ? 0.5 : 1 }} 
+                            disabled={runDraft.elevation.rows.length <= 1}
+                            onClick={() => setRunDraft(p => ({
+                              ...p,
+                              elevation: { ...p.elevation, rows: p.elevation.rows.slice(0, -1) }
+                            }))}
+                            title="Remove Elevation Row"
+                          >
+                            −
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", border:"1px solid #f0eef8", borderRadius:"10px" }}>
+                      <table style={{ ...S.table, minWidth:560 }}>
+                        <thead>
+                          <tr>
+                            <th style={S.th}>ELEVATION (M)</th>
+                            {runDraft.elevation.columns.map((c) => <th key={c} style={S.th}>{c.toUpperCase()}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {runDraft.elevation.rows.map((r, idx) => (
+                            <tr key={idx} style={{ borderBottom:"0.5px solid #eeecf8" }}>
+                              <td style={S.td}>
+                                <input value={r.elevation_m} onChange={(e) => setRunDraft(p => { const rows=[...p.elevation.rows]; rows[idx]={...rows[idx],elevation_m:e.target.value}; return {...p,elevation:{...p.elevation,rows}}; })} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet?"14px":S.cellInput.fontSize }} placeholder="e.g. 56.4" />
+                              </td>
+                              {runDraft.elevation.columns.map((c) => (
+                                <td key={c} style={S.td}>
+                                  <input value={r.values?.[c]??""} onChange={(e) => setRunDraft(p => { const rows=[...p.elevation.rows]; const row=rows[idx]; rows[idx]={...row,values:{...(row.values||{}),[c]:e.target.value}}; return {...p,elevation:{...p.elevation,rows}}; })} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet?"14px":S.cellInput.fontSize }} placeholder="°C" />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{ marginTop:"10px" }}>
+                      <div style={S.helperText}>Tip: averages are auto-calculated from non-empty corners.</div>
+                    </div>
+                  </div>
+                )}
+
+                {ingestTab === "boiler" && (
+                  <div style={{ ...S.ingestGrid, gridTemplateColumns: isNarrow ? "1fr" : S.ingestGrid.gridTemplateColumns }}>
+                    {[
+                      { k:"main_steam_pressure_l", l:"MAIN STEAM PRESSURE (L)" },
+                      { k:"main_steam_pressure_r", l:"MAIN STEAM PRESSURE (R)" },
+                      { k:"main_steam_flow_l",     l:"MAIN STEAM FLOW (L)" },
+                      { k:"main_steam_flow_r",     l:"MAIN STEAM FLOW (R)" },
+                      { k:"superheat_spray_l",     l:"SUPERHEAT SPRAY (L)" },
+                      { k:"superheat_spray_r",     l:"SUPERHEAT SPRAY (R)" },
+                      { k:"reheat_spray_l",        l:"REHEAT SPRAY (L)" },
+                      { k:"reheat_spray_r",        l:"REHEAT SPRAY (R)" },
+                      { k:"o2_aph_inlet_pcr_l",    l:"O₂ AT APH INLET (PCR) (L)" },
+                      { k:"o2_aph_inlet_pcr_r",    l:"O₂ AT APH INLET (PCR) (R)" },
+                      { k:"wind_box_dp_l",         l:"WIND BOX DP A/B (L)" },
+                      { k:"wind_box_dp_r",         l:"WIND BOX DP A/B (R)" },
+                      { k:"total_pa_flow",         l:"TOTAL PA FLOW (TPH)" },
+                      { k:"total_fd_fan_flow",     l:"TOTAL FD FAN FLOW (TPH)" },
+                      { k:"total_pa_to_windbox_flow", l:"TOTAL PA TO WIND BOX (TPH)" },
+                    ].map(f => (
+                      <div key={f.k} style={S.field}>
+                        <div style={S.fieldLabel}>{f.l}</div>
+                        <input type="number" inputMode="decimal" value={runDraft.boiler[f.k]} onChange={(e) => setRunDraft(p => ({ ...p, boiler: { ...p.boiler, [f.k]: e.target.value } }))} style={{ ...S.fieldInput, padding: isMobileSheet?"12px 12px":S.fieldInput.padding }} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {ingestTab === "flue" && (
+                  <div style={{ ...S.ingestGrid, gridTemplateColumns: isNarrow ? "1fr" : S.ingestGrid.gridTemplateColumns }}>
+                    {[
+                      { k:"fg_temp_after_dpsh_l", l:"FG TEMP AFTER DPSH (L)" },
+                      { k:"fg_temp_after_dpsh_r", l:"FG TEMP AFTER DPSH (R)" },
+                      { k:"fg_temp_after_psh_l",  l:"FG TEMP AFTER PSH (L)" },
+                      { k:"fg_temp_after_psh_r",  l:"FG TEMP AFTER PSH (R)" },
+                      { k:"fg_temp_after_rh_l",   l:"FG TEMP AFTER RH (L)" },
+                      { k:"fg_temp_after_rh_r",   l:"FG TEMP AFTER RH (R)" },
+                      { k:"fg_temp_after_hsh_l",  l:"FG TEMP AFTER HSH (L)" },
+                      { k:"fg_temp_after_hsh_r",  l:"FG TEMP AFTER HSH (R)" },
+                      { k:"fg_temp_after_eco_l",  l:"FG TEMP AFTER ECONOMIZER (L)" },
+                      { k:"fg_temp_after_eco_r",  l:"FG TEMP AFTER ECONOMIZER (R)" },
+                      { k:"fg_temp_after_aph_l",  l:"FG TEMP AFTER APH (L)" },
+                      { k:"fg_temp_after_aph_r",  l:"FG TEMP AFTER APH (R)" },
+                    ].map(f => (
+                      <div key={f.k} style={S.field}>
+                        <div style={S.fieldLabel}>{f.l}</div>
+                        <input type="number" inputMode="decimal" value={runDraft.flueGas[f.k]} onChange={(e) => setRunDraft(p => ({ ...p, flueGas: { ...p.flueGas, [f.k]: e.target.value } }))} style={{ ...S.fieldInput, padding: isMobileSheet?"12px 12px":S.fieldInput.padding }} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {ingestTab === "mills" && (
+                  <div>
+                    {/* UPDATED: Side-by-side controls for Mills with MAX_MILLS cap */}
+                    <div style={S.ingestToolbar}>
+                      <div style={S.helperText}>Add/remove coal mill columns (A, B, C…) and enter their parameters. Max {MAX_MILLS} mills.</div>
+                      
+                      {/* Mill Controls */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#b0aed0", letterSpacing: "0.08em" }}>MILLS</span>
+                        <div style={{ display: "flex", gap: "2px" }}>
+                          <button 
+                            style={{ 
+                              ...S.smallBtn, 
+                              borderRadius: "10px 0 0 10px", 
+                              padding: "8px 8px",
+                              opacity: runDraft.coalMills.mills.length >= MAX_MILLS ? 0.5 : 1,
+                              cursor: runDraft.coalMills.mills.length >= MAX_MILLS ? "not-allowed" : "pointer"
+                            }}
+                            disabled={runDraft.coalMills.mills.length >= MAX_MILLS}
+                            onClick={() => setRunDraft(p => {
+                              if (p.coalMills.mills.length >= MAX_MILLS) return p;
+                              const used = new Set(p.coalMills.mills);
+                              const next = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").find(x => !used.has(x)) || `M${p.coalMills.mills.length+1}`;
+                              const mills = [...p.coalMills.mills, next];
+                              const byMill = { ...p.coalMills.byMill, [next]: { coal_flow_tph:"", pa_flow_tph:"", mill_dp_mmwc:"", mill_outlet_temp:"", mill_current_amp:"" } };
+                              return { ...p, coalMills: { ...p.coalMills, mills, byMill } };
+                            })}
+                            title={runDraft.coalMills.mills.length >= MAX_MILLS ? `Maximum ${MAX_MILLS} mills allowed` : "Add Mill"}
+                          >
+                            +
+                          </button>
+                          <button 
+                            style={{ ...S.smallBtn, borderRadius: "0 10px 10px 0", padding: "8px 8px", opacity: runDraft.coalMills.mills.length <= 1 ? 0.5 : 1 }} 
+                            disabled={runDraft.coalMills.mills.length <= 1}
+                            onClick={() => setRunDraft(p => {
+                              const mills = p.coalMills.mills.slice(0,-1);
+                              const removed = p.coalMills.mills[p.coalMills.mills.length-1];
+                              const byMill = { ...p.coalMills.byMill }; delete byMill[removed];
+                              return { ...p, coalMills: { ...p.coalMills, mills, byMill } };
+                            })}
+                            title="Remove Mill"
+                          >
+                            −
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", border:"1px solid #f0eef8", borderRadius:"10px" }}>
+                      <table style={{ ...S.table, minWidth:640 }}>
+                        <thead>
+                          <tr>
+                            <th style={S.th}>PARAMETER</th>
+                            {runDraft.coalMills.mills.map(m => <th key={m} style={S.th}>MILL {m}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { k:"coal_flow_tph",    l:"COAL FLOW (TPH)"      },
+                            { k:"pa_flow_tph",      l:"PA FLOW (TPH)"        },
+                            { k:"mill_dp_mmwc",     l:"MILL DP (MMWC)"       },
+                            { k:"mill_outlet_temp", l:"MILL OUTLET TEMP (°C)"},
+                            { k:"mill_current_amp", l:"MILL CURRENT (AMP)"   },
+                          ].map(row => (
+                            <tr key={row.k} style={{ borderBottom:"0.5px solid #eeecf8" }}>
+                              <td style={S.td}>{row.l}</td>
+                              {runDraft.coalMills.mills.map(m => (
+                                <td key={m} style={S.td}>
+                                  <input value={runDraft.coalMills.byMill?.[m]?.[row.k]??""} onChange={(e) => setRunDraft(p => ({ ...p, coalMills: { ...p.coalMills, byMill: { ...p.coalMills.byMill, [m]: { ...(p.coalMills.byMill?.[m]||{}), [row.k]: e.target.value } } } }))} inputMode="decimal" style={S.cellInput} placeholder="—" />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ ...S.ingestFooter, position:"sticky", bottom:0, zIndex:2 }}>
+                <div style={S.footerHint}>Station: <strong>{getStationName()||"—"}</strong> · Unit: <strong>{getUnitId()||"—"}</strong></div>
+                <div style={{ display:"flex", gap:"10px", flexWrap:"wrap", justifyContent: isNarrow ? "stretch" : "flex-end", width: isNarrow ? "100%" : "auto" }}>
+                  <button onClick={() => setShowIngestModal(false)} style={{ ...S.secondaryBtn, width: isNarrow?"100%":"auto" }}>CANCEL</button>
+                  {ingestTab === "mills" ? (
+                    <button onClick={submitRunDraft} disabled={uploading} style={{ ...S.primaryBtn, width: isNarrow?"100%":"auto", opacity: uploading ? 0.7 : 1 }}>
+                      {uploading ? "SAVING…" : "SAVE RUN"}
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => {
+                        const tabs = ["run","elevation","boiler","flue","mills"];
+                        const currentIdx = tabs.indexOf(ingestTab);
+                        setIngestTab(tabs[currentIdx + 1]);
+                      }} 
+                      style={{ ...S.primaryBtn, width: isNarrow?"100%":"auto" }}
+                    >
+                      SAVE & NEXT
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
-// ─── STYLES ───────────────────────────────────────────────────
 const S = {
-  modalOverlay: {
-    position:"fixed", top:0, left:0, right:0, bottom:0,
-    background:"rgba(20, 18, 40, 0.4)", backdropFilter:"blur(6px)",
-    display:"flex", alignItems:"center", justifyContent:"center", zIndex:100,
-  },
-  modal: { 
-    width:"90%", maxWidth:"360px", padding:"24px", 
-    background:"#ffffff", borderRadius:"12px", textAlign:"center", 
-    boxShadow:"0 20px 35px -10px rgba(0,0,0,0.2)" 
-  },
-  modalIcon: { 
-    width:"50px", height:"50px", borderRadius:"50%", background:"#16a34a", 
-    color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", 
-    fontSize:"24px", margin:"0 auto 12px" 
-  },
+  modalOverlay: { position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(20,18,40,0.4)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 },
+  modal: { width:"90%", maxWidth:"360px", padding:"24px", background:"#ffffff", borderRadius:"12px", textAlign:"center", boxShadow:"0 20px 35px -10px rgba(0,0,0,0.2)" },
+  modalIcon: { width:"50px", height:"50px", borderRadius:"50%", background:"#16a34a", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"24px", margin:"0 auto 12px" },
   modalTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#16a34a" },
   modalText: { fontFamily:"'DM Mono',monospace", fontSize:"11px", color:"#6e6c96", marginTop:"8px", letterSpacing:"0.05em" },
+
+  ingestOverlay: { position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(20,18,40,0.55)", backdropFilter:"blur(8px)", display:"flex", alignItems:"stretch", justifyContent:"stretch", padding:0, zIndex:200 },
+  ingestSheet: { flex:1, width:"100%", height:"100%", display:"flex", alignItems:"stretch", justifyContent:"center", boxSizing:"border-box" },
+  ingestModal: { width:"min(980px,100%)", maxHeight:"min(92vh,860px)", background:"#ffffff", borderRadius:"14px", boxShadow:"0 28px 60px -18px rgba(0,0,0,0.35)", overflow:"hidden", display:"flex", flexDirection:"column" },
+  ingestHeader: { display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", padding:"14px 16px", borderBottom:"1px solid #f0eef8", background:"linear-gradient(180deg,#fbfaff 0%,#ffffff 100%)" },
+  ingestTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#1e1c3a" },
+  ingestSub: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", marginTop:"4px", letterSpacing:"0.08em" },
+  ingestClose: { border:"1px solid #eee", background:"#fff", borderRadius:"10px", width:"36px", height:"36px", cursor:"pointer", color:"#6e6c96" },
+  ingestTabs: { display:"flex", gap:"6px", padding:"10px 12px", borderBottom:"1px solid #f0eef8", flexWrap:"wrap", background:"#ffffff" },
+  ingestTabBtn: { border:"0.5px solid #e2e1f0", background:"#fff", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"7px 10px", cursor:"pointer", borderRadius:"10px", color:"#b0aed0" },
+  ingestTabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
+  ingestBody: { padding:"12px 12px 10px", overflow:"auto" },
+  ingestFooter: { padding:"12px 12px", borderTop:"1px solid #f0eef8", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", flexWrap:"wrap", background:"#ffffff" },
+  footerHint: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", letterSpacing:"0.08em" },
+  ingestGrid: { display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:"10px" },
+  ingestToolbar: { display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", marginBottom:"10px", flexWrap:"wrap" },
+  helperText: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", letterSpacing:"0.06em" },
+  field: { display:"flex", flexDirection:"column", gap:"6px" },
+  fieldLabel: { fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.18em", color:"#c8c6e0" },
+  fieldInput: { width:"100%", border:"1px solid #e8e6f4", borderRadius:"10px", padding:"10px 10px", fontSize:"13px", outline:"none", background:"#fbfaff", boxSizing:"border-box" },
+  cellInput: { width:"100%", border:"1px solid #e8e6f4", borderRadius:"8px", padding:"8px 8px", fontSize:"12px", outline:"none", background:"#ffffff" },
+  smallBtn: { border:"1px solid #e8e6f4", background:"#ffffff", borderRadius:"10px", padding:"8px 10px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.1em", color:"#4f46e5" },
+  primaryBtn: { border:"none", background:"#4f46e5", color:"#fff", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.12em" },
+  secondaryBtn: { border:"1px solid #e8e6f4", background:"#ffffff", color:"#6e6c96", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.12em" },
 
   header: { background:"#ffffff", borderBottom:"1px solid #e8e6f4", position:"sticky", top:0, zIndex:50, boxShadow:"0 1px 0 rgba(79,70,229,0.06)" },
   hamburger: { background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", gap:"4px", padding:"4px" },
   headerInner: { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 20px", flexWrap:"wrap" },
   hLine: { display:"block", width:"18px", height:"1.5px", background:"#9896c0" },
   logoMark: { width:"36px", height:"36px", border:"1px solid #e2e1f0", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5fb", flexShrink:0 },
-  brandName: { fontSize:"clamp(10px, 1.4vw, 17px)", fontWeight:"600" },
+  brandName: { fontSize:"clamp(10px,1.4vw,17px)", fontWeight:"600" },
   brandTag: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0", marginTop:"3px" },
   suLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.18em", color:"#b0aed0" },
   suVal: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", color:"#4f46e5", letterSpacing:"0.08em" },
@@ -970,6 +1725,8 @@ const S = {
   tabBar: { display:"flex", gap:"3px", padding:"8px 10px", borderBottom:"1px solid #f0eef8", background:"#faf9ff", flexWrap:"wrap" },
   tabBtn: { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.08em", padding:"4px 7px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0" },
   tabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
+
+  downloadRunBtn: { display:"flex", alignItems:"center", gap:"5px", background:"#f0fdf4", border:"1px solid #bbf7d0", color:"#16a34a", padding:"5px 9px", borderRadius:"6px", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.1em", flexShrink:0 },
   deleteBtn: { background:"#fff", border:"1px solid #f0eef8", color:"#dc2626", padding:"5px 9px", borderRadius:"6px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.1em", flexShrink:0 },
 
   chartPanel: { padding:"14px", background:"#ffffff" },
