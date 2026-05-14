@@ -588,25 +588,39 @@ export default function App() {
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
 
   const buildRunData = (dataset) => {
-    if (!dataset || !dataset.elevation) return [];
+    if (!dataset || !dataset.elevation) {
+      console.warn("buildRunData: no dataset or no elevation", dataset);
+      return [];
+    }
+    
     const cornerKeys = Object.keys(dataset)
       .filter(k => k.match(/^c\d+$/))
       .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
-    return dataset.elevation
+  
+    console.log("cornerKeys found:", cornerKeys);
+    console.log("elevation array:", dataset.elevation);
+  
+    const result = dataset.elevation
       .map((el, i) => {
+        const elNum = Number(el);
         const point = {
-          elevation: Number(el),
-          avg: dataset.average ? Number(dataset.average[i])
-             : dataset.avg_val ? Number(dataset.avg_val[i])
-             : dataset.avg ? Number(dataset.avg[i]) : 0,
+          elevation: elNum,
+          avg: (() => {
+            const a = dataset.average?.[i] ?? dataset.avg_val?.[i] ?? dataset.avg?.[i];
+            return a != null && !isNaN(Number(a)) ? Number(a) : null;
+          })(),
         };
         cornerKeys.forEach(k => {
           const v = dataset[k]?.[i];
-          point[k] = (v != null && !isNaN(Number(v))) ? Number(v) : null;
+          point[k] = (v != null && v !== "" && !isNaN(Number(v))) ? Number(v) : null;
         });
         return point;
       })
-      .filter(r => r.elevation != null && r.elevation !== 0 && !isNaN(r.elevation));
+      // REMOVED the `elevation !== 0` filter — valid elevations could be low numbers
+      .filter(r => r.elevation != null && !isNaN(r.elevation));
+  
+    console.log("buildRunData result:", result);
+    return result;
   };
 
   useEffect(() => {
@@ -681,9 +695,14 @@ export default function App() {
 
   const fetchHistory = async () => {
     try {
+      let x = getUnitId()
+      console.log("x", x);
+      
       const res = await axios.get(`${BASE_URL}/history`, {
         params: { station_id: getStationName(), unit_id: getUnitId() },
       });
+      console.log("restdata" , res.data);
+      
       setHistory(res.data || []);
     } catch (err) { console.error("History fetch error:", err); }
   };
@@ -695,10 +714,12 @@ export default function App() {
         params: { station_id: getStationName(), unit_id: getUnitId(), start_date: date, end_date: date },
       });
       const data = (res.data || []).filter(item =>
-        (item.run_date || item.run_timestamp || "").slice(0, 10) === date
+        item.run_date  === date
       );
       if (data.length === 0) return;
       const item = data[0];
+      console.log(item.run_id);
+      
       const [dsRes, boilerRes, coalRes] = await Promise.all([
         axios.get(`${BASE_URL}/history/${item.run_id}`),
         axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`),
@@ -718,12 +739,59 @@ export default function App() {
 
   const fetchMappingDates = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/mapping-dates`, {
-        params: { station: getStationName(), unit: getUnitId() },
-      });
-      setDataDates(new Set(res.data.map(r => r.run_date)));
-    } catch (e) { console.error("Fetch mapping dates error:", e); }
-  };
+        const res = await axios.get(`${BASE_URL}/mapping-dates`, {
+            params: { station: getStationName(), unit: getUnitId() },
+        });
+        
+        console.log("Raw mapping response:", res.data);
+        console.log("Response type:", typeof res.data);
+        console.log("Is array?", Array.isArray(res.data));
+        
+        if (!res.data || !Array.isArray(res.data)) {
+            console.error("Invalid response format:", res.data);
+            return;
+        }
+        
+        const datesSet = new Set();
+        res.data.forEach(item => {
+            // Handle both possible field names
+            let dateStr = item.run_date || item.run_timestamp;
+            
+            if (dateStr) {
+                // Ensure we only take YYYY-MM-DD part
+                let normalizedDate = dateStr;
+                if (typeof dateStr === 'string') {
+                    normalizedDate = dateStr.split('T')[0].split(' ')[0];
+                } else if (dateStr instanceof Date) {
+                    normalizedDate = dateStr.toISOString().split('T')[0];
+                } else if (typeof dateStr === 'object' && dateStr.$date) {
+                    // MongoDB style date
+                    normalizedDate = new Date(dateStr.$date).toISOString().split('T')[0];
+                }
+                
+                // Check specifically for April 1st
+                if (normalizedDate === '2026-04-01') {
+                    console.log("✅ Found April 1st in mapping dates!");
+                }
+                
+                datesSet.add(normalizedDate);
+            }
+        });
+        
+        console.log("Final dates set:", Array.from(datesSet).sort());
+        console.log("Contains April 1st?", datesSet.has('2026-04-01'));
+        
+        setDataDates(datesSet);
+        
+        // Optional: Auto-select April 1st for testing
+        if (datesSet.has('2026-04-01')) {
+            console.log("April 1st is available in the calendar!");
+        }
+        
+    } catch (e) { 
+        console.error("Fetch mapping dates error:", e); 
+    }
+};
 
   const handleGraph1Pick = (ds) => {
     if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
@@ -776,6 +844,9 @@ export default function App() {
 
     setReportDownloading(true);
     try {
+      let x = getUnitId()
+      console.log("unit id " , x);
+      
       const histRes = await axios.get(`${BASE_URL}/history`, {
         params: { station_id: getStationName(), unit_id: getUnitId() },
       });
@@ -897,10 +968,16 @@ export default function App() {
 
   const formatRunDate = (rawDate) => {
     if (!rawDate) return "";
+    // If it's already in YYYY-MM-DD format
+    if (typeof rawDate === 'string' && rawDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = rawDate.split('-');
+        return `${day}/${month}/${year}`;
+    }
+    // Otherwise try parsing
     const parsed = new Date(rawDate);
     if (isNaN(parsed)) return rawDate;
     return parsed.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
-  };
+};
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
