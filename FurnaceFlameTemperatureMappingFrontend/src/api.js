@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = "http://91.203.132.34:8000"; // ✅ use HTTPS
+const BASE_URL = "https://abhiftm.com/api"; // ✅ use HTTPS
 
 const api = axios.create({
   baseURL: BASE_URL,
