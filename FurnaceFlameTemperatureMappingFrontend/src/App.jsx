@@ -7,7 +7,7 @@ import {
 import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
 
-const BASE_URL = "http://91.203.132.34:8080";
+const BASE_URL = "http://91.203.132.34:8000";
 
 // ─── INGEST (NO FILE) HELPERS ──────────────────────────────────
 const DEFAULT_ELEVATION_COLS = ["Corner 1", "Corner 2", "Corner 3", "Corner 4", "Corner 5", "Corner 6", "Corner 7"];
