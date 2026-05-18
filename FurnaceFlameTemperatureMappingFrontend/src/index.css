@@ -5,7 +5,7 @@
 
         html, body {
           background: #efedf5;
-          color: #12121a;
+          color: #000;
           font-family: 'DM Sans', sans-serif;
           width: 100%;
         }
@@ -22,7 +22,7 @@
           padding: 12px 28px;
           background: transparent;
           border: 1.5px solid rgba(40, 0, 217, 0.45);
-          color: #0e00d9;
+          color: #000;
           font-family: 'DM Mono', monospace;
           font-size: 10px;
           letter-spacing: 0.2em;
@@ -36,7 +36,7 @@
 
         .upload-zone:hover {
           background: rgba(7, 0, 217, 0.07);
-          border-color: #2800d9;
+          border-color: #000;
           box-shadow: 0 0 20px rgba(14, 0, 217, 0.12);
         }
 
@@ -71,7 +71,7 @@
         .run-card.active {
           background: #edecfe;
           border-color: rgba(69, 0, 217, 0.3);
-          border-left-color: #000ed9;
+          border-left-color: #000;
           box-shadow: 2px 0 16px rgba(61, 0, 217, 0.1);
         }
 
@@ -89,7 +89,7 @@
 
         .checkbox-custom.checked {
           background: #0000d9;
-          border-color: #1600d9;
+          border-color: #000;
         }
 
         .checkbox-custom.checked::after {
@@ -119,25 +119,25 @@
         .data-table tbody td {
           padding: 9px 16px;
           text-align: right;
-          color: #37354a;
+          color: #000;
           border-bottom: 1px solid #e5e3f0;
           transition: all 0.12s;
         }
 
         .data-table tbody td:first-child {
           text-align: left;
-          color: #85849a;
+          color: #000;
           font-size: 10px;
           letter-spacing: 0.1em;
         }
 
         .data-table tbody tr:hover td {
           background: #f3f3fe;
-          color: #13121a;
+          color: #000;
         }
 
         .data-table tbody td.avg-col {
-          color: #0007d9;
+          color: #000;
           font-weight: 500;
         }
 
@@ -240,7 +240,7 @@
           font-family: 'DM Mono', monospace;
           font-size: 10px;
           letter-spacing: 0.1em;
-          color: #12121a;
+          color: #000;
           text-transform: uppercase;
         }
 

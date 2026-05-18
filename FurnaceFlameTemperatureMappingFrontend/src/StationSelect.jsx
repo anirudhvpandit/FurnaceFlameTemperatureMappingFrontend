@@ -220,8 +220,8 @@ export default function StationSelect() {
                       style={{
                         ...styles.selectionButton,
                         background: isSelected ? "#0000d9" : "#ffffff",
-                        color: isSelected ? "#ffffff" : "#12121a",
-                        borderColor: isSelected ? "#0000d9" : "#d1cfe0",
+                        color: isSelected ? "#000" : "#000",
+                        borderColor: isSelected ? "#000" : "#000",
                         filter: shouldBlur ? "blur(3px)" : "none",
                         opacity: shouldBlur ? 0.4 : isDisabled ? 0.5 : 1,
                         transform: isSelected ? "scale(1.05)" : "scale(1)",
@@ -262,8 +262,8 @@ export default function StationSelect() {
                         style={{
                           ...styles.selectionButton,
                           background: isSelected ? "#0000d9" : "#ffffff",
-                          color: isSelected ? "#ffffff" : "#12121a",
-                          borderColor: isSelected ? "#0000d9" : "#d1cfe0",
+                          color: isSelected ? "#000" : "#000",
+                          borderColor: isSelected ? "#000" : "#000",
                           filter: shouldBlur ? "blur(3px)" : "none",
                           opacity: shouldBlur ? 0.4 : 1,
                           transform: isSelected ? "scale(1.05)" : "scale(1)",
@@ -288,8 +288,8 @@ export default function StationSelect() {
                     : "#e0e0ef",
                 color:
                   selectedStation && selectedUnit
-                    ? "#ffffff"
-                    : "#85849a",
+                    ? "#000"
+                    : "#000",
                 cursor: selectedStation && selectedUnit ? "pointer" : "not-allowed",
               }}
             >
@@ -339,7 +339,7 @@ const styles = {
   },
   brandTagline: {
     fontSize: "10px",
-    color: "#666",
+    color: "#000",
   },
   userInfo: {
     display: "flex",
@@ -354,12 +354,12 @@ const styles = {
     fontWeight: "bold",
     letterSpacing: "0.5px",
     background: "#2d3748",
-    color: "#ffffff",
+    color: "#000",
   },
   usernameDisplay: {
     padding: "4px 8px",
     fontSize: "12px",
-    color: "#4a5568",
+    color: "#000",
     background: "#e2e8f0",
     borderRadius: "6px",
   },
@@ -369,7 +369,7 @@ const styles = {
     gap: "8px",
     padding: "8px 16px",
     background: "#dc2626",
-    color: "#ffffff",
+    color: "#000",
     border: "none",
     borderRadius: "6px",
     cursor: "pointer",
@@ -402,7 +402,7 @@ const styles = {
   },
   lockedBadge: {
     fontSize: "11px",
-    color: "#e53e3e",
+    color: "#000",
   },
   currentStationInfo: {
     fontSize: "13px",
@@ -414,7 +414,7 @@ const styles = {
   },
   restrictionNote: {
     fontSize: "11px",
-    color: "#e53e3e",
+    color: "#000",
     marginTop: "10px",
     fontStyle: "italic",
   },

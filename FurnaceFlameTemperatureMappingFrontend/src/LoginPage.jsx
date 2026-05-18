@@ -89,7 +89,7 @@ const LoginPage = () => {
             width: "100%",
             padding: "12px",
             background: UI.primary,
-            color: "#ffffff",
+            color: "#000",
             border: "none",
             borderRadius: "6px",
             fontFamily: "'DM Mono', monospace",

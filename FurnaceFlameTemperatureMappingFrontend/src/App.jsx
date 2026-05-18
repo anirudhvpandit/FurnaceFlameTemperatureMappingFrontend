@@ -406,15 +406,15 @@ function CalPicker({ graph1Date, graph2Date, onGraph1, onGraph2, dataDates, isAd
 const C = {
   calWrap:   { background:"#f5f5fb", borderRadius:"6px", padding:"10px", border:"0.5px solid #e2e1f0" },
   calHead:   { display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"8px" },
-  calNav:    { background:"none", border:"0.5px solid #d4d2e8", borderRadius:"4px", color:"#9896c0", fontSize:"14px", cursor:"pointer", width:"20px", height:"20px", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 },
-  calMonth:  { fontSize:"10px", fontWeight:"500", letterSpacing:"0.1em", color:"#2d2b5e", fontFamily:"'DM Mono',monospace" },
+  calNav:    { background:"none", border:"0.5px solid #d4d2e8", borderRadius:"4px", color:"#000", fontSize:"14px", cursor:"pointer", width:"20px", height:"20px", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 },
+  calMonth:  { fontSize:"10px", fontWeight:"500", letterSpacing:"0.1em", color:"#000", fontFamily:"'DM Mono',monospace" },
   calGrid:   { display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:"1px" },
-  dow:       { fontSize:"8px", letterSpacing:"0.06em", color:"#b0aed0", textAlign:"center", padding:"3px 0", fontFamily:"'DM Mono',monospace" },
-  day:       { textAlign:"center", padding:"4px 1px", fontSize:"10px", borderRadius:"3px", color:"#6e6c96", fontFamily:"'DM Mono',monospace" },
-  dayOther:  { color:"#d4d2e8" },
-  daySel:    { background:"#4f46e5", color:"#fff", borderRadius:"3px" },
-  miniLabel: { fontSize:"8px", letterSpacing:"0.14em", color:"#b0aed0", marginBottom:"5px", fontFamily:"'DM Mono',monospace" },
-  legItem:   { display:"flex", alignItems:"center", gap:"5px", fontSize:"9px", color:"#a0a0c0", letterSpacing:"0.06em", fontFamily:"'DM Mono',monospace" },
+  dow:       { fontSize:"8px", letterSpacing:"0.06em", color:"#000", textAlign:"center", padding:"3px 0", fontFamily:"'DM Mono',monospace" },
+  day:       { textAlign:"center", padding:"4px 1px", fontSize:"10px", borderRadius:"3px", color:"#000", fontFamily:"'DM Mono',monospace" },
+  dayOther:  { color:"#000" },
+  daySel:    { background:"#4f46e5", color:"#000", borderRadius:"3px" },
+  miniLabel: { fontSize:"8px", letterSpacing:"0.14em", color:"#000", marginBottom:"5px", fontFamily:"'DM Mono',monospace" },
+  legItem:   { display:"flex", alignItems:"center", gap:"5px", fontSize:"9px", color:"#000", letterSpacing:"0.06em", fontFamily:"'DM Mono',monospace" },
   legDot:    { display:"inline-block", width:"6px", height:"6px", borderRadius:"50%", flexShrink:0 },
 };
 
@@ -460,8 +460,8 @@ function BoilerParamsTable({ data }) {
               {leftRows.map(row => (
                 <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
                   <td style={S.td}>{row.label}</td>
-                  <td style={{ ...S.td, color:"#4f46e5", fontWeight:500 }}>{fmt(row.l)}</td>
-                  <td style={{ ...S.td, color:"#0891b2", fontWeight:500 }}>
+                  <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{fmt(row.l)}</td>
+                  <td style={{ ...S.td, color:"#000", fontWeight:500 }}>
                     {row.single ? "—" : fmt(row.r)}
                   </td>
                 </tr>
@@ -485,8 +485,8 @@ function BoilerParamsTable({ data }) {
               {fgRows.map(row => (
                 <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
                   <td style={S.td}>{row.label}</td>
-                  <td style={{ ...S.td, color:"#d97706", fontWeight:500 }}>{fmt(row.l)}</td>
-                  <td style={{ ...S.td, color:"#7c3aed", fontWeight:500 }}>{fmt(row.r)}</td>
+                  <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{fmt(row.l)}</td>
+                  <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{fmt(row.r)}</td>
                 </tr>
               ))}
             </tbody>
@@ -520,16 +520,16 @@ function CoalMillTable({ data }) {
             <tr>
               <th style={S.th}>PARAMETER</th>
               {data.map(m => (
-                <th key={m.mill} style={{ ...S.th, color:"#4f46e5" }}>MILL {m.mill}</th>
+                <th key={m.mill} style={{ ...S.th, color:"#000" }}>MILL {m.mill}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map(row => (
               <tr key={row.key} style={{ borderBottom:"0.5px solid #eeecf8" }}>
-                <td style={{ ...S.td, color:"#6e6c96", fontWeight:500 }}>{row.label}</td>
+                <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{row.label}</td>
                 {data.map(m => (
-                  <td key={m.mill} style={{ ...S.td, color:"#3a3860" }}>{fmt(m[row.key])}</td>
+                  <td key={m.mill} style={{ ...S.td, color:"#000" }}>{fmt(m[row.key])}</td>
                 ))}
               </tr>
             ))}
@@ -1127,7 +1127,7 @@ normalizedDate =
               isAdmin={isAdmin}
             />
             {dateError && (
-              <div style={{ marginTop:"8px", color:"#dc2626", fontSize:"10px", fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em" }}>
+              <div style={{ marginTop:"8px", color:"#000", fontSize:"10px", fontFamily:"'DM Mono',monospace", letterSpacing:"0.1em" }}>
                 {dateError}
               </div>
             )}
@@ -1175,8 +1175,8 @@ normalizedDate =
                 return (
                   <section key={`empty-${slotIdx}`} style={{ ...S.runSection, minHeight:"180px", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:"10px", opacity:0.45 }}>
                     <div style={{ width:"3px", height:"28px", background:accent, borderRadius:"2px" }} />
-                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:accent }}>{graphLabel}</div>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"13px", letterSpacing:"0.2em", color:"#c8c6e0" }}>SELECT A DATE</div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:"#000" }}>{graphLabel}</div>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"13px", letterSpacing:"0.2em", color:"#000" }}>SELECT A DATE</div>
                   </section>
                 );
               }
@@ -1231,8 +1231,8 @@ normalizedDate =
                       <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
                         <div style={{ width:"3px", height:"32px", background:accent, borderRadius:"2px", flexShrink:0 }} />
                         <div style={{ minWidth:0 }}>
-                          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:accent, marginBottom:"2px" }}>{graphLabel}</div>
-                          <div style={{ ...S.runTitle, color:"#1e1c3a" }}>{runTitleDate}</div>
+                          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.22em", color:"#000", marginBottom:"2px" }}>{graphLabel}</div>
+                          <div style={{ ...S.runTitle, color:"#000" }}>{runTitleDate}</div>
                           <div style={S.runSub}>{runSubtitle}</div>
                         </div>
                       </div>
@@ -1249,7 +1249,7 @@ normalizedDate =
                           title="Download this run as Excel"
                         >
                           {isDownloadingThisRun ? (
-                            <span style={{ display:"inline-block", width:"9px", height:"9px", border:"1.5px solid rgba(22,163,74,0.3)", borderTopColor:"#16a34a", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
+                            <span style={{ display:"inline-block", width:"9px", height:"9px", border:"1.5px solid rgba(22,163,74,0.3)", borderTopColor:"#000", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
                           ) : (
                             <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8">
                               <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1268,10 +1268,10 @@ normalizedDate =
 
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1px", marginTop:"10px" }}>
                       {[
-                        { l:"MAX", v:`${maxTemp.toFixed(0)}°C`, c:"#dc2626" },
-                        { l:"MIN", v:`${minTemp.toFixed(0)}°C`, c:"#0891b2" },
-                        { l:"AVG", v:`${avgTemp}°C`,            c:"#d97706" },
-                        { l:"LEVELS", v:runData.length,          c:"#6e6c96" },
+                        { l:"MAX", v:`${maxTemp.toFixed(0)}°C`, c:"#000" },
+                        { l:"MIN", v:`${minTemp.toFixed(0)}°C`, c:"#000" },
+                        { l:"AVG", v:`${avgTemp}°C`,            c:"#000" },
+                        { l:"LEVELS", v:runData.length,          c:"#000" },
                       ].map(kpi => (
                         <div key={kpi.l} style={S.kpiCard}>
                           <div style={{ ...S.kpiVal, color:kpi.c }}>{kpi.v}</div>
@@ -1316,7 +1316,7 @@ normalizedDate =
                           <button
                             key={k}
                             onClick={() => setVisibleLines(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [k]: !(prev[id]?.[k] ?? true) } }))}
-                            style={{ ...S.filterBtn, background: currentVisibleLines[k] ? dynamicColors[k] + "18" : "#f5f5fb", borderColor: currentVisibleLines[k] ? dynamicColors[k] : "#e2e1f0", color: currentVisibleLines[k] ? dynamicColors[k] : "#a0a0c0" }}
+                            style={{ ...S.filterBtn, background: currentVisibleLines[k] ? dynamicColors[k] + "18" : "#000", borderColor: currentVisibleLines[k] ? dynamicColors[k] : "#000", color: currentVisibleLines[k] ? dynamicColors[k] : "#000" }}
                           >
                             {dynamicLabels[k]}
                           </button>
@@ -1342,7 +1342,7 @@ normalizedDate =
                               <tr key={i} style={{ borderBottom:"0.5px solid #eeecf8" }}>
                                 <td style={S.td}>{row.elevation}m</td>
                                 {cornerKeys.map(k => <td key={k} style={S.td}>{row[k] ?? "—"}</td>)}
-                                <td style={{ ...S.td, color:"#d97706", fontWeight:500 }}>{row.avg}</td>
+                                <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{row.avg}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1386,12 +1386,12 @@ normalizedDate =
           <div style={{ ...S.modal, maxWidth:"420px", textAlign:"left" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"16px" }}>
               <div>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#1e1c3a" }}>DOWNLOAD REPORT</div>
-                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", marginTop:"3px", letterSpacing:"0.08em" }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#000" }}>DOWNLOAD REPORT</div>
+                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#000", marginTop:"3px", letterSpacing:"0.08em" }}>
                   Single Excel file with separate sheets for each run
                 </div>
               </div>
-              <button onClick={() => setShowReportModal(false)} style={{ border:"1px solid #eee", background:"#fff", borderRadius:"10px", width:"32px", height:"32px", cursor:"pointer", color:"#6e6c96", fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+              <button onClick={() => setShowReportModal(false)} style={{ border:"1px solid #eee", background:"#fff", borderRadius:"10px", width:"32px", height:"32px", cursor:"pointer", color:"#000", fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"14px" }}>
@@ -1406,13 +1406,13 @@ normalizedDate =
             </div>
 
             {reportError && (
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#dc2626", letterSpacing:"0.08em", marginBottom:"12px", padding:"8px 10px", background:"#fff1f2", borderRadius:"6px", border:"1px solid #fecdd3" }}>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#000", letterSpacing:"0.08em", marginBottom:"12px", padding:"8px 10px", background:"#fff1f2", borderRadius:"6px", border:"1px solid #fecdd3" }}>
                 {reportError}
               </div>
             )}
 
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#b0aed0", letterSpacing:"0.06em", marginBottom:"14px", padding:"8px 10px", background:"#f5f4ff", borderRadius:"6px" }}>
-              Station: <strong style={{ color:"#4f46e5" }}>{getStationName() || "—"}</strong> · Unit: <strong style={{ color:"#4f46e5" }}>{getUnitName() || "—"}</strong>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"9px", color:"#000", letterSpacing:"0.06em", marginBottom:"14px", padding:"8px 10px", background:"#f5f4ff", borderRadius:"6px" }}>
+              Station: <strong style={{ color:"#000" }}>{getStationName() || "—"}</strong> · Unit: <strong style={{ color:"#000" }}>{getUnitName() || "—"}</strong>
             </div>
 
             <div style={{ display:"flex", gap:"8px", justifyContent:"flex-end" }}>
@@ -1509,7 +1509,7 @@ normalizedDate =
                       
                       {/* Corner Controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#b0aed0", letterSpacing: "0.08em" }}>CORNERS</span>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#000", letterSpacing: "0.08em" }}>CORNERS</span>
                         <div style={{ display: "flex", gap: "2px" }}>
                           <button 
                             style={{ ...S.smallBtn, borderRadius: "10px 0 0 10px", padding: "8px 8px" }} 
@@ -1541,7 +1541,7 @@ normalizedDate =
 
                       {/* Elevation Row Controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: "4px", marginLeft: "12px" }}>
-                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#b0aed0", letterSpacing: "0.08em" }}>ROWS</span>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#000", letterSpacing: "0.08em" }}>ROWS</span>
                         <div style={{ display: "flex", gap: "2px" }}>
                           <button 
                             style={{ ...S.smallBtn, borderRadius: "10px 0 0 10px", padding: "8px 8px" }}
@@ -1656,7 +1656,7 @@ normalizedDate =
                       
                       {/* Mill Controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#b0aed0", letterSpacing: "0.08em" }}>MILLS</span>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#000", letterSpacing: "0.08em" }}>MILLS</span>
                         <div style={{ display: "flex", gap: "2px" }}>
                           <button 
                             style={{ 
@@ -1762,33 +1762,33 @@ normalizedDate =
 const S = {
   modalOverlay: { position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(20,18,40,0.4)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 },
   modal: { width:"90%", maxWidth:"360px", padding:"24px", background:"#ffffff", borderRadius:"12px", textAlign:"center", boxShadow:"0 20px 35px -10px rgba(0,0,0,0.2)" },
-  modalIcon: { width:"50px", height:"50px", borderRadius:"50%", background:"#16a34a", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"24px", margin:"0 auto 12px" },
-  modalTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#16a34a" },
-  modalText: { fontFamily:"'DM Mono',monospace", fontSize:"11px", color:"#6e6c96", marginTop:"8px", letterSpacing:"0.05em" },
+  modalIcon: { width:"50px", height:"50px", borderRadius:"50%", background:"#16a34a", color:"#000", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"24px", margin:"0 auto 12px" },
+  modalTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#000" },
+  modalText: { fontFamily:"'DM Mono',monospace", fontSize:"11px", color:"#000", marginTop:"8px", letterSpacing:"0.05em" },
 
   ingestOverlay: { position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(20,18,40,0.55)", backdropFilter:"blur(8px)", display:"flex", alignItems:"stretch", justifyContent:"stretch", padding:0, zIndex:200 },
   ingestSheet: { flex:1, width:"100%", height:"100%", display:"flex", alignItems:"stretch", justifyContent:"center", boxSizing:"border-box" },
   ingestModal: { width:"min(980px,100%)", maxHeight:"min(92vh,860px)", background:"#ffffff", borderRadius:"14px", boxShadow:"0 28px 60px -18px rgba(0,0,0,0.35)", overflow:"hidden", display:"flex", flexDirection:"column" },
   ingestHeader: { display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", padding:"14px 16px", borderBottom:"1px solid #f0eef8", background:"linear-gradient(180deg,#fbfaff 0%,#ffffff 100%)" },
-  ingestTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#1e1c3a" },
-  ingestSub: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", marginTop:"4px", letterSpacing:"0.08em" },
-  ingestClose: { border:"1px solid #eee", background:"#fff", borderRadius:"10px", width:"36px", height:"36px", cursor:"pointer", color:"#6e6c96" },
+  ingestTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#000" },
+  ingestSub: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#000", marginTop:"4px", letterSpacing:"0.08em" },
+  ingestClose: { border:"1px solid #eee", background:"#fff", borderRadius:"10px", width:"36px", height:"36px", cursor:"pointer", color:"#000" },
   ingestTabs: { display:"flex", gap:"6px", padding:"10px 12px", borderBottom:"1px solid #f0eef8", flexWrap:"wrap", background:"#ffffff" },
-  ingestTabBtn: { border:"0.5px solid #e2e1f0", background:"#fff", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"7px 10px", cursor:"pointer", borderRadius:"10px", color:"#b0aed0" },
-  ingestTabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
+  ingestTabBtn: { border:"0.5px solid #e2e1f0", background:"#fff", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"7px 10px", cursor:"pointer", borderRadius:"10px", color:"#000" },
+  ingestTabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#000" },
   ingestBody: { padding:"12px 12px 10px", overflow:"auto" },
   ingestFooter: { padding:"12px 12px", borderTop:"1px solid #f0eef8", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", flexWrap:"wrap", background:"#ffffff" },
-  footerHint: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", letterSpacing:"0.08em" },
+  footerHint: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#000", letterSpacing:"0.08em" },
   ingestGrid: { display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:"10px" },
   ingestToolbar: { display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", marginBottom:"10px", flexWrap:"wrap" },
-  helperText: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", letterSpacing:"0.06em" },
+  helperText: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#000", letterSpacing:"0.06em" },
   field: { display:"flex", flexDirection:"column", gap:"6px" },
-  fieldLabel: { fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.18em", color:"#c8c6e0" },
+  fieldLabel: { fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.18em", color:"#000" },
   fieldInput: { width:"100%", border:"1px solid #e8e6f4", borderRadius:"10px", padding:"10px 10px", fontSize:"13px", outline:"none", background:"#fbfaff", boxSizing:"border-box" },
   cellInput: { width:"100%", border:"1px solid #e8e6f4", borderRadius:"8px", padding:"8px 8px", fontSize:"12px", outline:"none", background:"#ffffff" },
-  smallBtn: { border:"1px solid #e8e6f4", background:"#ffffff", borderRadius:"10px", padding:"8px 10px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.1em", color:"#4f46e5" },
-  primaryBtn: { border:"none", background:"#4f46e5", color:"#fff", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.12em" },
-  secondaryBtn: { border:"1px solid #e8e6f4", background:"#ffffff", color:"#6e6c96", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.12em" },
+  smallBtn: { border:"1px solid #e8e6f4", background:"#ffffff", borderRadius:"10px", padding:"8px 10px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.1em", color:"#000" },
+  primaryBtn: { border:"none", background:"#4f46e5", color:"#000", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.12em" },
+  secondaryBtn: { border:"1px solid #e8e6f4", background:"#ffffff", color:"#000", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.12em" },
 
   header: { background:"#ffffff", borderBottom:"1px solid #e8e6f4", position:"sticky", top:0, zIndex:50, boxShadow:"0 1px 0 rgba(79,70,229,0.06)" },
   hamburger: { background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", gap:"4px", padding:"4px" },
@@ -1796,60 +1796,60 @@ const S = {
   hLine: { display:"block", width:"18px", height:"1.5px", background:"#9896c0" },
   logoMark: { width:"36px", height:"36px", border:"1px solid #e2e1f0", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5fb", flexShrink:0 },
   brandName: { fontSize:"clamp(10px,1.4vw,17px)", fontWeight:"600" },
-  brandTag: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0", marginTop:"3px" },
-  suLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.18em", color:"#b0aed0" },
-  suVal: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", color:"#4f46e5", letterSpacing:"0.08em" },
-  adminBadge: { padding:"4px 10px", background:"#4f46e5", color:"#fff", borderRadius:"20px", fontSize:"11px", fontWeight:"bold", letterSpacing:"0.5px" },
+  brandTag: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#000", marginTop:"3px" },
+  suLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.18em", color:"#000" },
+  suVal: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"15px", color:"#000", letterSpacing:"0.08em" },
+  adminBadge: { padding:"4px 10px", background:"#4f46e5", color:"#000", borderRadius:"20px", fontSize:"11px", fontWeight:"bold", letterSpacing:"0.5px" },
   statsRow: { display:"flex", alignItems:"center", gap:"20px", marginLeft:"auto" },
   statItem: { display:"flex", alignItems:"center", gap:"6px" },
-  statN: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", color:"#4f46e5", lineHeight:1 },
-  statL: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.15em", color:"#b0aed0" },
-  logoutButton: { display:"flex", alignItems:"center", gap:"8px", padding:"8px 14px", background:"#dc2626", color:"#ffffff", border:"none", borderRadius:"6px", cursor:"pointer", fontSize:"11px", fontWeight:"600", letterSpacing:"0.5px", flexShrink:0 },
+  statN: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"20px", color:"#000", lineHeight:1 },
+  statL: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.15em", color:"#000" },
+  logoutButton: { display:"flex", alignItems:"center", gap:"8px", padding:"8px 14px", background:"#dc2626", color:"#000", border:"none", borderRadius:"6px", cursor:"pointer", fontSize:"11px", fontWeight:"600", letterSpacing:"0.5px", flexShrink:0 },
 
   sidebar: { background:"#ffffff", borderRight:"1px solid #e8e6f4", position:"fixed", left:0, top:"56px", bottom:0, overflowY:"auto", transition:"transform 0.3s ease", zIndex:1000, width:"260px" },
   sideSection: { padding:"16px 14px", borderBottom:"1px solid #f0eef8" },
-  secLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.28em", color:"#c8c6e0", marginBottom:"10px", paddingTop:"2px" },
-  uploadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#4f46e5", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", marginBottom:"8px" },
-  downloadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#f0fdf4", border:"none", borderRadius:"6px", color:"#16a34a", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer", boxSizing:"border-box" },
+  secLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.28em", color:"#000", marginBottom:"10px", paddingTop:"2px" },
+  uploadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#000", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", marginBottom:"8px" },
+  downloadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#f0fdf4", border:"none", borderRadius:"6px", color:"#000", fontFamily:"'DM Mono',monospace", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer", boxSizing:"border-box" },
 
   runSection: { background:"#ffffff", border:"1px solid #e8e6f4", borderRadius:"10px", overflow:"hidden" },
   runHeader: { padding:"12px 14px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
-  runTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(12px,1.1vw,16px)", letterSpacing:"0.04em", color:"#1e1c3a" },
-  runSub: { fontFamily:"'DM Mono',monospace", fontSize:"8px", color:"#c8c6e0", marginTop:"3px", letterSpacing:"0.06em" },
+  runTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(12px,1.1vw,16px)", letterSpacing:"0.04em", color:"#000" },
+  runSub: { fontFamily:"'DM Mono',monospace", fontSize:"8px", color:"#000", marginTop:"3px", letterSpacing:"0.06em" },
   kpiCard: { background:"#f5f4ff", padding:"7px 4px", textAlign:"center", borderRadius:"4px" },
   kpiVal: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(12px,1vw,15px)", letterSpacing:"0.05em", lineHeight:1 },
-  kpiLbl: { fontFamily:"'DM Mono',monospace", fontSize:"7px", letterSpacing:"0.15em", color:"#b0aed0", marginTop:"3px" },
+  kpiLbl: { fontFamily:"'DM Mono',monospace", fontSize:"7px", letterSpacing:"0.15em", color:"#000", marginTop:"3px" },
 
   tabBar: { display:"flex", gap:"3px", padding:"8px 10px", borderBottom:"1px solid #f0eef8", background:"#faf9ff", flexWrap:"wrap" },
-  tabBtn: { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.08em", padding:"4px 7px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0" },
-  tabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
+  tabBtn: { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.08em", padding:"4px 7px", cursor:"pointer", borderRadius:"4px", color:"#000" },
+  tabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#000" },
 
-  downloadRunBtn: { display:"flex", alignItems:"center", gap:"5px", background:"#f0fdf4", border:"1px solid #bbf7d0", color:"#16a34a", padding:"5px 9px", borderRadius:"6px", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.1em", flexShrink:0 },
-  deleteBtn: { background:"#fff", border:"1px solid #f0eef8", color:"#dc2626", padding:"5px 9px", borderRadius:"6px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.1em", flexShrink:0 },
+  downloadRunBtn: { display:"flex", alignItems:"center", gap:"5px", background:"#000", border:"1px solid #bbf7d0", color:"#000", padding:"5px 9px", borderRadius:"6px", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.1em", flexShrink:0 },
+  deleteBtn: { background:"#fff", border:"1px solid #f0eef8", color:"#000", padding:"5px 9px", borderRadius:"6px", cursor:"pointer", fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.1em", flexShrink:0 },
 
   chartPanel: { padding:"14px", background:"#ffffff" },
-  chartLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#c8c6e0", marginBottom:"10px" },
+  chartLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#000", marginBottom:"10px" },
   filterBar: { display:"flex", gap:"4px", marginTop:"10px", flexWrap:"wrap" },
   filterBtn: { border:"0.5px solid", padding:"3px 7px", fontSize:"8px", fontFamily:"'DM Mono',monospace", letterSpacing:"0.07em", cursor:"pointer", borderRadius:"4px" },
 
   tablePanel: { padding:"14px", background:"#ffffff" },
-  subLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#c8c6e0", marginBottom:"10px" },
+  subLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#000", marginBottom:"10px" },
   table: { width:"100%", borderCollapse:"collapse", fontFamily:"'DM Mono',monospace", fontSize:"10px" },
-  th: { padding:"6px 8px", textAlign:"left", fontSize:"8px", letterSpacing:"0.15em", color:"#c8c6e0", borderBottom:"1px solid #f0eef8", fontWeight:400 },
-  td: { padding:"6px 8px", color:"#6e6c96" },
-  noData: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#b0aed0", padding:"16px 0", letterSpacing:"0.08em" },
+  th: { padding:"6px 8px", textAlign:"left", fontSize:"8px", letterSpacing:"0.15em", color:"#000", borderBottom:"1px solid #f0eef8", fontWeight:400 },
+  td: { padding:"6px 8px", color:"#000" },
+  noData: { fontFamily:"'DM Mono',monospace", fontSize:"10px", color:"#000", padding:"16px 0", letterSpacing:"0.08em" },
 
   tooltip: { background:"#ffffff", border:"1px solid #e8e6f4", padding:"10px 12px", minWidth:"150px", borderRadius:"6px", boxShadow:"0 4px 20px rgba(79,70,229,0.08)" },
   ttHead: { display:"flex", justifyContent:"space-between", marginBottom:"6px", paddingBottom:"6px", borderBottom:"1px solid #f0eef8" },
-  ttLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#b0aed0" },
-  ttVal: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"14px", color:"#4f46e5" },
+  ttLabel: { fontFamily:"'DM Mono',monospace", fontSize:"8px", letterSpacing:"0.2em", color:"#000" },
+  ttVal: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"14px", color:"#000" },
   ttRow: { display:"flex", alignItems:"center", gap:"6px", marginBottom:"3px" },
   ttDot: { width:"5px", height:"5px", borderRadius:"50%", flexShrink:0 },
-  ttKey: { fontFamily:"'DM Mono',monospace", fontSize:"8px", color:"#b0aed0", flex:1 },
+  ttKey: { fontFamily:"'DM Mono',monospace", fontSize:"8px", color:"#000", flex:1 },
   ttNum: { fontFamily:"'DM Mono',monospace", fontSize:"9px", fontWeight:"500" },
 
-  navBtn: { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"7px 12px", cursor:"pointer", borderRadius:"4px", color:"#b0aed0", textAlign:"left" },
-  navBtnActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#4f46e5" },
+  navBtn: { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'DM Mono',monospace", fontSize:"9px", letterSpacing:"0.12em", padding:"7px 12px", cursor:"pointer", borderRadius:"4px", color:"#000", textAlign:"left" },
+  navBtnActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#000" },
 };
 
 console.log("App loaded successfully");
