@@ -77,7 +77,7 @@ export default function EventLog() {
         <KPI
           label="FAILED"
           value={logs.filter((l) => l.status === "FAILED").length}
-          color="#dc2626"
+          color="#000"
         />
         <KPI label="LATEST RUN">
           {logs[0]?.timestamp?.toLocaleDateString() || "-"}
@@ -119,7 +119,7 @@ function GridView({ logs }) {
           <div
             style={{
               ...S.status,
-              color: log.status === "SUCCESS" ? "#16a34a" : "#dc2626",
+              color: log.status === "SUCCESS" ? "#000" : "#000",
             }}
           >
             {log.status}
@@ -160,7 +160,7 @@ function ListView({ logs }) {
                 ...S.td,
                 fontWeight: "600",
                 color:
-                  log.status === "SUCCESS" ? "#16a34a" : "#dc2626",
+                  log.status === "SUCCESS" ? "#000" : "#000",
               }}
             >
               {log.status}
@@ -173,7 +173,7 @@ function ListView({ logs }) {
 }
 
 /* ───────── KPI ───────── */
-function KPI({ label, value, color = "#4f46e5", children }) {
+function KPI({ label, value, color = "#000", children }) {
   return (
     <div style={S.kpiCard}>
       <div style={{ ...S.kpiValue, color }}>
@@ -205,7 +205,7 @@ const S = {
   },
   subtitle: {
     fontSize: "12px",
-    color: "#6e6c96",
+    color: "#000",
     letterSpacing: "0.15em",
   },
   toggleWrap: {
@@ -224,7 +224,7 @@ const S = {
     padding: "8px 14px",
     border: "1px solid #4f46e5",
     background: "#4f46e5",
-    color: "#fff",
+    color: "#000",
     borderRadius: "6px",
     cursor: "pointer",
     fontSize: "12px",
@@ -247,7 +247,7 @@ const S = {
   },
   kpiLabel: {
     fontSize: "10px",
-    color: "#9a98b5",
+    color: "#000",
     marginTop: "4px",
     letterSpacing: "0.1em",
   },
@@ -271,7 +271,7 @@ const S = {
   },
   time: {
     fontSize: "12px",
-    color: "#6e6c96",
+    color: "#000",
   },
   file: {
     fontWeight: "600",
@@ -293,7 +293,7 @@ const S = {
     fontSize: "10px",
     padding: "12px",
     background: "#f9f9ff",
-    color: "#9a98b5",
+    color: "#000",
   },
   tr: {
     borderBottom: "1px solid #f0eef8",
