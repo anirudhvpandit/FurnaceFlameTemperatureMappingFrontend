@@ -766,7 +766,10 @@ export default function App() {
                     normalizedDate = dateStr.toISOString().split('T')[0];
                 } else if (typeof dateStr === 'object' && dateStr.$date) {
                     // MongoDB style date
-                    normalizedDate = new Date(dateStr.$date).toISOString().split('T')[0];
+                    const d = new Date(dateStr.$date);
+
+normalizedDate =
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 }
                 
                 // Check specifically for April 1st
@@ -851,12 +854,23 @@ export default function App() {
         params: { station_id: getStationName(), unit_id: getUnitId() },
       });
       const toISO = (raw) => {
-        if (!raw) return "";
-        const s = String(raw).slice(0, 10);
-        if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
-        const d = new Date(raw);
-        return !isNaN(d) ? d.toISOString().slice(0, 10) : "";
-      };
+    if (!raw) return "";
+
+    const str = String(raw).trim();
+
+    // Already ISO
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return str;
+    }
+
+    // DD/MM/YYYY -> YYYY-MM-DD
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+        const [day, month, year] = str.split("/");
+        return `${year}-${month}-${day}`;
+    }
+
+    return "";
+};
       const runs = (histRes.data || []).filter(item => {
         const d = toISO(item.run_date || item.run_timestamp);
         return d >= reportFromDate && d <= reportToDate;
@@ -968,15 +982,22 @@ export default function App() {
 
   const formatRunDate = (rawDate) => {
     if (!rawDate) return "";
-    // If it's already in YYYY-MM-DD format
-    if (typeof rawDate === 'string' && rawDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const [year, month, day] = rawDate.split('-');
+
+    const str = String(rawDate).trim();
+
+    // Handle YYYY-MM-DD safely
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [year, month, day] = str.split("-");
         return `${day}/${month}/${year}`;
     }
-    // Otherwise try parsing
-    const parsed = new Date(rawDate);
-    if (isNaN(parsed)) return rawDate;
-    return parsed.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
+
+    // Handle DD/MM/YYYY safely
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+        const [day, month, year] = str.split("/");
+        return `${day}/${month}/${year}`;
+    }
+
+    return str;
 };
 
   const CustomTooltip = ({ active, payload, label }) => {
