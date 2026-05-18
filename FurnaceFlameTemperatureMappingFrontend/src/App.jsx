@@ -103,7 +103,9 @@ function buildUploadPayload(draft) {
       const elevation_m = safeNum(r.elevation_m);
       if (elevation_m == null) return null;
       const values = cols.map((c) => safeNum(r.values?.[c]));
-      const present = values.filter((v) => v != null);
+      const present = values.filter(
+  (v) => v != null && v !== 0
+);
       const avg = present.length ? present.reduce((a, b) => a + b, 0) / present.length : null;
       return { elevation_m, values: Object.fromEntries(cols.map((c, i) => [c, values[i]])), average: avg };
     })
@@ -605,10 +607,16 @@ export default function App() {
         const elNum = Number(el);
         const point = {
           elevation: elNum,
-          avg: (() => {
-            const a = dataset.average?.[i] ?? dataset.avg_val?.[i] ?? dataset.avg?.[i];
-            return a != null && !isNaN(Number(a)) ? Number(a) : null;
-          })(),
+         avg: (() => {
+  const cornerValues = cornerKeys
+    .map(k => dataset[k]?.[i])
+    .map(v => Number(v))
+    .filter(v => !isNaN(v) && v > 0);
+
+  return cornerValues.length
+    ? cornerValues.reduce((a, b) => a + b, 0) / cornerValues.length
+    : null;
+})(),
         };
         cornerKeys.forEach(k => {
           const v = dataset[k]?.[i];
