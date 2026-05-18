@@ -649,23 +649,34 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+  setVisibleLines(prev => {
+    const updated = {};
+
     selected.forEach(runId => {
       const dataset = datasets[runId];
-      if (dataset && !visibleLines[runId]) {
-        const runData = buildRunData(dataset);
-        const existingCorners = Object.keys(runData[0] || {}).filter(k => k.match(/^c\d+$/));
-        if (existingCorners.length > 0) {
-          setVisibleLines(prev => ({
-            ...prev,
-            [runId]: {
-              ...Object.fromEntries(existingCorners.map(k => [k, true])),
-              avg: true,
-            },
-          }));
+
+      if (dataset) {
+        if (prev[runId]) {
+          updated[runId] = prev[runId];
+        } else {
+          const runData = buildRunData(dataset);
+
+          const existingCorners = Object.keys(runData[0] || {})
+            .filter(k => k.match(/^c\d+$/));
+
+          updated[runId] = {
+            ...Object.fromEntries(
+              existingCorners.map((k, i) => [k, i < 2])
+            ),
+            avg: true,
+          };
         }
       }
     });
-  }, [selected, datasets]);
+
+    return updated;
+  });
+}, [selected, datasets]); 
 
   const getStationName = () => {
     const st = localStorage.getItem("selectedStation");
