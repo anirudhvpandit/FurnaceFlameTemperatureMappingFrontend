@@ -64,6 +64,7 @@ export default function StationSelect() {
         { id: 3, name: "Unit 3" },
         { id: 4, name: "Unit 4" },
         { id: 5, name: "Unit 5" },
+        {id:6, name: "Unit 6"}
       ]);
     } else if (stationId === 2) {
       setUnits([
