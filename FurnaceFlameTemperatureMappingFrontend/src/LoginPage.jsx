@@ -8,25 +8,44 @@ const LoginPage = () => {
     const navigate = useNavigate();
 
     const handleLogin = async () => {
-        try {
-            const response = await axios.post("https://abhiftm.com/api/login", {
-                username,
-                password
-            });
-            if (response.status === 200) {
-                const data = response.data;
-                console.log(data);
-                
-                localStorage.setItem("username", data.username);
-                localStorage.setItem("location",data.location);
-                localStorage.setItem("role", data.role);
-            }
-            navigate("/station-select");
-        } catch (error) {
-            console.error("Login failed:", error);
-            alert("Login failed. Please check your credentials.");
+    try {
+        const response = await axios.post("https://abhiftm.com/api/login", {
+            username,
+            password
+        });
+
+        const data = response.data;
+        console.log(data);
+        
+        // Validate response
+        if (
+            data.location === null
+        ) {
+            alert("Invalid username or password.");
+            return;
         }
-    };
+
+        localStorage.setItem("username", data.username);
+        localStorage.setItem("location", data.location);
+        localStorage.setItem("role", data.role);
+
+        navigate("/station-select");
+
+    } catch (error) {
+        console.error("Login failed:", error);
+
+        // Better API error handling
+        if (error.response) {
+            alert(
+                error.response.data?.message ||
+                error.response.data?.detail ||
+                "Invalid username or password."
+            );
+        } else {
+            alert("Server unreachable. Please try again.");
+        }
+    }
+};
 
     const UI = {
         bg: "#f6f7fb",
