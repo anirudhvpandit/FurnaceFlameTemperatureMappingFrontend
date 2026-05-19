@@ -158,7 +158,7 @@ function ListView({ logs }) {
             <td
               style={{
                 ...S.td,
-                fontWeight: "600",
+                fontWeight: "800",
                 color:
                   log.status === "SUCCESS" ? "#000" : "#000",
               }}
@@ -199,12 +199,12 @@ const S = {
     marginBottom: "24px",
   },
   title: {
-    fontSize: "28px",
-    fontWeight: "700",
+    fontSize: "30px",
+    fontWeight: "900",
     letterSpacing: "0.05em",
   },
   subtitle: {
-    fontSize: "12px",
+    fontSize: "14px",
     color: "#000",
     letterSpacing: "0.15em",
   },
@@ -218,7 +218,7 @@ const S = {
     background: "#fff",
     borderRadius: "6px",
     cursor: "pointer",
-    fontSize: "12px",
+    fontSize: "14px",
   },
   toggleActive: {
     padding: "8px 14px",
@@ -227,7 +227,7 @@ const S = {
     color: "#000",
     borderRadius: "6px",
     cursor: "pointer",
-    fontSize: "12px",
+    fontSize: "14px",
   },
   kpiRow: {
     display: "grid",
@@ -242,11 +242,11 @@ const S = {
     border: "1px solid #e6e4f2",
   },
   kpiValue: {
-    fontSize: "22px",
-    fontWeight: "600",
+    fontSize: "24px",
+    fontWeight: "800",
   },
   kpiLabel: {
-    fontSize: "10px",
+    fontSize: "12px",
     color: "#000",
     marginTop: "4px",
     letterSpacing: "0.1em",
@@ -270,19 +270,19 @@ const S = {
     padding: "14px",
   },
   time: {
-    fontSize: "12px",
+    fontSize: "14px",
     color: "#000",
   },
   file: {
-    fontWeight: "600",
+    fontWeight: "800",
     margin: "6px 0",
   },
   meta: {
-    fontSize: "12px",
+    fontSize: "14px",
   },
   status: {
     marginTop: "8px",
-    fontWeight: "600",
+    fontWeight: "800",
   },
   table: {
     width: "100%",
@@ -290,7 +290,7 @@ const S = {
   },
   th: {
     textAlign: "left",
-    fontSize: "10px",
+    fontSize: "12px",
     padding: "12px",
     background: "#f9f9ff",
     color: "#000",
@@ -300,6 +300,6 @@ const S = {
   },
   td: {
     padding: "12px",
-    fontSize: "13px",
+    fontSize: "14px",
   },
 };
