@@ -13,7 +13,7 @@ export default function StationSelect() {
 
   useEffect(() => {
     const stationsList = [
-      { id: 1, name: "BSL" },
+      { id: 1, name: "BTPS" },
       { id: 2, name: "CSTPS" },
       { id: 3, name: "KPKD" },
       { id: 4, name: "KTPS" },
