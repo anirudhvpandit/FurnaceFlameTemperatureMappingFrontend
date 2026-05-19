@@ -408,16 +408,16 @@ function CalPicker({ graph1Date, graph2Date, onGraph1, onGraph2, dataDates, isAd
 const C = {
   calWrap:   { background:"#f5f5fb", borderRadius:"6px", padding:"10px", border:"0.5px solid #e2e1f0" },
   calHead:   { display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"8px" },
-  calNav:    { background:"none", border:"0.5px solid #d4d2e8", borderRadius:"4px", color:"#000", fontSize:"14px", cursor:"pointer", width:"20px", height:"20px", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 },
-  calMonth:  { fontSize:"10px", fontWeight:"500", letterSpacing:"0.1em", color:"#000", fontFamily:"Inter, sans-serif" },
+  calNav:    { background:"none", border:"0.5px solid #d4d2e8", borderRadius:"4px", color:"#000", fontSize:"16px", cursor:"pointer", width:"20px", height:"20px", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 },
+  calMonth:  { fontSize:"12px", fontWeight:"700", letterSpacing:"0.1em", color:"#000", fontFamily:"Inter, sans-serif" },
   calGrid:   { display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:"1px" },
-  dow:       { fontSize:"8px", letterSpacing:"0.06em", color:"#000", textAlign:"center", padding:"3px 0", fontFamily:"Inter, sans-serif" },
-  day:       { textAlign:"center", padding:"4px 1px", fontSize:"10px", borderRadius:"3px", color:"#000", fontFamily:"Inter, sans-serif" },
+  dow:       { fontSize:"10px", letterSpacing:"0.06em", color:"#000", textAlign:"center", padding:"3px 0", fontFamily:"Inter, sans-serif" },
+  day:       { textAlign:"center", padding:"4px 1px", fontSize:"12px", borderRadius:"3px", color:"#000", fontFamily:"Inter, sans-serif" },
   dayOther:  { color:"#000" },
   daySel:    { background:"#4f46e5", color:"#000", borderRadius:"3px" },
-  miniLabel: { fontSize:"8px", letterSpacing:"0.14em", color:"#000", marginBottom:"5px", 
+  miniLabel: { fontSize:"10px", letterSpacing:"0.14em", color:"#000", marginBottom:"5px", 
     fontFamily:"Inter, sans-serif" },
-  legItem:   { display:"flex", alignItems:"center", gap:"5px", fontSize:"9px", color:"#000", letterSpacing:"0.06em", fontFamily:"Inter, sans-serif" },
+  legItem:   { display:"flex", alignItems:"center", gap:"5px", fontSize:"11px", color:"#000", letterSpacing:"0.06em", fontFamily:"Inter, sans-serif" },
   legDot:    { display:"inline-block", width:"6px", height:"6px", borderRadius:"50%", flexShrink:0 },
 };
 
@@ -463,8 +463,8 @@ function BoilerParamsTable({ data }) {
               {leftRows.map(row => (
                 <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
                   <td style={S.td}>{row.label}</td>
-                  <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{fmt(row.l)}</td>
-                  <td style={{ ...S.td, color:"#000", fontWeight:500 }}>
+                  <td style={{ ...S.td, color:"#000", fontWeight:700 }}>{fmt(row.l)}</td>
+                  <td style={{ ...S.td, color:"#000", fontWeight:700 }}>
                     {row.single ? "—" : fmt(row.r)}
                   </td>
                 </tr>
@@ -488,8 +488,8 @@ function BoilerParamsTable({ data }) {
               {fgRows.map(row => (
                 <tr key={row.label} style={{ borderBottom:"0.5px solid #eeecf8" }}>
                   <td style={S.td}>{row.label}</td>
-                  <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{fmt(row.l)}</td>
-                  <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{fmt(row.r)}</td>
+                  <td style={{ ...S.td, color:"#000", fontWeight:700 }}>{fmt(row.l)}</td>
+                  <td style={{ ...S.td, color:"#000", fontWeight:700 }}>{fmt(row.r)}</td>
                 </tr>
               ))}
             </tbody>
@@ -530,7 +530,7 @@ function CoalMillTable({ data }) {
           <tbody>
             {rows.map(row => (
               <tr key={row.key} style={{ borderBottom:"0.5px solid #eeecf8" }}>
-                <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{row.label}</td>
+                <td style={{ ...S.td, color:"#000", fontWeight:700 }}>{row.label}</td>
                 {data.map(m => (
                   <td key={m.mill} style={{ ...S.td, color:"#000" }}>{fmt(m[row.key])}</td>
                 ))}
@@ -1146,8 +1146,8 @@ normalizedDate =
         <div
           style={{
             fontFamily: "Inter, sans-serif",
-            fontSize: "15px",
-            fontWeight: 700,
+            fontSize: "17px",
+            fontWeight: 900,
             color: "#111827",
             letterSpacing: "0.03em",
             whiteSpace: "nowrap",
@@ -1162,7 +1162,7 @@ normalizedDate =
         <div
           style={{
             fontFamily: "Inter, sans-serif",
-            fontSize: "11px",
+            fontSize: "13px",
             color: "#6b7280",
             marginTop: "3px",
             letterSpacing: "0.08em",
@@ -1195,8 +1195,8 @@ normalizedDate =
           <span
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: "10px",
-              fontWeight: 700,
+              fontSize: "12px",
+              fontWeight: 900,
               color: "#9ca3af",
               letterSpacing: "0.12em",
             }}
@@ -1207,8 +1207,8 @@ normalizedDate =
           <span
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: "13px",
-              fontWeight: 600,
+              fontSize: "15px",
+              fontWeight: 800,
               color: "#111827",
             }}
           >
@@ -1226,8 +1226,8 @@ normalizedDate =
           <span
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: "10px",
-              fontWeight: 700,
+              fontSize: "12px",
+              fontWeight: 900,
               color: "#9ca3af",
               letterSpacing: "0.12em",
             }}
@@ -1238,8 +1238,8 @@ normalizedDate =
           <span
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: "13px",
-              fontWeight: 600,
+              fontSize: "15px",
+              fontWeight: 800,
               color: "#111827",
             }}
           >
@@ -1279,8 +1279,8 @@ normalizedDate =
           <div
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: "14px",
-              fontWeight: 700,
+              fontSize: "18px",
+              fontWeight: 900,
               color: "#111827",
             }}
           >
@@ -1290,7 +1290,7 @@ normalizedDate =
           <div
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: "10px",
+              fontSize: "12px",
               color: "#6b7280",
               letterSpacing: "0.08em",
               marginTop: "2px",
@@ -1313,8 +1313,8 @@ normalizedDate =
           <div
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: "14px",
-              fontWeight: 700,
+              fontSize: "16px",
+              fontWeight: 900,
               color: "#111827",
             }}
           >
@@ -1324,7 +1324,7 @@ normalizedDate =
           <div
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: "10px",
+              fontSize: "12px",
               color: "#6b7280",
               letterSpacing: "0.08em",
               marginTop: "2px",
@@ -1343,8 +1343,8 @@ normalizedDate =
             background: "#ede9fe",
             color: "#6d28d9",
             fontFamily: "Inter, sans-serif",
-            fontSize: "11px",
-            fontWeight: 700,
+            fontSize: "13px",
+            fontWeight: 900,
             letterSpacing: "0.08em",
           }}
         >
@@ -1362,8 +1362,8 @@ normalizedDate =
           background: "#ffffff",
           color: "#111827",
           fontFamily: "Inter, sans-serif",
-          fontWeight: 600,
-          fontSize: "12px",
+          fontWeight: 800,
+          fontSize: "14px",
           cursor: "pointer",
         }}
       >
@@ -1415,7 +1415,7 @@ normalizedDate =
               isAdmin={isAdmin}
             />
             {dateError && (
-              <div style={{ marginTop:"8px", color:"#000", fontSize:"10px", fontFamily:"Inter, sans-serif", letterSpacing:"0.1em" }}>
+              <div style={{ marginTop:"8px", color:"#000", fontSize:"12px", fontFamily:"Inter, sans-serif", letterSpacing:"0.1em" }}>
                 {dateError}
               </div>
             )}
@@ -1463,8 +1463,8 @@ normalizedDate =
                 return (
                   <section key={`empty-${slotIdx}`} style={{ ...S.runSection, minHeight:"180px", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:"10px", opacity:0.45 }}>
                     <div style={{ width:"3px", height:"28px", background:accent, borderRadius:"2px" }} />
-                    <div style={{ fontFamily:"Inter, sans-serif", fontSize:"8px", letterSpacing:"0.22em", color:"#000" }}>{graphLabel}</div>
-                    <div style={{ fontFamily:"Inter, sans-serif", fontSize:"13px", letterSpacing:"0.2em", color:"#000" }}>SELECT A DATE</div>
+                    <div style={{ fontFamily:"Inter, sans-serif", fontSize:"10px", letterSpacing:"0.22em", color:"#000" }}>{graphLabel}</div>
+                    <div style={{ fontFamily:"Inter, sans-serif", fontSize:"15px", letterSpacing:"0.2em", color:"#000" }}>SELECT A DATE</div>
                   </section>
                 );
               }
@@ -1519,7 +1519,7 @@ normalizedDate =
                       <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
                         <div style={{ width:"3px", height:"32px", background:accent, borderRadius:"2px", flexShrink:0 }} />
                         <div style={{ minWidth:0 }}>
-                          <div style={{ fontFamily:"Inter, sans-serif", fontSize:"8px", letterSpacing:"0.22em", color:"#000", marginBottom:"2px" }}>{graphLabel}</div>
+                          <div style={{ fontFamily:"Inter, sans-serif", fontSize:"10px", letterSpacing:"0.22em", color:"#000", marginBottom:"2px" }}>{graphLabel}</div>
                           <div style={{ ...S.runTitle, color:"#000" }}>{runTitleDate}</div>
                           <div style={S.runSub}>{runSubtitle}</div>
                         </div>
@@ -1587,8 +1587,8 @@ normalizedDate =
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={runData} layout="vertical">
                             <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
-                            <YAxis dataKey="elevation" type="number" domain={[minElevation, maxElevation]} ticks={allElevations} interval={0} reversed width={44} tick={{ fill:"#a0a0c0", fontSize:9, fontFamily:"Inter, sans-serif"}} axisLine={false} tickLine={false} />
-                            <XAxis type="number" domain={[xMin - xPadding, xMax + xPadding]} tick={{ fill:"#a0a0c0", fontSize:9, fontFamily:"Inter, sans-serif"}} axisLine={false} tickLine={false} />
+                            <YAxis dataKey="elevation" type="number" domain={[minElevation, maxElevation]} ticks={allElevations} interval={0} reversed width={44} tick={{ fill:"#a0a0c0", fontSize:11, fontFamily:"Inter, sans-serif"}} axisLine={false} tickLine={false} />
+                            <XAxis type="number" domain={[xMin - xPadding, xMax + xPadding]} tick={{ fill:"#a0a0c0", fontSize:11, fontFamily:"Inter, sans-serif"}} axisLine={false} tickLine={false} />
                             <Tooltip content={<CustomTooltip />} />
                             {cornerKeys.map(k => currentVisibleLines[k] && (
                               <Line key={k} type="monotone" dataKey={k} stroke={dynamicColors[k]} dot={false} strokeWidth={2} connectNulls={false} />
@@ -1642,7 +1642,7 @@ style={{
                               <tr key={i} style={{ borderBottom:"0.5px solid #eeecf8" }}>
                                 <td style={S.td}>{row.elevation}m</td>
                                 {cornerKeys.map(k => <td key={k} style={S.td}>{row[k] ?? "—"}</td>)}
-                                <td style={{ ...S.td, color:"#000", fontWeight:500 }}>{row.avg}</td>
+                                <td style={{ ...S.td, color:"#000", fontWeight:700 }}>{row.avg}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1686,32 +1686,32 @@ style={{
           <div style={{ ...S.modal, maxWidth:"420px", textAlign:"left" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"16px" }}>
               <div>
-                <div style={{ fontFamily:"Inter, sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#000" }}>DOWNLOAD REPORT</div>
-                <div style={{ fontFamily:"Inter, sans-serif", fontSize:"10px", color:"#000", marginTop:"3px", letterSpacing:"0.08em" }}>
+                <div style={{ fontFamily:"Inter, sans-serif", fontSize:"22px", letterSpacing:"0.1em", color:"#000" }}>DOWNLOAD REPORT</div>
+                <div style={{ fontFamily:"Inter, sans-serif", fontSize:"12px", color:"#000", marginTop:"3px", letterSpacing:"0.08em" }}>
                   Single Excel file with separate sheets for each run
                 </div>
               </div>
-              <button onClick={() => setShowReportModal(false)} style={{ border:"1px solid #eee", background:"#fff", borderRadius:"10px", width:"32px", height:"32px", cursor:"pointer", color:"#000", fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+              <button onClick={() => setShowReportModal(false)} style={{ border:"1px solid #eee", background:"#fff", borderRadius:"10px", width:"32px", height:"32px", cursor:"pointer", color:"#000", fontSize:"16px", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"14px" }}>
               <div style={S.field}>
                 <div style={S.fieldLabel}>FROM DATE</div>
-                <input type="date" value={reportFromDate} onChange={e => { setReportFromDate(e.target.value); setReportError(""); }} style={{ ...S.fieldInput, fontSize:"13px" }} />
+                <input type="date" value={reportFromDate} onChange={e => { setReportFromDate(e.target.value); setReportError(""); }} style={{ ...S.fieldInput, fontSize:"15px" }} />
               </div>
               <div style={S.field}>
                 <div style={S.fieldLabel}>TO DATE</div>
-                <input type="date" value={reportToDate} onChange={e => { setReportToDate(e.target.value); setReportError(""); }} style={{ ...S.fieldInput, fontSize:"13px" }} />
+                <input type="date" value={reportToDate} onChange={e => { setReportToDate(e.target.value); setReportError(""); }} style={{ ...S.fieldInput, fontSize:"15px" }} />
               </div>
             </div>
 
             {reportError && (
-              <div style={{ fontFamily:"'Inter',sans-serif", fontSize:"10px", color:"#000", letterSpacing:"0.08em", marginBottom:"12px", padding:"8px 10px", background:"#fff1f2", borderRadius:"6px", border:"1px solid #fecdd3" }}>
+              <div style={{ fontFamily:"'Inter',sans-serif", fontSize:"12px", color:"#000", letterSpacing:"0.08em", marginBottom:"12px", padding:"8px 10px", background:"#fff1f2", borderRadius:"6px", border:"1px solid #fecdd3" }}>
                 {reportError}
               </div>
             )}
 
-            <div style={{ fontFamily:"'Inter',sans-serif", fontSize:"9px", color:"#000", letterSpacing:"0.06em", marginBottom:"14px", padding:"8px 10px", background:"#f5f4ff", borderRadius:"6px" }}>
+            <div style={{ fontFamily:"'Inter',sans-serif", fontSize:"11px", color:"#000", letterSpacing:"0.06em", marginBottom:"14px", padding:"8px 10px", background:"#f5f4ff", borderRadius:"6px" }}>
               Station: <strong style={{ color:"#000" }}>{getStationName() || "—"}</strong> · Unit: <strong style={{ color:"#000" }}>{getUnitName() || "—"}</strong>
             </div>
 
@@ -1795,7 +1795,7 @@ style={{
                           inputMode={f.type === "number" ? "decimal" : undefined}
                           value={runDraft.meta[f.k]}
                           onChange={(e) => setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } }))}
-                          style={{ ...S.fieldInput, padding: isNarrow ? "12px 12px" : S.fieldInput.padding, fontSize: isNarrow ? "15px" : S.fieldInput.fontSize }}
+                          style={{ ...S.fieldInput, padding: isNarrow ? "12px 12px" : S.fieldInput.padding, fontSize: isNarrow ? "17px" : S.fieldInput.fontSize }}
                         />
                       </div>
                     ))}
@@ -1809,7 +1809,7 @@ style={{
                       
                       {/* Corner Controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", color: "#000", letterSpacing: "0.08em" }}>CORNERS</span>
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "#000", letterSpacing: "0.08em" }}>CORNERS</span>
                         <div style={{ display: "flex", gap: "2px" }}>
                           <button 
                             style={{ ...S.smallBtn, borderRadius: "10px 0 0 10px", padding: "8px 8px" }} 
@@ -1841,7 +1841,7 @@ style={{
 
                       {/* Elevation Row Controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: "4px", marginLeft: "12px" }}>
-                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", color: "#000", letterSpacing: "0.08em" }}>ROWS</span>
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "#000", letterSpacing: "0.08em" }}>ROWS</span>
                         <div style={{ display: "flex", gap: "2px" }}>
                           <button 
                             style={{ ...S.smallBtn, borderRadius: "10px 0 0 10px", padding: "8px 8px" }}
@@ -1879,7 +1879,7 @@ style={{
                           {runDraft.elevation.rows.map((r, idx) => (
                             <tr key={idx} style={{ borderBottom:"0.5px solid #eeecf8" }}>
                               <td style={S.td}>
-                                <input value={r.elevation_m} onChange={(e) => setRunDraft(p => { const rows=[...p.elevation.rows]; rows[idx]={...rows[idx],elevation_m:e.target.value}; return {...p,elevation:{...p.elevation,rows}}; })} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet?"14px":S.cellInput.fontSize }} placeholder="e.g. 56.4" />
+                                <input value={r.elevation_m} onChange={(e) => setRunDraft(p => { const rows=[...p.elevation.rows]; rows[idx]={...rows[idx],elevation_m:e.target.value}; return {...p,elevation:{...p.elevation,rows}}; })} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet?"16px":S.cellInput.fontSize }} placeholder="e.g. 56.4" />
                               </td>
                               {runDraft.elevation.columns.map((c) => (
                                 <td key={c} style={S.td}>
@@ -1956,7 +1956,7 @@ style={{
                       
                       {/* Mill Controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", color: "#000", letterSpacing: "0.08em" }}>MILLS</span>
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "#000", letterSpacing: "0.08em" }}>MILLS</span>
                         <div style={{ display: "flex", gap: "2px" }}>
                           <button 
                             style={{ 
@@ -2062,33 +2062,33 @@ style={{
 const S = {
   modalOverlay: { position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(20,18,40,0.4)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 },
   modal: { width:"90%", maxWidth:"360px", padding:"24px", background:"#ffffff", borderRadius:"12px", textAlign:"center", boxShadow:"0 20px 35px -10px rgba(0,0,0,0.2)" },
-  modalIcon: { width:"50px", height:"50px", borderRadius:"50%", background:"#16a34a", color:"#000", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"24px", margin:"0 auto 12px" },
-  modalTitle: { fontFamily:"'Manrope',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#000" },
-  modalText: { fontFamily:"'Inter',sans-serif", fontSize:"11px", color:"#000", marginTop:"8px", letterSpacing:"0.05em" },
+  modalIcon: { width:"50px", height:"50px", borderRadius:"50%", background:"#16a34a", color:"#000", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"30px", margin:"0 auto 12px" },
+  modalTitle: { fontFamily:"'Manrope',sans-serif", fontSize:"24px", letterSpacing:"0.1em", color:"#000" },
+  modalText: { fontFamily:"'Inter',sans-serif", fontSize:"15px", color:"#000", marginTop:"8px", letterSpacing:"0.05em" },
 
   ingestOverlay: { position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(20,18,40,0.55)", backdropFilter:"blur(8px)", display:"flex", alignItems:"stretch", justifyContent:"stretch", padding:0, zIndex:200 },
   ingestSheet: { flex:1, width:"100%", height:"100%", display:"flex", alignItems:"stretch", justifyContent:"center", boxSizing:"border-box" },
   ingestModal: { width:"min(980px,100%)", maxHeight:"min(92vh,860px)", background:"#ffffff", borderRadius:"14px", boxShadow:"0 28px 60px -18px rgba(0,0,0,0.35)", overflow:"hidden", display:"flex", flexDirection:"column" },
   ingestHeader: { display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", padding:"14px 16px", borderBottom:"1px solid #f0eef8", background:"linear-gradient(180deg,#fbfaff 0%,#ffffff 100%)" },
-  ingestTitle: { fontFamily:"'Manrope',sans-serif", fontSize:"20px", letterSpacing:"0.1em", color:"#000" },
-  ingestSub: { fontFamily:"'Inter',sans-serif", fontSize:"10px", color:"#000", marginTop:"4px", letterSpacing:"0.08em" },
+  ingestTitle: { fontFamily:"'Manrope',sans-serif", fontSize:"22px", letterSpacing:"0.1em", color:"#000" },
+  ingestSub: { fontFamily:"'Inter',sans-serif", fontSize:"12px", color:"#000", marginTop:"4px", letterSpacing:"0.08em" },
   ingestClose: { border:"1px solid #eee", background:"#fff", borderRadius:"10px", width:"36px", height:"36px", cursor:"pointer", color:"#000" },
   ingestTabs: { display:"flex", gap:"6px", padding:"10px 12px", borderBottom:"1px solid #f0eef8", flexWrap:"wrap", background:"#ffffff" },
-  ingestTabBtn: { border:"0.5px solid #e2e1f0", background:"#fff", fontFamily:"'Inter',sans-serif", fontSize:"9px", letterSpacing:"0.12em", padding:"7px 10px", cursor:"pointer", borderRadius:"10px", color:"#000" },
+  ingestTabBtn: { border:"0.5px solid #e2e1f0", background:"#fff", fontFamily:"'Inter',sans-serif", fontSize:"11px", letterSpacing:"0.12em", padding:"7px 10px", cursor:"pointer", borderRadius:"10px", color:"#000" },
   ingestTabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#000" },
   ingestBody: { padding:"12px 12px 10px", overflow:"auto" },
   ingestFooter: { padding:"12px 12px", borderTop:"1px solid #f0eef8", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", flexWrap:"wrap", background:"#ffffff" },
-  footerHint: { fontFamily:"'Inter',sans-serif", fontSize:"10px", color:"#000", letterSpacing:"0.08em" },
+  footerHint: { fontFamily:"'Inter',sans-serif", fontSize:"12px", color:"#000", letterSpacing:"0.08em" },
   ingestGrid: { display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:"10px" },
   ingestToolbar: { display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", marginBottom:"10px", flexWrap:"wrap" },
-  helperText: { fontFamily:"'Inter',sans-serif", fontSize:"10px", color:"#000", letterSpacing:"0.06em" },
+  helperText: { fontFamily:"'Inter',sans-serif", fontSize:"12px", color:"#000", letterSpacing:"0.06em" },
   field: { display:"flex", flexDirection:"column", gap:"6px" },
-  fieldLabel: { fontFamily:"'Inter',sans-serif", fontSize:"9px", letterSpacing:"0.18em", color:"#000" },
-  fieldInput: { width:"100%", border:"1px solid #e8e6f4", borderRadius:"10px", padding:"10px 10px", fontSize:"13px", outline:"none", background:"#fbfaff", boxSizing:"border-box" },
-  cellInput: { width:"100%", border:"1px solid #e8e6f4", borderRadius:"8px", padding:"8px 8px", fontSize:"12px", outline:"none", background:"#ffffff" },
-  smallBtn: { border:"1px solid #e8e6f4", background:"#ffffff", borderRadius:"10px", padding:"8px 10px", cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.1em", color:"#000" },
-  primaryBtn: { border:"none", background:"#4f46e5", color:"#000", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.12em" },
-  secondaryBtn: { border:"1px solid #e8e6f4", background:"#ffffff", color:"#000", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.12em" },
+  fieldLabel: { fontFamily:"'Inter',sans-serif", fontSize:"11px", letterSpacing:"0.18em", color:"#000" },
+  fieldInput: { width:"100%", border:"1px solid #e8e6f4", borderRadius:"10px", padding:"10px 10px", fontSize:"15px", outline:"none", background:"#fbfaff", boxSizing:"border-box" },
+  cellInput: { width:"100%", border:"1px solid #e8e6f4", borderRadius:"8px", padding:"8px 8px", fontSize:"14px", outline:"none", background:"#ffffff" },
+  smallBtn: { border:"1px solid #e8e6f4", background:"#ffffff", borderRadius:"10px", padding:"8px 10px", cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:"12px", letterSpacing:"0.1em", color:"#000" },
+  primaryBtn: { border:"none", background:"#4f46e5", color:"#000", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:"12px", letterSpacing:"0.12em" },
+  secondaryBtn: { border:"1px solid #e8e6f4", background:"#ffffff", color:"#000", borderRadius:"10px", padding:"10px 14px", cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:"12px", letterSpacing:"0.12em" },
 
   header: { background:"#ffffff", borderBottom:"1px solid #e8e6f4", position:"sticky", top:0, zIndex:50, boxShadow:"0 1px 0 rgba(79,70,229,0.06)" },
   hamburger: { background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", gap:"4px", padding:"4px" },
@@ -2097,72 +2097,72 @@ const S = {
   logoMark: { width:"36px", height:"36px", border:"1px solid #e2e1f0", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"#f5f5fb", flexShrink:0 },
 brandName: {
   fontFamily: "Inter, sans-serif",
-  fontSize: "15px",
-  fontWeight: 700,
+  fontSize: "19px",
+  fontWeight: 900,
   letterSpacing: "0.04em",
   color: "#111827",
   lineHeight: 1.1,
 },
 brandTag: {
   fontFamily: "Inter, sans-serif",
-  fontSize: "11px",
-  fontWeight: 500,
+  fontSize: "15px",
+  fontWeight:700,
   color: "#6b7280",
   marginTop: "2px",
   letterSpacing: "0.08em",
 },
-  suLabel: { fontFamily:"'Inter',sans-serif", fontSize:"8px", letterSpacing:"0.18em", color:"#000" },
-  suVal: { fontFamily:"'Manrope',sans-serif", fontSize:"15px", color:"#000", letterSpacing:"0.08em" },
-  adminBadge: { padding:"4px 10px", background:"#4f46e5", color:"#000", borderRadius:"20px", fontSize:"11px", fontWeight:"bold", letterSpacing:"0.5px" },
+  suLabel: { fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.18em", color:"#000" },
+  suVal: { fontFamily:"'Manrope',sans-serif", fontSize:"17px", color:"#000", letterSpacing:"0.08em" },
+  adminBadge: { padding:"4px 10px", background:"#4f46e5", color:"#000", borderRadius:"20px", fontSize:"13px", fontWeight:"bold", letterSpacing:"0.5px" },
   statsRow: { display:"flex", alignItems:"center", gap:"20px", marginLeft:"auto" },
   statItem: { display:"flex", alignItems:"center", gap:"6px" },
-  statN: { fontFamily:"'Manrope',sans-serif", fontSize:"20px", color:"#000", lineHeight:1 },
-  statL: { fontFamily:"'Inter',sans-serif", fontSize:"8px", letterSpacing:"0.15em", color:"#000" },
-  logoutButton: { display:"flex", alignItems:"center", gap:"8px", padding:"8px 14px", background:"#dc2626", color:"#000", border:"none", borderRadius:"6px", cursor:"pointer", fontSize:"11px", fontWeight:"600", letterSpacing:"0.5px", flexShrink:0 },
+  statN: { fontFamily:"'Manrope',sans-serif", fontSize:"22px", color:"#000", lineHeight:1 },
+  statL: { fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.15em", color:"#000" },
+  logoutButton: { display:"flex", alignItems:"center", gap:"8px", padding:"8px 14px", background:"#dc2626", color:"#000", border:"none", borderRadius:"6px", cursor:"pointer", fontSize:"13px", fontWeight:"600", letterSpacing:"0.5px", flexShrink:0 },
 
   sidebar: { background:"#ffffff", borderRight:"1px solid #e8e6f4", position:"fixed", left:0, top:"56px", bottom:0, overflowY:"auto", transition:"transform 0.3s ease", zIndex:1000, width:"260px" },
   sideSection: { padding:"16px 14px", borderBottom:"1px solid #f0eef8" },
-  secLabel: { fontFamily:"'Inter',sans-serif", fontSize:"8px", letterSpacing:"0.28em", color:"#000", marginBottom:"10px", paddingTop:"2px" },
-  uploadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#000", fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.15em", marginBottom:"8px" },
-  downloadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#f0fdf4", border:"none", borderRadius:"6px", color:"#000", fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.15em", cursor:"pointer", boxSizing:"border-box" },
+  secLabel: { fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.28em", color:"#000", marginBottom:"10px", paddingTop:"2px" },
+  uploadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#eeeeff", border:"none", borderRadius:"6px", color:"#000", fontFamily:"'Inter',sans-serif", fontSize:"12px", letterSpacing:"0.15em", marginBottom:"8px" },
+  downloadBtn: { display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"10px", background:"#f0fdf4", border:"none", borderRadius:"6px", color:"#000", fontFamily:"'Inter',sans-serif", fontSize:"12px", letterSpacing:"0.15em", cursor:"pointer", boxSizing:"border-box" },
 
   runSection: { background:"#ffffff", border:"1px solid #e8e6f4", borderRadius:"10px", overflow:"hidden" },
   runHeader: { padding:"12px 14px", borderBottom:"1px solid #f0eef8", background:"#faf9ff" },
-  runTitle: { fontFamily:"'Manrope',sans-serif", fontSize:"clamp(12px,1.1vw,16px)", letterSpacing:"0.04em", color:"#000" },
-  runSub: { fontFamily:"'Inter',sans-serif", fontSize:"8px", color:"#000", marginTop:"3px", letterSpacing:"0.06em" },
+  runTitle: { fontFamily:"'Manrope',sans-serif", fontSize:"clamp(14px,1.3vw,18px)", letterSpacing:"0.04em", color:"#000" },
+  runSub: { fontFamily:"'Inter',sans-serif", fontSize:"10px", color:"#000", marginTop:"3px", letterSpacing:"0.06em" },
   kpiCard: { background:"#f5f4ff", padding:"7px 4px", textAlign:"center", borderRadius:"4px" },
-  kpiVal: { fontFamily:"'Manrope',sans-serif", fontSize:"clamp(12px,1vw,15px)", letterSpacing:"0.05em", lineHeight:1 },
-  kpiLbl: { fontFamily:"'Inter',sans-serif", fontSize:"7px", letterSpacing:"0.15em", color:"#000", marginTop:"3px" },
+  kpiVal: { fontFamily:"'Manrope',sans-serif", fontSize:"clamp(14px,3vw,17px)", letterSpacing:"0.05em", lineHeight:1 },
+  kpiLbl: { fontFamily:"'Inter',sans-serif", fontSize:"9px", letterSpacing:"0.15em", color:"#000", marginTop:"3px" },
 
   tabBar: { display:"flex", gap:"3px", padding:"8px 10px", borderBottom:"1px solid #f0eef8", background:"#faf9ff", flexWrap:"wrap" },
-  tabBtn: { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'Inter',sans-serif", fontSize:"8px", letterSpacing:"0.08em", padding:"4px 7px", cursor:"pointer", borderRadius:"4px", color:"#000" },
+  tabBtn: { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.08em", padding:"4px 7px", cursor:"pointer", borderRadius:"4px", color:"#000" },
   tabActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#000" },
 
-  downloadRunBtn: { display:"flex", alignItems:"center", gap:"5px", background:"#000", border:"1px solid #bbf7d0", color:"#000", padding:"5px 9px", borderRadius:"6px", fontFamily:"'Inter',sans-serif", fontSize:"8px", letterSpacing:"0.1em", flexShrink:0 },
-  deleteBtn: { background:"#fff", border:"1px solid #f0eef8", color:"#000", padding:"5px 9px", borderRadius:"6px", cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:"8px", letterSpacing:"0.1em", flexShrink:0 },
+  downloadRunBtn: { display:"flex", alignItems:"center", gap:"5px", background:"#000", border:"1px solid #bbf7d0", color:"#000", padding:"5px 9px", borderRadius:"6px", fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.1em", flexShrink:0 },
+  deleteBtn: { background:"#fff", border:"1px solid #f0eef8", color:"#000", padding:"5px 9px", borderRadius:"6px", cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.1em", flexShrink:0 },
 
   chartPanel: { padding:"14px", background:"#ffffff" },
-  chartLabel: { fontFamily:"'Inter',sans-serif", fontSize:"8px", letterSpacing:"0.2em", color:"#000", marginBottom:"10px" },
+  chartLabel: { fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.2em", color:"#000", marginBottom:"10px" },
   filterBar: { display:"flex", gap:"4px", marginTop:"10px", flexWrap:"wrap" },
-  filterBtn: { border:"0.5px solid", padding:"3px 7px", fontSize:"8px", fontFamily:"'Inter',sans-serif", letterSpacing:"0.07em", cursor:"pointer", borderRadius:"4px" },
+  filterBtn: { border:"0.5px solid", padding:"3px 7px", fontSize:"10px", fontFamily:"'Inter',sans-serif", letterSpacing:"0.07em", cursor:"pointer", borderRadius:"4px" },
 
   tablePanel: { padding:"14px", background:"#ffffff" },
-  subLabel: { fontFamily:"'Inter',sans-serif", fontSize:"8px", letterSpacing:"0.2em", color:"#000", marginBottom:"10px" },
-  table: { width:"100%", borderCollapse:"collapse", fontFamily:"'Inter',sans-serif", fontSize:"10px" },
-  th: { padding:"6px 8px", textAlign:"left", fontSize:"8px", letterSpacing:"0.15em", color:"#000", borderBottom:"1px solid #f0eef8", fontWeight:400 },
+  subLabel: { fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.2em", color:"#000", marginBottom:"10px" },
+  table: { width:"100%", borderCollapse:"collapse", fontFamily:"'Inter',sans-serif", fontSize:"12px" },
+  th: { padding:"6px 8px", textAlign:"left", fontSize:"10px", letterSpacing:"0.15em", color:"#000", borderBottom:"1px solid #f0eef8", fontWeight:600 },
   td: { padding:"6px 8px", color:"#000" },
-  noData: { fontFamily:"'Inter',sans-serif", fontSize:"10px", color:"#000", padding:"16px 0", letterSpacing:"0.08em" },
+  noData: { fontFamily:"'Inter',sans-serif", fontSize:"12px", color:"#000", padding:"16px 0", letterSpacing:"0.08em" },
 
   tooltip: { background:"#ffffff", border:"1px solid #e8e6f4", padding:"10px 12px", minWidth:"150px", borderRadius:"6px", boxShadow:"0 4px 20px rgba(79,70,229,0.08)" },
   ttHead: { display:"flex", justifyContent:"space-between", marginBottom:"6px", paddingBottom:"6px", borderBottom:"1px solid #f0eef8" },
-  ttLabel: { fontFamily:"'Inter',sans-serif", fontSize:"8px", letterSpacing:"0.2em", color:"#000" },
-  ttVal: { fontFamily:"'Manrope',sans-serif", fontSize:"14px", color:"#000" },
+  ttLabel: { fontFamily:"'Inter',sans-serif", fontSize:"10px", letterSpacing:"0.2em", color:"#000" },
+  ttVal: { fontFamily:"'Manrope',sans-serif", fontSize:"16px", color:"#000" },
   ttRow: { display:"flex", alignItems:"center", gap:"6px", marginBottom:"3px" },
   ttDot: { width:"5px", height:"5px", borderRadius:"50%", flexShrink:0 },
-  ttKey: { fontFamily:"'Inter',sans-serif", fontSize:"8px", color:"#000", flex:1 },
-  ttNum: { fontFamily:"'Inter',sans-serif", fontSize:"9px", fontWeight:"500" },
+  ttKey: { fontFamily:"'Inter',sans-serif", fontSize:"10px", color:"#000", flex:1 },
+  ttNum: { fontFamily:"'Inter',sans-serif", fontSize:"11px", fontWeight:"700" },
 
-  navBtn: { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'Inter',sans-serif", fontSize:"9px", letterSpacing:"0.12em", padding:"7px 12px", cursor:"pointer", borderRadius:"4px", color:"#000", textAlign:"left" },
+  navBtn: { border:"0.5px solid #e2e1f0", background:"none", fontFamily:"'Inter',sans-serif", fontSize:"11px", letterSpacing:"0.12em", padding:"7px 12px", cursor:"pointer", borderRadius:"4px", color:"#000", textAlign:"left" },
   navBtnActive: { background:"#eeeeff", borderColor:"#a5b4fc", color:"#000" },
   navWrap: {
   height: "72px",
