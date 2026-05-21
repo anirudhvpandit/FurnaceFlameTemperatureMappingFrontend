@@ -2220,7 +2220,7 @@ const S = {
     alignItems: "center",
     gap: "14px",
     minWidth: 0,
-  },ß
+  },
 };
 
 console.log("App loaded successfully");
