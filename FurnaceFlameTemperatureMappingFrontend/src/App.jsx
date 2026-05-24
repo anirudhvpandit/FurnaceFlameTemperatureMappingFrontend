@@ -581,6 +581,9 @@ export default function App() {
   const [selectedStation, setSelectedStation] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editingRunId, setEditingRunId] = useState(null);
+const [editDraft, setEditDraft] = useState(null);
+const [savingEdit, setSavingEdit] = useState(false);
   const navigation = useNavigate();
 
   const [ingestTab, setIngestTab] = useState("run");
@@ -1000,6 +1003,156 @@ export default function App() {
     }
   };
 
+  const openEditModal = (runId) => {
+  if (!isAdmin) {
+    alert("Only administrators can edit data.");
+    return;
+  }
+
+  const dataset = datasets[runId];
+  const boiler = boilerData[runId] || {};
+  const coal = coalData[runId] || [];
+  const runMeta = history.find(r => r.run_id === runId);
+
+  if (!dataset || !runMeta) {
+    alert("Run data not loaded.");
+    return;
+  }
+
+  const cornerKeys = Object.keys(dataset)
+    .filter(k => k.match(/^c\d+$/))
+    .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+
+  const columns = cornerKeys.map(
+    k => `Corner ${k.replace("c", "")}`
+  );
+
+  const rows = (dataset.elevation || []).map((el, i) => ({
+    elevation_m: String(el),
+    values: Object.fromEntries(
+      columns.map((c, idx) => [
+        c,
+        dataset[`c${idx + 1}`]?.[i] ?? ""
+      ])
+    )
+  }));
+
+  const byMill = {};
+
+  coal.forEach(m => {
+    byMill[m.mill] = {
+      coal_flow_tph: m.coal_flow_tph ?? "",
+      pa_flow_tph: m.pa_flow_tph ?? "",
+      mill_dp_mmwc: m.mill_dp_mmwc ?? "",
+      mill_outlet_temp: m.mill_outlet_temp ?? "",
+      mill_current_amp: m.mill_current_amp ?? "",
+    };
+  });
+
+  const draft = {
+    meta: {
+      station: getStationName(),
+      unit_id: getUnitId(),
+      run_date: runMeta.run_date || "",
+      run_time: runMeta.run_time || "",
+      load_mw: runMeta.load_mw || "",
+      total_coal_flow_tph: runMeta.total_coal_flow_tph || "",
+      total_air_flow_tph: runMeta.total_air_flow_tph || "",
+      burner_tilt_deg: runMeta.burner_tilt_deg || "",
+      coal_mills_in_service_count:
+        runMeta.coal_mills_in_service_count || "",
+      coal_mills_in_service:
+        runMeta.coal_mills_in_service || "",
+      oil_guns_in_service_count:
+        runMeta.oil_guns_in_service_count || "",
+      oil_guns_in_service:
+        runMeta.oil_guns_in_service || "",
+      notes: runMeta.notes || "",
+    },
+
+    elevation: {
+      columns,
+      rows,
+    },
+
+    boiler: {
+      ...boiler
+    },
+
+    flueGas: {
+      ...boiler
+    },
+
+    coalMills: {
+      mills: coal.map(c => c.mill),
+      byMill,
+    },
+  };
+
+  setEditDraft(draft);
+  setEditingRunId(runId);
+  setShowIngestModal(true);
+};
+
+const saveEditedRun = async () => {
+  if (!isAdmin) {
+    alert("Only administrators can edit runs.");
+    return;
+  }
+
+  try {
+    setSavingEdit(true);
+
+    const payload = buildUploadPayload(editDraft);
+
+    await axios.put(
+      `${BASE_URL}/runs/${editingRunId}?username=${localStorage.getItem("username")}`,
+      payload
+    );
+
+    setShowIngestModal(false);
+    setEditingRunId(null);
+    setEditDraft(null);
+
+    await fetchHistory();
+    await fetchMappingDates();
+
+    if (selected.includes(editingRunId)) {
+      const [dsRes, boilerRes, coalRes] = await Promise.all([
+        axios.get(`${BASE_URL}/history/${editingRunId}`),
+        axios.get(`${BASE_URL}/history/${editingRunId}/boiler-params`),
+        axios.get(`${BASE_URL}/history/${editingRunId}/coal-mill-params`),
+      ]);
+
+      setDatasets(prev => ({
+        ...prev,
+        [editingRunId]: dsRes.data
+      }));
+
+      setBoilerData(prev => ({
+        ...prev,
+        [editingRunId]: boilerRes.data
+      }));
+
+      setCoalData(prev => ({
+        ...prev,
+        [editingRunId]: coalRes.data
+      }));
+    }
+
+    alert("Run updated successfully.");
+
+  } catch (err) {
+    console.error(err);
+    alert(
+      err?.response?.data?.detail ||
+      "Failed to update run"
+    );
+  } finally {
+    setSavingEdit(false);
+  }
+};
+
   const deleteRun = async (run_id) => {
     if (!isAdmin) { alert("Only administrators can delete data."); return; }
     if (!window.confirm("Are you sure you want to delete this run?")) return;
@@ -1403,8 +1556,11 @@ export default function App() {
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M7 1v8M4 4l3-3 3 3M2 11h10" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                {uploading ? "UPLOADING…" : "CREATE FTM RECORD"}
-              </button>
+{
+  editingRunId
+    ? (savingEdit ? "SAVING…" : "SAVE CHANGES")
+    : (uploading ? "UPLOADING…" : "CREATE FTM RECORD")
+}              </button>
             </div>
           )}
 
@@ -1564,10 +1720,31 @@ export default function App() {
                         </button>
 
                         {isAdmin && (
-                          <button onClick={() => deleteRun(id)} style={S.deleteBtn} title="Delete this run">
-                            DELETE
-                          </button>
-                        )}
+  <div style={{ display: "flex", gap: "6px" }}>
+
+    <button
+      onClick={() => openEditModal(id)}
+      style={{
+        ...S.downloadRunBtn,
+        background: "#dbeafe",
+        border: "1px solid #93c5fd",
+        color: "#1d4ed8",
+      }}
+      title="Edit this run"
+    >
+      EDIT
+    </button>
+
+    <button
+      onClick={() => deleteRun(id)}
+      style={S.deleteBtn}
+      title="Delete this run"
+    >
+      DELETE
+    </button>
+
+  </div>
+)}
                       </div>
                     </div>
 
@@ -1810,8 +1987,8 @@ export default function App() {
                         <input
                           type={f.type}
                           inputMode={f.type === "number" ? "decimal" : undefined}
-                          value={runDraft.meta[f.k]}
-                          onChange={(e) => setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } }))}
+                          value={(editingRunId ? editDraft : runDraft).meta[f.k]}
+                          onChange={(e) => (!editingRunId ? setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })) : setEditDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })))}
                           style={{ ...S.fieldInput, padding: isNarrow ? "12px 12px" : S.fieldInput.padding, fontSize: isNarrow ? "17px" : S.fieldInput.fontSize }}
                         />
                       </div>
@@ -1830,25 +2007,35 @@ export default function App() {
                         <div style={{ display: "flex", gap: "2px" }}>
                           <button
                             style={{ ...S.smallBtn, borderRadius: "10px 0 0 10px", padding: "8px 8px" }}
-                            onClick={() => setRunDraft(p => {
+                            onClick={() => (!editingRunId ? setRunDraft(p => {
                               const next = nextCornerLabel(p.elevation.columns);
                               const columns = [...p.elevation.columns, next];
                               const rows = p.elevation.rows.map(r => ({ ...r, values: { ...r.values, [next]: "" } }));
                               return { ...p, elevation: { ...p.elevation, columns, rows } };
-                            })}
+                            }) : setEditDraft(p => {
+                              const next = nextCornerLabel(p.elevation.columns);
+                              const columns = [...p.elevation.columns, next];
+                              const rows = p.elevation.rows.map(r => ({ ...r, values: { ...r.values, [next]: "" } }));
+                              return { ...p, elevation: { ...p.elevation, columns, rows } };
+                            }))}
                             title="Add Corner"
                           >
                             +
                           </button>
                           <button
-                            style={{ ...S.smallBtn, borderRadius: "0 10px 10px 0", padding: "8px 8px", opacity: runDraft.elevation.columns.length <= 1 ? 0.5 : 1 }}
-                            disabled={runDraft.elevation.columns.length <= 1}
-                            onClick={() => setRunDraft(p => {
+                            style={{ ...S.smallBtn, borderRadius: "0 10px 10px 0", padding: "8px 8px", opacity: (editingRunId ? editDraft : runDraft).elevation.columns.length <= 1 ? 0.5 : 1 }}
+                            disabled={(editingRunId ? editDraft : runDraft).elevation.columns.length <= 1}
+                            onClick={() => (!editingRunId ? setRunDraft(p => {
                               const columns = p.elevation.columns.slice(0, -1);
                               const removed = p.elevation.columns[p.elevation.columns.length - 1];
                               const rows = p.elevation.rows.map(r => { const v = { ...(r.values || {}) }; delete v[removed]; return { ...r, values: v }; });
                               return { ...p, elevation: { ...p.elevation, columns, rows } };
-                            })}
+                            }) : setEditDraft(p => {
+                              const columns = p.elevation.columns.slice(0, -1);
+                              const removed = p.elevation.columns[p.elevation.columns.length - 1];
+                              const rows = p.elevation.rows.map(r => { const v = { ...(r.values || {}) }; delete v[removed]; return { ...r, values: v }; });
+                              return { ...p, elevation: { ...p.elevation, columns, rows } };
+                            }))}
                             title="Remove Corner"
                           >
                             −
@@ -1862,21 +2049,27 @@ export default function App() {
                         <div style={{ display: "flex", gap: "2px" }}>
                           <button
                             style={{ ...S.smallBtn, borderRadius: "10px 0 0 10px", padding: "8px 8px" }}
-                            onClick={() => setRunDraft(p => {
+                            onClick={() => (!editingRunId ? setRunDraft(p => {
                               const values = Object.fromEntries(p.elevation.columns.map((c) => [c, ""]));
                               return { ...p, elevation: { ...p.elevation, rows: [...p.elevation.rows, { elevation_m: "", values }] } };
-                            })}
+                            }): setEditDraft(p => {
+                              const values = Object.fromEntries(p.elevation.columns.map((c) => [c, ""]));
+                              return { ...p, elevation: { ...p.elevation, rows: [...p.elevation.rows, { elevation_m: "", values }] } };
+                            }))}
                             title="Add Elevation Row"
                           >
                             +
                           </button>
                           <button
-                            style={{ ...S.smallBtn, borderRadius: "0 10px 10px 0", padding: "8px 8px", opacity: runDraft.elevation.rows.length <= 1 ? 0.5 : 1 }}
-                            disabled={runDraft.elevation.rows.length <= 1}
-                            onClick={() => setRunDraft(p => ({
+                            style={{ ...S.smallBtn, borderRadius: "0 10px 10px 0", padding: "8px 8px", opacity: (editingRunId ? editDraft : runDraft).elevation.rows.length <= 1 ? 0.5 : 1 }}
+                            disabled={(editingRunId ? editDraft : runDraft).elevation.rows.length <= 1}
+                            onClick={() => (!editingRunId ? setRunDraft(p => ({
                               ...p,
                               elevation: { ...p.elevation, rows: p.elevation.rows.slice(0, -1) }
-                            }))}
+                            })) : setEditDraft(p => ({
+                              ...p,
+                              elevation: { ...p.elevation, rows: p.elevation.rows.slice(0, -1) }
+                            })))}
                             title="Remove Elevation Row"
                           >
                             −
@@ -1889,18 +2082,18 @@ export default function App() {
                         <thead>
                           <tr>
                             <th style={S.th}>ELEVATION (M)</th>
-                            {runDraft.elevation.columns.map((c) => <th key={c} style={S.th}>{c.toUpperCase()}</th>)}
+                            {(editingRunId ? editDraft : runDraft).elevation.columns.map((c) => <th key={c} style={S.th}>{c.toUpperCase()}</th>)}
                           </tr>
                         </thead>
                         <tbody>
-                          {runDraft.elevation.rows.map((r, idx) => (
+                          {(editingRunId ? editDraft : runDraft).elevation.rows.map((r, idx) => (
                             <tr key={idx} style={{ borderBottom: "0.5px solid #eeecf8" }}>
                               <td style={S.td}>
-                                <input value={r.elevation_m} onChange={(e) => setRunDraft(p => { const rows = [...p.elevation.rows]; rows[idx] = { ...rows[idx], elevation_m: e.target.value }; return { ...p, elevation: { ...p.elevation, rows } }; })} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet ? "16px" : S.cellInput.fontSize }} placeholder="e.g. 56.4" />
+                                <input value={r.elevation_m} onChange={(e) => (!editingRunId ? setRunDraft(p => { const rows = [...p.elevation.rows]; rows[idx] = { ...rows[idx], elevation_m: e.target.value }; return { ...p, elevation: { ...p.elevation, rows } }; }): setEditDraft(p => { const rows = [...p.elevation.rows]; rows[idx] = { ...rows[idx], elevation_m: e.target.value }; return { ...p, elevation: { ...p.elevation, rows } }; }))} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet ? "16px" : S.cellInput.fontSize }} placeholder="e.g. 56.4" />
                               </td>
-                              {runDraft.elevation.columns.map((c) => (
+                              {(editingRunId ? editDraft : runDraft).elevation.columns.map((c) => (
                                 <td key={c} style={S.td}>
-                                  <input value={r.values?.[c] ?? ""} onChange={(e) => setRunDraft(p => { const rows = [...p.elevation.rows]; const row = rows[idx]; rows[idx] = { ...row, values: { ...(row.values || {}), [c]: e.target.value } }; return { ...p, elevation: { ...p.elevation, rows } }; })} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet ? "14px" : S.cellInput.fontSize }} placeholder="°C" />
+                                  <input value={r.values?.[c] ?? ""} onChange={(e) => ( !editingRunId ? setRunDraft(p => { const rows = [...p.elevation.rows]; const row = rows[idx]; rows[idx] = { ...row, values: { ...(row.values || {}), [c]: e.target.value } }; return { ...p, elevation: { ...p.elevation, rows } }; }): setEditDraft(p => { const rows = [...p.elevation.rows]; const row = rows[idx]; rows[idx] = { ...row, values: { ...(row.values || {}), [c]: e.target.value } }; return { ...p, elevation: { ...p.elevation, rows } }; }))} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet ? "14px" : S.cellInput.fontSize }} placeholder="°C" />
                                 </td>
                               ))}
                             </tr>
@@ -1935,7 +2128,7 @@ export default function App() {
                     ].map(f => (
                       <div key={f.k} style={S.field}>
                         <div style={S.fieldLabel}>{f.l}</div>
-                        <input type="number" inputMode="decimal" value={runDraft.boiler[f.k]} onChange={(e) => setRunDraft(p => ({ ...p, boiler: { ...p.boiler, [f.k]: e.target.value } }))} style={{ ...S.fieldInput, padding: isMobileSheet ? "12px 12px" : S.fieldInput.padding }} />
+                        <input type="number" inputMode="decimal" value={(editingRunId ? editDraft : runDraft).boiler[f.k]} onChange={(e) => setRunDraft(p => ({ ...p, boiler: { ...p.boiler, [f.k]: e.target.value } }))} style={{ ...S.fieldInput, padding: isMobileSheet ? "12px 12px" : S.fieldInput.padding }} />
                       </div>
                     ))}
                   </div>
@@ -1959,7 +2152,7 @@ export default function App() {
                     ].map(f => (
                       <div key={f.k} style={S.field}>
                         <div style={S.fieldLabel}>{f.l}</div>
-                        <input type="number" inputMode="decimal" value={runDraft.flueGas[f.k]} onChange={(e) => setRunDraft(p => ({ ...p, flueGas: { ...p.flueGas, [f.k]: e.target.value } }))} style={{ ...S.fieldInput, padding: isMobileSheet ? "12px 12px" : S.fieldInput.padding }} />
+                        <input type="number" inputMode="decimal" value={(editingRunId ? editDraft : runDraft).flueGas[f.k]} onChange={(e) => setRunDraft(p => ({ ...p, flueGas: { ...p.flueGas, [f.k]: e.target.value } }))} style={{ ...S.fieldInput, padding: isMobileSheet ? "12px 12px" : S.fieldInput.padding }} />
                       </div>
                     ))}
                   </div>
@@ -1980,31 +2173,43 @@ export default function App() {
                               ...S.smallBtn,
                               borderRadius: "10px 0 0 10px",
                               padding: "8px 8px",
-                              opacity: runDraft.coalMills.mills.length >= MAX_MILLS ? 0.5 : 1,
-                              cursor: runDraft.coalMills.mills.length >= MAX_MILLS ? "not-allowed" : "pointer"
+                              opacity: (editingRunId ? editDraft : runDraft).coalMills.mills.length >= MAX_MILLS ? 0.5 : 1,
+                              cursor: (editingRunId ? editDraft : runDraft).coalMills.mills.length >= MAX_MILLS ? "not-allowed" : "pointer"
                             }}
-                            disabled={runDraft.coalMills.mills.length >= MAX_MILLS}
-                            onClick={() => setRunDraft(p => {
+                            disabled={(editingRunId ? editDraft : runDraft).coalMills.mills.length >= MAX_MILLS}
+                            onClick={() => (!editingId ? setRunDraft(p => {
                               if (p.coalMills.mills.length >= MAX_MILLS) return p;
                               const used = new Set(p.coalMills.mills);
                               const next = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").find(x => !used.has(x)) || `M${p.coalMills.mills.length + 1}`;
                               const mills = [...p.coalMills.mills, next];
                               const byMill = { ...p.coalMills.byMill, [next]: { coal_flow_tph: "", pa_flow_tph: "", mill_dp_mmwc: "", mill_outlet_temp: "", mill_current_amp: "" } };
                               return { ...p, coalMills: { ...p.coalMills, mills, byMill } };
-                            })}
-                            title={runDraft.coalMills.mills.length >= MAX_MILLS ? `Maximum ${MAX_MILLS} mills allowed` : "Add Mill"}
+                            }) : setEditDraft(p => {
+                              if (p.coalMills.mills.length >= MAX_MILLS) return p;
+                              const used = new Set(p.coalMills.mills);
+                              const next = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").find(x => !used.has(x)) || `M${p.coalMills.mills.length + 1}`;
+                              const mills = [...p.coalMills.mills, next];
+                              const byMill = { ...p.coalMills.byMill, [next]: { coal_flow_tph: "", pa_flow_tph: "", mill_dp_mmwc: "", mill_outlet_temp: "", mill_current_amp: "" } };
+                              return { ...p, coalMills: { ...p.coalMills, mills, byMill } };
+                            }))}
+                            title={(editingRunId ? editDraft : runDraft).coalMills.mills.length >= MAX_MILLS ? `Maximum ${MAX_MILLS} mills allowed` : "Add Mill"}
                           >
                             +
                           </button>
                           <button
-                            style={{ ...S.smallBtn, borderRadius: "0 10px 10px 0", padding: "8px 8px", opacity: runDraft.coalMills.mills.length <= 1 ? 0.5 : 1 }}
-                            disabled={runDraft.coalMills.mills.length <= 1}
-                            onClick={() => setRunDraft(p => {
+                            style={{ ...S.smallBtn, borderRadius: "0 10px 10px 0", padding: "8px 8px", opacity: (editingRunId ? editDraft : runDraft).coalMills.mills.length <= 1 ? 0.5 : 1 }}
+                            disabled={(editingRunId ? editDraft : runDraft).coalMills.mills.length <= 1}
+                            onClick={() => (!editingRunId ? setRunDraft(p => {
                               const mills = p.coalMills.mills.slice(0, -1);
                               const removed = p.coalMills.mills[p.coalMills.mills.length - 1];
                               const byMill = { ...p.coalMills.byMill }; delete byMill[removed];
                               return { ...p, coalMills: { ...p.coalMills, mills, byMill } };
-                            })}
+                            }) : setEditDraft(p => {
+                              const mills = p.coalMills.mills.slice(0, -1);
+                              const removed = p.coalMills.mills[p.coalMills.mills.length - 1];
+                              const byMill = { ...p.coalMills.byMill }; delete byMill[removed];
+                              return { ...p, coalMills: { ...p.coalMills, mills, byMill } };
+                            }))}
                             title="Remove Mill"
                           >
                             −
@@ -2017,7 +2222,7 @@ export default function App() {
                         <thead>
                           <tr>
                             <th style={S.th}>PARAMETER</th>
-                            {runDraft.coalMills.mills.map(mill => (
+                            {(editingRunId ? editDraft : runDraft).coalMills.mills.map(mill => (
                               <th key={mill}>
                                 <div style={{
                                   display: "flex",
@@ -2055,9 +2260,9 @@ export default function App() {
                           ].map(row => (
                             <tr key={row.k} style={{ borderBottom: "0.5px solid #eeecf8" }}>
                               <td style={S.td}>{row.l}</td>
-                              {runDraft.coalMills.mills.map(m => (
+                              {(editingRunId ? editDraft : runDraft).coalMills.mills.map(m => (
                                 <td key={m} style={S.td}>
-                                  <input value={runDraft.coalMills.byMill?.[m]?.[row.k] ?? ""} onChange={(e) => setRunDraft(p => ({ ...p, coalMills: { ...p.coalMills, byMill: { ...p.coalMills.byMill, [m]: { ...(p.coalMills.byMill?.[m] || {}), [row.k]: e.target.value } } } }))} inputMode="decimal" style={S.cellInput} placeholder="—" />
+                                  <input value={(editingRunId ? editDraft : runDraft).coalMills.byMill?.[m]?.[row.k] ?? ""} onChange={(e) => (!editingRunId ? setRunDraft(p => ({ ...p, coalMills: { ...p.coalMills, byMill: { ...p.coalMills.byMill, [m]: { ...(p.coalMills.byMill?.[m] || {}), [row.k]: e.target.value } } } })) : setRunDraft(p => ({ ...p, coalMills: { ...p.coalMills, byMill: { ...p.coalMills.byMill, [m]: { ...(p.coalMills.byMill?.[m] || {}), [row.k]: e.target.value } } } })))} inputMode="decimal" style={S.cellInput} placeholder="—" />
                                 </td>
                               ))}
                             </tr>
@@ -2074,7 +2279,11 @@ export default function App() {
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: isNarrow ? "stretch" : "flex-end", width: isNarrow ? "100%" : "auto" }}>
                   <button onClick={() => setShowIngestModal(false)} style={{ ...S.secondaryBtn, width: isNarrow ? "100%" : "auto" }}>CANCEL</button>
                   {ingestTab === "mills" ? (
-                    <button onClick={submitRunDraft} disabled={uploading} style={{ ...S.primaryBtn, width: isNarrow ? "100%" : "auto", opacity: uploading ? 0.7 : 1 }}>
+                    <button onClick={
+  editingRunId
+    ? saveEditedRun
+    : submitRunDraft
+} disabled={uploading} style={{ ...S.primaryBtn, width: isNarrow ? "100%" : "auto", opacity: uploading ? 0.7 : 1 }}>
                       {uploading ? "SAVING…" : "SAVE RUN"}
                     </button>
                   ) : (
