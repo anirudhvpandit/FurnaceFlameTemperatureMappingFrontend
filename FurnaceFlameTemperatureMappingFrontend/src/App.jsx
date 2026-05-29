@@ -1744,7 +1744,7 @@ const saveEditedRun = async () => {
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", letterSpacing: "0.22em", color: "#000", marginBottom: "2px" }}>{graphLabel}</div>
                           <div style={{ ...S.runTitle, color: "#000" }}>{runTitleDate}</div>
-                          
+                            
                         </div>
                       </div>
 
