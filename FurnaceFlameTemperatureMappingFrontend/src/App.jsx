@@ -1744,7 +1744,7 @@ const saveEditedRun = async () => {
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", letterSpacing: "0.22em", color: "#000", marginBottom: "2px" }}>{graphLabel}</div>
                           <div style={{ ...S.runTitle, color: "#000" }}>{runTitleDate}</div>
-                            
+
                         </div>
                       </div>
 
@@ -1760,7 +1760,7 @@ const saveEditedRun = async () => {
                           title="Download this run as Excel"
                         >
                           {isDownloadingThisRun ? (
-                            <span style={{ display: "inline-block", width: "9px", height: "9px", border: "1.5px solid rgba(22,163,74,0.3)", borderTopColor: "#000", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                            <span style={{ display: "inline-block", width: "9px", height: "9px", border: "1.5px solid rgba(113, 251, 163, 0.3)", borderTopColor: "#77ffb4", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
                           ) : (
                             <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8">
                               <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round" />
@@ -1832,8 +1832,23 @@ const saveEditedRun = async () => {
                           <LineChart data={runData} layout="vertical">
                             <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
                             <YAxis dataKey="elevation" type="number" domain={[minElevation, maxElevation]} ticks={allElevations} interval={0} reversed width={44} tick={{ fill: "#a0a0c0", fontSize: 11, fontFamily: "Inter, sans-serif" }} axisLine={false} tickLine={false} />
-                            <XAxis type="number" domain={[xMin - xPadding, xMax + xPadding]} tick={{ fill: "#a0a0c0", fontSize: 11, fontFamily: "Inter, sans-serif" }} axisLine={false} tickLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
+<XAxis
+  type="number"
+  domain={[
+    Math.floor(xMin - xPadding),
+    Math.ceil(xMax + xPadding)
+  ]}
+  allowDecimals={false}
+  tickCount={10}
+  tickFormatter={(value) => Math.round(value)}
+  tick={{
+    fill: "#a0a0c0",
+    fontSize: 11,
+    fontFamily: "Inter, sans-serif"
+  }}
+  axisLine={false}
+  tickLine={false}
+/>                            <Tooltip content={<CustomTooltip />} />
                             {cornerKeys.map(k => currentVisibleLines[k] && (
                               <Line key={k} type="monotone" dataKey={k} stroke={dynamicColors[k]} dot={false} strokeWidth={2} connectNulls={false} />
                             ))}
@@ -1934,7 +1949,7 @@ const saveEditedRun = async () => {
           <div style={{ ...S.modal, maxWidth: "420px", textAlign: "left" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
               <div>
-                <div style={{ fontFamily: "Inter, sans-serif", fontSize: "22px", letterSpacing: "0.1em", color: "#000" }}>DOWNLOAD REPORT</div>
+                <div style={{ fontFamily: "Inter, sans-serif", fontSize: "22px", letterSpacing: "0.1em", color: "#000000" }}>DOWNLOAD REPORT</div>
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#000", marginTop: "3px", letterSpacing: "0.08em" }}>
                   Single Excel file with separate sheets for each run
                 </div>
@@ -2504,7 +2519,7 @@ const S = {
   tabBtn: { border: "0.5px solid #e2e1f0", background: "none", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.08em", padding: "4px 7px", cursor: "pointer", borderRadius: "4px", color: "#000" },
   tabActive: { background: "#eeeeff", borderColor: "#a5b4fc", color: "#000" },
 
-  downloadRunBtn: { display: "flex", alignItems: "center", gap: "5px", background: "#000", border: "1px solid #bbf7d0", color: "#000", padding: "5px 9px", borderRadius: "6px", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.1em", flexShrink: 0 },
+  downloadRunBtn: { display: "flex", alignItems: "center", gap: "5px", background: "#92fea6", border: "1px solid #bbf7d0", color: "#24472f", padding: "5px 9px", borderRadius: "6px", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.1em", flexShrink: 0 },
   deleteBtn: { background: "#fff", border: "1px solid #f0eef8", color: "#000", padding: "5px 9px", borderRadius: "6px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.1em", flexShrink: 0 },
 
   chartPanel: { padding: "14px", background: "#ffffff" },
