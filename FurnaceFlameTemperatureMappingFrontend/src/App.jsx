@@ -110,7 +110,12 @@ function buildUploadPayload(draft) {
         (v) => v != null && v !== 0
       );
       const avg = present.length ? present.reduce((a, b) => a + b, 0) / present.length : null;
-      return { elevation_m, values: Object.fromEntries(cols.map((c, i) => [c, values[i]])), average: avg };
+      return {
+        elevation_m,
+        values: Object.fromEntries(cols.map((c, i) => [c, values[i]])),
+        average: avg,
+        burner_tilt_deg: safeNum(r.burner_tilt_deg), // ADD THIS LINE - ensure it's properly mapped
+      };
     })
     .filter(Boolean);
 
@@ -228,80 +233,202 @@ async function downloadExcelFromBackend(runsArray, fallbackFilename = "FTM_expor
   }
 }
 
-function buildGeneratePayload({ runMeta, dataset, boiler, coal, stationName, unitId }) {
+function buildGeneratePayload({
+  runMeta,
+  dataset,
+  boiler,
+  coal,
+  stationName,
+  unitId,
+}) {
+
   const cornerKeys = Object.keys(dataset || {})
     .filter((k) => k.match(/^c\d+$/))
-    .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+    .sort(
+      (a, b) =>
+        parseInt(a.match(/\d+/)[0]) -
+        parseInt(b.match(/\d+/)[0])
+    );
 
-  const columns = cornerKeys.map((k) => `Corner ${k.replace("c", "")}`);
+  const columns = cornerKeys.map(
+    (k) => `Corner ${k.replace("c", "")}`
+  );
 
-  const rows = (dataset?.elevation || []).map((el, i) => {
-    const values = {};
-    cornerKeys.forEach((k) => {
-      const v = dataset[k]?.[i];
-      values[`Corner ${k.replace("c", "")}`] = v != null ? Number(v) : null;
-    });
-    const avgRaw = dataset.average?.[i] ?? dataset.avg_val?.[i] ?? dataset.avg?.[i];
-    const average = avgRaw != null ? Number(avgRaw) : null;
-    return { elevation_m: Number(el), values, average };
-  }).filter((r) => !isNaN(r.elevation_m));
+  const rows = (dataset?.elevation || [])
+    .map((el, i) => {
+
+      const values = {};
+
+      cornerKeys.forEach((k) => {
+        const v = dataset[k]?.[i];
+
+        values[`Corner ${k.replace("c", "")}`] =
+          v != null && !isNaN(Number(v))
+            ? Number(v)
+            : null;
+      });
+
+      const avgRaw =
+        dataset.average?.[i] ??
+        dataset.avg_val?.[i] ??
+        dataset.avg?.[i];
+
+      const average =
+        avgRaw != null && !isNaN(Number(avgRaw))
+          ? Number(avgRaw)
+          : null;
+
+      return {
+        elevation_m:
+          el != null && !isNaN(Number(el))
+            ? Number(el)
+            : null,
+
+        values,
+
+        average,
+
+        burner_tilt_deg:
+          dataset.burner_tilt_deg?.[i] != null &&
+          !isNaN(Number(dataset.burner_tilt_deg[i]))
+            ? Number(dataset.burner_tilt_deg[i])
+            : null,
+      };
+
+    })
+    .filter(
+      (r) =>
+        r.elevation_m != null &&
+        !isNaN(r.elevation_m)
+    );
 
   const boiler_params = {};
   const flue_gas_temps = {};
   const bp = boiler || {};
+
   const boilerKeys = [
-    "main_steam_pressure_l", "main_steam_pressure_r",
-    "main_steam_flow_l", "main_steam_flow_r",
-    "superheat_spray_l", "superheat_spray_r",
-    "reheat_spray_l", "reheat_spray_r",
-    "o2_aph_inlet_pcr_l", "o2_aph_inlet_pcr_r",
-    "wind_box_dp_l", "wind_box_dp_r",
+    "main_steam_pressure_l",
+    "main_steam_pressure_r",
+    "main_steam_flow_l",
+    "main_steam_flow_r",
+    "superheat_spray_l",
+    "superheat_spray_r",
+    "reheat_spray_l",
+    "reheat_spray_r",
+    "o2_aph_inlet_pcr_l",
+    "o2_aph_inlet_pcr_r",
+    "wind_box_dp_l",
+    "wind_box_dp_r",
     "total_pa_flow",
   ];
+
   const flueKeys = [
-    "fg_temp_after_dpsh_l", "fg_temp_after_dpsh_r",
-    "fg_temp_after_psh_l", "fg_temp_after_psh_r",
-    "fg_temp_after_rh_l", "fg_temp_after_rh_r",
-    "fg_temp_after_hsh_l", "fg_temp_after_hsh_r",
-    "fg_temp_after_eco_l", "fg_temp_after_eco_r",
-    "fg_temp_after_aph_l", "fg_temp_after_aph_r",
+    "fg_temp_after_dpsh_l",
+    "fg_temp_after_dpsh_r",
+    "fg_temp_after_psh_l",
+    "fg_temp_after_psh_r",
+    "fg_temp_after_rh_l",
+    "fg_temp_after_rh_r",
+    "fg_temp_after_hsh_l",
+    "fg_temp_after_hsh_r",
+    "fg_temp_after_eco_l",
+    "fg_temp_after_eco_r",
+    "fg_temp_after_aph_l",
+    "fg_temp_after_aph_r",
   ];
-  boilerKeys.forEach((k) => { boiler_params[k] = bp[k] ?? null; });
-  flueKeys.forEach((k) => { flue_gas_temps[k] = bp[k] ?? null; });
 
-  const coal_mill_params = (Array.isArray(coal) ? coal : []).map((m) => ({
-    mill: m.mill,
-    coal_flow_tph: m.coal_flow_tph ?? null,
-    pa_flow_tph: m.pa_flow_tph ?? null,
-    mill_dp_mmwc: m.mill_dp_mmwc ?? null,
-    mill_outlet_temp: m.mill_outlet_temp ?? null,
-    mill_current_amp: m.mill_current_amp ?? null,
-  }));
+  boilerKeys.forEach((k) => {
+    boiler_params[k] = bp[k] ?? null;
+  });
 
-  const rawDate = runMeta.run_date || runMeta.run_timestamp || "";
+  flueKeys.forEach((k) => {
+    flue_gas_temps[k] = bp[k] ?? null;
+  });
+
+  const coal_mill_params = (Array.isArray(coal) ? coal : [])
+    .map((m) => ({
+      mill: m.mill,
+
+      coal_flow_tph:
+        m.coal_flow_tph ?? null,
+
+      pa_flow_tph:
+        m.pa_flow_tph ?? null,
+
+      mill_dp_mmwc:
+        m.mill_dp_mmwc ?? null,
+
+      mill_outlet_temp:
+        m.mill_outlet_temp ?? null,
+
+      mill_current_amp:
+        m.mill_current_amp ?? null,
+    }));
+
+  const rawDate =
+    runMeta.run_date ||
+    runMeta.run_timestamp ||
+    "";
+
   const dateStr = rawDate.slice(0, 10);
 
   return {
-    station: stationName || runMeta.location || "",
+    station:
+      stationName ||
+      runMeta.location ||
+      "",
+
     unit_id: unitId,
+
     run_meta: {
       run_date: dateStr,
-      run_time: runMeta.run_time || "",
-      load_mw: runMeta.load_mw ?? null,
-      total_coal_flow_tph: runMeta.total_coal_flow_tph ?? null,
-      total_air_flow_tph: runMeta.total_air_flow_tph ?? null,
-      burner_tilt_deg_1: runMeta.burner_tilt_deg_1 ?? null,
-burner_tilt_deg_2: runMeta.burner_tilt_deg_2 ?? null,
-burner_tilt_deg_3: runMeta.burner_tilt_deg_3 ?? null,
-burner_tilt_deg_4: runMeta.burner_tilt_deg_4 ?? null,
-      coal_mills_in_service_count: runMeta.coal_mills_in_service ?? null,
-      coal_mills_in_service: runMeta.coal_mills_in_service_label ?? "",
-      oil_guns_in_service_count: runMeta.oil_guns_in_service ?? null,
-      oil_guns_in_service: runMeta.oil_guns_in_service_label ?? "",
+
+      run_time:
+        runMeta.run_time || "",
+
+      load_mw:
+        runMeta.load_mw ?? null,
+
+      total_coal_flow_tph:
+        runMeta.total_coal_flow_tph ?? null,
+
+      total_air_flow_tph:
+        runMeta.total_air_flow_tph ?? null,
+
+      burner_tilt_deg_1:
+        runMeta.burner_tilt_deg_1 ?? null,
+
+      burner_tilt_deg_2:
+        runMeta.burner_tilt_deg_2 ?? null,
+
+      burner_tilt_deg_3:
+        runMeta.burner_tilt_deg_3 ?? null,
+
+      burner_tilt_deg_4:
+        runMeta.burner_tilt_deg_4 ?? null,
+
+      coal_mills_in_service_count:
+        runMeta.coal_mills_in_service ?? null,
+
+      coal_mills_in_service:
+        runMeta.coal_mills_in_service_label ?? "",
+
+      oil_guns_in_service_count:
+        runMeta.oil_guns_in_service ?? null,
+
+      oil_guns_in_service:
+        runMeta.oil_guns_in_service_label ?? "",
     },
-    elevation_profile: { columns, rows },
+
+    elevation_profile: {
+      columns,
+      rows,
+    },
+
     boiler_params,
+
     flue_gas_temps,
+
     coal_mill_params,
   };
 }
@@ -620,46 +747,44 @@ const [savingEdit, setSavingEdit] = useState(false);
   };
 
   const buildRunData = (dataset) => {
-    if (!dataset || !dataset.elevation) {
-      console.warn("buildRunData: no dataset or no elevation", dataset);
-      return [];
-    }
+  if (!dataset || !dataset.elevation) {
+    console.warn("buildRunData: no dataset or no elevation", dataset);
+    return [];
+  }
 
-    const cornerKeys = Object.keys(dataset)
-      .filter(k => k.match(/^c\d+$/))
-      .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+  const cornerKeys = Object.keys(dataset)
+    .filter(k => k.match(/^c\d+$/))
+    .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
 
-    console.log("cornerKeys found:", cornerKeys);
-    console.log("elevation array:", dataset.elevation);
+  const result = dataset.elevation
+    .map((el, i) => {
+      const elNum = Number(el);
+      const point = {
+        elevation: elNum,
+        burner_tilt_deg:
+  dataset.burner_tilt_deg?.[i] ??
+  dataset.burner_tilt_deg?.[String(i)] ??
+  null, // ADD THIS LINE
+        avg: (() => {
+          const cornerValues = cornerKeys
+            .map(k => dataset[k]?.[i])
+            .map(v => Number(v))
+            .filter(v => !isNaN(v) && v > 0);
+          return cornerValues.length
+            ? cornerValues.reduce((a, b) => a + b, 0) / cornerValues.length
+            : null;
+        })(),
+      };
+      cornerKeys.forEach(k => {
+        const v = dataset[k]?.[i];
+        point[k] = (v != null && v !== "" && !isNaN(Number(v))) ? Number(v) : null;
+      });
+      return point;
+    })
+    .filter(r => r.elevation != null && !isNaN(r.elevation));
 
-    const result = dataset.elevation
-      .map((el, i) => {
-        const elNum = Number(el);
-        const point = {
-          elevation: elNum,
-          avg: (() => {
-            const cornerValues = cornerKeys
-              .map(k => dataset[k]?.[i])
-              .map(v => Number(v))
-              .filter(v => !isNaN(v) && v > 0);
-
-            return cornerValues.length
-              ? cornerValues.reduce((a, b) => a + b, 0) / cornerValues.length
-              : null;
-          })(),
-        };
-        cornerKeys.forEach(k => {
-          const v = dataset[k]?.[i];
-          point[k] = (v != null && v !== "" && !isNaN(Number(v))) ? Number(v) : null;
-        });
-        return point;
-      })
-      // REMOVED the `elevation !== 0` filter — valid elevations could be low numbers
-      .filter(r => r.elevation != null && !isNaN(r.elevation));
-
-    console.log("buildRunData result:", result);
-    return result;
-  };
+  return result;
+};
 
   useEffect(() => {
     const location = localStorage.getItem("location");
@@ -667,6 +792,11 @@ const [savingEdit, setSavingEdit] = useState(false);
     setIsAdmin(role === "admin");
     setUserLocation(location);
   }, []);
+
+  useEffect(()=>{
+    console.log("edit draft check",editDraft);
+    
+  },[editDraft])
 
   useEffect(() => {
     const st = localStorage.getItem("selectedStation");
@@ -1043,7 +1173,8 @@ const [savingEdit, setSavingEdit] = useState(false);
         c,
         dataset[`c${idx + 1}`]?.[i] ?? ""
       ])
-    )
+    ),
+    burner_tilt_deg: dataset.burner_tilt_deg?.[i] ?? "", // ADD THIS LINE
   }));
 
   const byMill = {};
@@ -1067,34 +1198,26 @@ const [savingEdit, setSavingEdit] = useState(false);
       load_mw: runMeta.load_mw || "",
       total_coal_flow_tph: runMeta.total_coal_flow_tph || "",
       total_air_flow_tph: runMeta.total_air_flow_tph || "",
-     burner_tilt_deg_1: runMeta.burner_tilt_deg_1 || "",
-burner_tilt_deg_2: runMeta.burner_tilt_deg_2 || "",
-burner_tilt_deg_3: runMeta.burner_tilt_deg_3 || "",
-burner_tilt_deg_4: runMeta.burner_tilt_deg_4 || "",
-      coal_mills_in_service_count:
-        runMeta.coal_mills_in_service_count || "",
-      coal_mills_in_service:
-        runMeta.coal_mills_in_service || "",
-      oil_guns_in_service_count:
-        runMeta.oil_guns_in_service_count || "",
-      oil_guns_in_service:
-        runMeta.oil_guns_in_service || "",
+      burner_tilt_deg_1: runMeta.burner_tilt_deg_1 || "",
+      burner_tilt_deg_2: runMeta.burner_tilt_deg_2 || "",
+      burner_tilt_deg_3: runMeta.burner_tilt_deg_3 || "",
+      burner_tilt_deg_4: runMeta.burner_tilt_deg_4 || "",
+      coal_mills_in_service_count: runMeta.coal_mills_in_service_count || "",
+      coal_mills_in_service: runMeta.coal_mills_in_service || "",
+      oil_guns_in_service_count: runMeta.oil_guns_in_service_count || "",
+      oil_guns_in_service: runMeta.oil_guns_in_service || "",
       notes: runMeta.notes || "",
     },
-
     elevation: {
       columns,
       rows,
     },
-
     boiler: {
       ...boiler
     },
-
     flueGas: {
       ...boiler
     },
-
     coalMills: {
       mills: coal.map(c => c.mill),
       byMill,
@@ -1114,9 +1237,10 @@ const saveEditedRun = async () => {
 
   try {
     setSavingEdit(true);
-
+    
     const payload = buildUploadPayload(editDraft);
-
+    console.log("editing,payload",editDraft);
+    
     await axios.put(
       `${BASE_URL}/runs/${editingRunId}?username=${localStorage.getItem("username")}`,
       payload
@@ -1839,6 +1963,7 @@ const saveEditedRun = async () => {
                           <thead>
                             <tr>
                               <th style={S.th}>ELEVATION (M)</th>
+                              <th style={S.th}>BURNER TILT DEG</th>
                               {cornerKeys.map(k => <th key={k} style={S.th}>{dynamicLabels[k]}</th>)}
                               <th style={S.th}>AVERAGE</th>
                             </tr>
@@ -1847,6 +1972,9 @@ const saveEditedRun = async () => {
                             {runData.map((row, i) => (
                               <tr key={i} style={{ borderBottom: "0.5px solid #eeecf8" }}>
                                 <td style={S.td}>{row.elevation}m</td>
+                                <td style={S.td}>
+  {row.burner_tilt_deg ?? "—"}
+</td>
                                 {cornerKeys.map(k => <td key={k} style={S.td}>{row[k] ?? "—"}</td>)}
                                 <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>{row.avg}</td>
                               </tr>
@@ -1987,10 +2115,7 @@ const saveEditedRun = async () => {
                       { k: "load_mw", l: "LOAD (MW)", type: "number" },
                       { k: "total_coal_flow_tph", l: "TOTAL COAL FLOW (TPH)", type: "number" },
                       { k: "total_air_flow_tph", l: "TOTAL AIR FLOW (TPH)", type: "number" },
-                      { k: "burner_tilt_deg_1", l: "BURNER TILT 1 (DEG)", type: "number" },
-{ k: "burner_tilt_deg_2", l: "BURNER TILT 2 (DEG)", type: "number" },
-{ k: "burner_tilt_deg_3", l: "BURNER TILT 3 (DEG)", type: "number" },
-{ k: "burner_tilt_deg_4", l: "BURNER TILT 4 (DEG)", type: "number" },
+                      
                       { k: "coal_mills_in_service_count", l: "COAL MILLS IN SERVICE (COUNT)", type: "number" },
                       { k: "coal_mills_in_service", l: "COAL MILLS IN SERVICE (E.G. ABDEFG)", type: "text" },
                       { k: "oil_guns_in_service_count", l: "OIL GUNS IN SERVICE (COUNT)", type: "number" },
@@ -2097,15 +2222,76 @@ const saveEditedRun = async () => {
                         <thead>
                           <tr>
                             <th style={S.th}>ELEVATION (M)</th>
+                            <th style={S.th}>BURNER TILT DEG</th>
                             {(editingRunId ? editDraft : runDraft).elevation.columns.map((c) => <th key={c} style={S.th}>{c.toUpperCase()}</th>)}
                           </tr>
                         </thead>
-                        <tbody>
-                          {(editingRunId ? editDraft : runDraft).elevation.rows.map((r, idx) => (
-                            <tr key={idx} style={{ borderBottom: "0.5px solid #eeecf8" }}>
-                              <td style={S.td}>
-                                <input value={r.elevation_m} onChange={(e) => (!editingRunId ? setRunDraft(p => { const rows = [...p.elevation.rows]; rows[idx] = { ...rows[idx], elevation_m: e.target.value }; return { ...p, elevation: { ...p.elevation, rows } }; }): setEditDraft(p => { const rows = [...p.elevation.rows]; rows[idx] = { ...rows[idx], elevation_m: e.target.value }; return { ...p, elevation: { ...p.elevation, rows } }; }))} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet ? "16px" : S.cellInput.fontSize }} placeholder="e.g. 56.4" />
-                              </td>
+                       <tbody>
+      {(editingRunId ? editDraft : runDraft).elevation.rows.map((r, idx) => (
+        <tr key={idx + 1} style={{ borderBottom: "0.5px solid #eeecf8" }}>
+          <td style={S.td}>
+            <input 
+              value={r.elevation_m} 
+              onChange={(e) => (
+                !editingRunId 
+                  ? setRunDraft(p => { 
+                      const rows = [...p.elevation.rows]; 
+                      rows[idx] = { ...rows[idx], elevation_m: e.target.value }; 
+                      return { ...p, elevation: { ...p.elevation, rows } }; 
+                    })
+                  : setEditDraft(p => { 
+                      const rows = [...p.elevation.rows]; 
+                      rows[idx] = { ...rows[idx], elevation_m: e.target.value }; 
+                      return { ...p, elevation: { ...p.elevation, rows } }; 
+                    })
+              )} 
+              inputMode="decimal" 
+              style={{ ...S.cellInput, fontSize: isMobileSheet ? "16px" : S.cellInput.fontSize }} 
+              placeholder="e.g. 56.4" 
+            />
+          </td>
+          <td style={S.td}>
+            <input
+              value={r.burner_tilt_deg}
+              onChange={(e) => (
+                !editingRunId
+                  ? setRunDraft(p => {
+                      const rows = [...p.elevation.rows];
+                      rows[idx] = {
+                        ...rows[idx],
+                        burner_tilt_deg: e.target.value,
+                      };
+                      return {
+                        ...p,
+                        elevation: {
+                          ...p.elevation,
+                          rows,
+                        },
+                      };
+                    })
+                  : setEditDraft(p => {
+                      const rows = [...p.elevation.rows];
+                      rows[idx] = {
+                        ...rows[idx],
+                        burner_tilt_deg: e.target.value,
+                      };
+                      return {
+                        ...p,
+                        elevation: {
+                          ...p.elevation,
+                          rows,
+                        },
+                      };
+                    })
+              )}
+              inputMode="decimal"
+              style={{
+                ...S.cellInput,
+                fontSize: isMobileSheet ? "16px" : S.cellInput.fontSize,
+              }}
+              placeholder="e.g. 12.5"
+            />
+            </td>
                               {(editingRunId ? editDraft : runDraft).elevation.columns.map((c) => (
                                 <td key={c} style={S.td}>
                                   <input value={r.values?.[c] ?? ""} onChange={(e) => ( !editingRunId ? setRunDraft(p => { const rows = [...p.elevation.rows]; const row = rows[idx]; rows[idx] = { ...row, values: { ...(row.values || {}), [c]: e.target.value } }; return { ...p, elevation: { ...p.elevation, rows } }; }): setEditDraft(p => { const rows = [...p.elevation.rows]; const row = rows[idx]; rows[idx] = { ...row, values: { ...(row.values || {}), [c]: e.target.value } }; return { ...p, elevation: { ...p.elevation, rows } }; }))} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet ? "14px" : S.cellInput.fontSize }} placeholder="°C" />
