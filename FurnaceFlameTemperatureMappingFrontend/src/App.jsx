@@ -1,8 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip,
-  CartesianGrid, ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  ReferenceDot,
 } from "recharts";
 import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
@@ -52,9 +58,9 @@ function createEmptyRunDraft({ stationName, unitId }) {
       total_coal_flow_tph: "",
       total_air_flow_tph: "",
       burner_tilt_deg_1: "",
-burner_tilt_deg_2: "",
-burner_tilt_deg_3: "",
-burner_tilt_deg_4: "",
+      burner_tilt_deg_2: "",
+      burner_tilt_deg_3: "",
+      burner_tilt_deg_4: "",
       coal_mills_in_service_count: "",
       coal_mills_in_service: "",
       oil_guns_in_service_count: "",
@@ -114,7 +120,7 @@ function buildUploadPayload(draft) {
         elevation_m,
         values: Object.fromEntries(cols.map((c, i) => [c, values[i]])),
         average: avg,
-        burner_tilt_deg: safeNum(r.burner_tilt_deg), // ADD THIS LINE - ensure it's properly mapped
+        burner_tilt_deg: safeNum(r.burner_tilt_deg),
       };
     })
     .filter(Boolean);
@@ -140,9 +146,9 @@ function buildUploadPayload(draft) {
       total_coal_flow_tph: safeNum(draft.meta.total_coal_flow_tph),
       total_air_flow_tph: safeNum(draft.meta.total_air_flow_tph),
       burner_tilt_deg_1: safeNum(draft.meta.burner_tilt_deg_1),
-burner_tilt_deg_2: safeNum(draft.meta.burner_tilt_deg_2),
-burner_tilt_deg_3: safeNum(draft.meta.burner_tilt_deg_3),
-burner_tilt_deg_4: safeNum(draft.meta.burner_tilt_deg_4),
+      burner_tilt_deg_2: safeNum(draft.meta.burner_tilt_deg_2),
+      burner_tilt_deg_3: safeNum(draft.meta.burner_tilt_deg_3),
+      burner_tilt_deg_4: safeNum(draft.meta.burner_tilt_deg_4),
       coal_mills_in_service_count: safeNum(draft.meta.coal_mills_in_service_count),
       coal_mills_in_service: String(draft.meta.coal_mills_in_service || "").trim() || null,
       oil_guns_in_service_count: safeNum(draft.meta.oil_guns_in_service_count),
@@ -701,7 +707,11 @@ export default function App() {
   const [reportDownloading, setReportDownloading] = useState(false);
   const [runDownloading, setRunDownloading] = useState({});
   const [visibleLines, setVisibleLines] = useState({});
+  const [lockedPoint, setLockedPoint] = useState({});
   const [activeTab, setActiveTab] = useState({});
+
+  const [pinnedTooltip, setPinnedTooltip] = useState({});
+  const [hoverEnabled, setHoverEnabled] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userLocation, setUserLocation] = useState("all");
 
@@ -718,8 +728,8 @@ export default function App() {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [editingRunId, setEditingRunId] = useState(null);
-const [editDraft, setEditDraft] = useState(null);
-const [savingEdit, setSavingEdit] = useState(false);
+  const [editDraft, setEditDraft] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const navigation = useNavigate();
 
   const [ingestTab, setIngestTab] = useState("run");
@@ -747,44 +757,41 @@ const [savingEdit, setSavingEdit] = useState(false);
   };
 
   const buildRunData = (dataset) => {
-  if (!dataset || !dataset.elevation) {
-    console.warn("buildRunData: no dataset or no elevation", dataset);
-    return [];
-  }
+    if (!dataset || !dataset.elevation) {
+      console.warn("buildRunData: no dataset or no elevation", dataset);
+      return [];
+    }
 
-  const cornerKeys = Object.keys(dataset)
-    .filter(k => k.match(/^c\d+$/))
-    .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+    const cornerKeys = Object.keys(dataset)
+      .filter(k => k.match(/^c\d+$/))
+      .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
 
-  const result = dataset.elevation
-    .map((el, i) => {
-      const elNum = Number(el);
-      const point = {
-        elevation: elNum,
-        burner_tilt_deg:
-  dataset.burner_tilt_deg?.[i] ??
-  dataset.burner_tilt_deg?.[String(i)] ??
-  null, // ADD THIS LINE
-        avg: (() => {
-          const cornerValues = cornerKeys
-            .map(k => dataset[k]?.[i])
-            .map(v => Number(v))
-            .filter(v => !isNaN(v) && v > 0);
-          return cornerValues.length
-            ? cornerValues.reduce((a, b) => a + b, 0) / cornerValues.length
-            : null;
-        })(),
-      };
-      cornerKeys.forEach(k => {
-        const v = dataset[k]?.[i];
-        point[k] = (v != null && v !== "" && !isNaN(Number(v))) ? Number(v) : null;
-      });
-      return point;
-    })
-    .filter(r => r.elevation != null && !isNaN(r.elevation));
+    const result = dataset.elevation
+      .map((el, i) => {
+        const elNum = Number(el);
+        const point = {
+          elevation: elNum,
+          burner_tilt_deg: dataset.burner_tilt_deg?.[i] ?? dataset.burner_tilt_deg?.[String(i)] ?? null,
+          avg: (() => {
+            const cornerValues = cornerKeys
+              .map(k => dataset[k]?.[i])
+              .map(v => Number(v))
+              .filter(v => !isNaN(v) && v > 0);
+            return cornerValues.length
+              ? cornerValues.reduce((a, b) => a + b, 0) / cornerValues.length
+              : null;
+          })(),
+        };
+        cornerKeys.forEach(k => {
+          const v = dataset[k]?.[i];
+          point[k] = (v != null && v !== "" && !isNaN(Number(v))) ? Number(v) : null;
+        });
+        return point;
+      })
+      .filter(r => r.elevation != null && !isNaN(r.elevation));
 
-  return result;
-};
+    return result;
+  };
 
   useEffect(() => {
     const location = localStorage.getItem("location");
@@ -793,10 +800,9 @@ const [savingEdit, setSavingEdit] = useState(false);
     setUserLocation(location);
   }, []);
 
-  useEffect(()=>{
-    console.log("edit draft check",editDraft);
-    
-  },[editDraft])
+  useEffect(() => {
+    console.log("edit draft check", editDraft);
+  }, [editDraft]);
 
   useEffect(() => {
     const st = localStorage.getItem("selectedStation");
@@ -874,14 +880,10 @@ const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchHistory = async () => {
     try {
-      let x = getUnitId()
-      console.log("x", x);
-
       const res = await axios.get(`${BASE_URL}/history`, {
         params: { station_id: getStationName(), unit_id: getUnitId() },
       });
       console.log("restdata", res.data);
-
       setHistory(res.data || []);
     } catch (err) { console.error("History fetch error:", err); }
   };
@@ -923,8 +925,6 @@ const [savingEdit, setSavingEdit] = useState(false);
       });
 
       console.log("Raw mapping response:", res.data);
-      console.log("Response type:", typeof res.data);
-      console.log("Is array?", Array.isArray(res.data));
 
       if (!res.data || !Array.isArray(res.data)) {
         console.error("Invalid response format:", res.data);
@@ -933,43 +933,23 @@ const [savingEdit, setSavingEdit] = useState(false);
 
       const datesSet = new Set();
       res.data.forEach(item => {
-        // Handle both possible field names
         let dateStr = item.run_date || item.run_timestamp;
 
         if (dateStr) {
-          // Ensure we only take YYYY-MM-DD part
           let normalizedDate = dateStr;
           if (typeof dateStr === 'string') {
             normalizedDate = dateStr.split('T')[0].split(' ')[0];
           } else if (dateStr instanceof Date) {
             normalizedDate = dateStr.toISOString().split('T')[0];
           } else if (typeof dateStr === 'object' && dateStr.$date) {
-            // MongoDB style date
             const d = new Date(dateStr.$date);
-
-            normalizedDate =
-              `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            normalizedDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
           }
-
-          // Check specifically for April 1st
-          if (normalizedDate === '2026-04-01') {
-            console.log("✅ Found April 1st in mapping dates!");
-          }
-
           datesSet.add(normalizedDate);
         }
       });
 
-      console.log("Final dates set:", Array.from(datesSet).sort());
-      console.log("Contains April 1st?", datesSet.has('2026-04-01'));
-
       setDataDates(datesSet);
-
-      // Optional: Auto-select April 1st for testing
-      if (datesSet.has('2026-04-01')) {
-        console.log("April 1st is available in the calendar!");
-      }
-
     } catch (e) {
       console.error("Fetch mapping dates error:", e);
     }
@@ -1026,28 +1006,17 @@ const [savingEdit, setSavingEdit] = useState(false);
 
     setReportDownloading(true);
     try {
-      let x = getUnitId()
-      console.log("unit id ", x);
-
       const histRes = await axios.get(`${BASE_URL}/history`, {
         params: { station_id: getStationName(), unit_id: getUnitId() },
       });
       const toISO = (raw) => {
         if (!raw) return "";
-
         const str = String(raw).trim();
-
-        // Already ISO
-        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-          return str;
-        }
-
-        // DD/MM/YYYY -> YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
           const [day, month, year] = str.split("/");
           return `${year}-${month}-${day}`;
         }
-
         return "";
       };
       const runs = (histRes.data || []).filter(item => {
@@ -1143,151 +1112,133 @@ const [savingEdit, setSavingEdit] = useState(false);
   };
 
   const openEditModal = (runId) => {
-  if (!isAdmin) {
-    alert("Only administrators can edit data.");
-    return;
-  }
-
-  const dataset = datasets[runId];
-  const boiler = boilerData[runId] || {};
-  const coal = coalData[runId] || [];
-  const runMeta = history.find(r => r.run_id === runId);
-
-  if (!dataset || !runMeta) {
-    alert("Run data not loaded.");
-    return;
-  }
-
-  const cornerKeys = Object.keys(dataset)
-    .filter(k => k.match(/^c\d+$/))
-    .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
-
-  const columns = cornerKeys.map(
-    k => `Corner ${k.replace("c", "")}`
-  );
-
-  const rows = (dataset.elevation || []).map((el, i) => ({
-    elevation_m: String(el),
-    values: Object.fromEntries(
-      columns.map((c, idx) => [
-        c,
-        dataset[`c${idx + 1}`]?.[i] ?? ""
-      ])
-    ),
-    burner_tilt_deg: dataset.burner_tilt_deg?.[i] ?? "", // ADD THIS LINE
-  }));
-
-  const byMill = {};
-
-  coal.forEach(m => {
-    byMill[m.mill] = {
-      coal_flow_tph: m.coal_flow_tph ?? "",
-      pa_flow_tph: m.pa_flow_tph ?? "",
-      mill_dp_mmwc: m.mill_dp_mmwc ?? "",
-      mill_outlet_temp: m.mill_outlet_temp ?? "",
-      mill_current_amp: m.mill_current_amp ?? "",
-    };
-  });
-
-  const draft = {
-    meta: {
-      station: getStationName(),
-      unit_id: getUnitId(),
-      run_date: runMeta.run_date || "",
-      run_time: runMeta.run_time || "",
-      load_mw: runMeta.load_mw || "",
-      total_coal_flow_tph: runMeta.total_coal_flow_tph || "",
-      total_air_flow_tph: runMeta.total_air_flow_tph || "",
-      burner_tilt_deg_1: runMeta.burner_tilt_deg_1 || "",
-      burner_tilt_deg_2: runMeta.burner_tilt_deg_2 || "",
-      burner_tilt_deg_3: runMeta.burner_tilt_deg_3 || "",
-      burner_tilt_deg_4: runMeta.burner_tilt_deg_4 || "",
-      coal_mills_in_service_count: runMeta.coal_mills_in_service_count || "",
-      coal_mills_in_service: runMeta.coal_mills_in_service || "",
-      oil_guns_in_service_count: runMeta.oil_guns_in_service_count || "",
-      oil_guns_in_service: runMeta.oil_guns_in_service || "",
-      notes: runMeta.notes || "",
-    },
-    elevation: {
-      columns,
-      rows,
-    },
-    boiler: {
-      ...boiler
-    },
-    flueGas: {
-      ...boiler
-    },
-    coalMills: {
-      mills: coal.map(c => c.mill),
-      byMill,
-    },
-  };
-
-  setEditDraft(draft);
-  setEditingRunId(runId);
-  setShowIngestModal(true);
-};
-
-const saveEditedRun = async () => {
-  if (!isAdmin) {
-    alert("Only administrators can edit runs.");
-    return;
-  }
-
-  try {
-    setSavingEdit(true);
-    
-    const payload = buildUploadPayload(editDraft);
-    console.log("editing,payload",editDraft);
-    
-    await axios.put(
-      `${BASE_URL}/runs/${editingRunId}?username=${localStorage.getItem("username")}`,
-      payload
-    );
-
-    setShowIngestModal(false);
-    setEditingRunId(null);
-    setEditDraft(null);
-
-    await fetchHistory();
-    await fetchMappingDates();
-
-    if (selected.includes(editingRunId)) {
-      const [dsRes, boilerRes, coalRes] = await Promise.all([
-        axios.get(`${BASE_URL}/history/${editingRunId}`),
-        axios.get(`${BASE_URL}/history/${editingRunId}/boiler-params`),
-        axios.get(`${BASE_URL}/history/${editingRunId}/coal-mill-params`),
-      ]);
-
-      setDatasets(prev => ({
-        ...prev,
-        [editingRunId]: dsRes.data
-      }));
-
-      setBoilerData(prev => ({
-        ...prev,
-        [editingRunId]: boilerRes.data
-      }));
-
-      setCoalData(prev => ({
-        ...prev,
-        [editingRunId]: coalRes.data
-      }));
+    if (!isAdmin) {
+      alert("Only administrators can edit data.");
+      return;
     }
 
-    alert("Run updated successfully.");
+    const dataset = datasets[runId];
+    const boiler = boilerData[runId] || {};
+    const coal = coalData[runId] || [];
+    const runMeta = history.find(r => r.run_id === runId);
 
-  } catch (err) {
-    console.error(err);
-    alert(
-      err?.response?.data?.detail ||
-      "Failed to update run"
+    if (!dataset || !runMeta) {
+      alert("Run data not loaded.");
+      return;
+    }
+
+    const cornerKeys = Object.keys(dataset)
+      .filter(k => k.match(/^c\d+$/))
+      .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+
+    const columns = cornerKeys.map(
+      k => `Corner ${k.replace("c", "")}`
     );
-  } finally {
-    setSavingEdit(false);
-  }
-};
+
+    const rows = (dataset.elevation || []).map((el, i) => ({
+      elevation_m: String(el),
+      values: Object.fromEntries(
+        columns.map((c, idx) => [
+          c,
+          dataset[`c${idx + 1}`]?.[i] ?? ""
+        ])
+      ),
+      burner_tilt_deg: dataset.burner_tilt_deg?.[i] ?? "",
+    }));
+
+    const byMill = {};
+
+    coal.forEach(m => {
+      byMill[m.mill] = {
+        coal_flow_tph: m.coal_flow_tph ?? "",
+        pa_flow_tph: m.pa_flow_tph ?? "",
+        mill_dp_mmwc: m.mill_dp_mmwc ?? "",
+        mill_outlet_temp: m.mill_outlet_temp ?? "",
+        mill_current_amp: m.mill_current_amp ?? "",
+      };
+    });
+
+    const draft = {
+      meta: {
+        station: getStationName(),
+        unit_id: getUnitId(),
+        run_date: runMeta.run_date || "",
+        run_time: runMeta.run_time || "",
+        load_mw: runMeta.load_mw || "",
+        total_coal_flow_tph: runMeta.total_coal_flow_tph || "",
+        total_air_flow_tph: runMeta.total_air_flow_tph || "",
+        burner_tilt_deg_1: runMeta.burner_tilt_deg_1 || "",
+        burner_tilt_deg_2: runMeta.burner_tilt_deg_2 || "",
+        burner_tilt_deg_3: runMeta.burner_tilt_deg_3 || "",
+        burner_tilt_deg_4: runMeta.burner_tilt_deg_4 || "",
+        coal_mills_in_service_count: runMeta.coal_mills_in_service_count || "",
+        coal_mills_in_service: runMeta.coal_mills_in_service || "",
+        oil_guns_in_service_count: runMeta.oil_guns_in_service_count || "",
+        oil_guns_in_service: runMeta.oil_guns_in_service || "",
+        notes: runMeta.notes || "",
+      },
+      elevation: {
+        columns,
+        rows,
+      },
+      boiler: {
+        ...boiler
+      },
+      flueGas: {
+        ...boiler
+      },
+      coalMills: {
+        mills: coal.map(c => c.mill),
+        byMill,
+      },
+    };
+
+    setEditDraft(draft);
+    setEditingRunId(runId);
+    setShowIngestModal(true);
+  };
+
+  const saveEditedRun = async () => {
+    if (!isAdmin) {
+      alert("Only administrators can edit runs.");
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      const payload = buildUploadPayload(editDraft);
+      await axios.put(
+        `${BASE_URL}/runs/${editingRunId}?username=${localStorage.getItem("username")}`,
+        payload
+      );
+
+      setShowIngestModal(false);
+      setEditingRunId(null);
+      setEditDraft(null);
+
+      await fetchHistory();
+      await fetchMappingDates();
+
+      if (selected.includes(editingRunId)) {
+        const [dsRes, boilerRes, coalRes] = await Promise.all([
+          axios.get(`${BASE_URL}/history/${editingRunId}`),
+          axios.get(`${BASE_URL}/history/${editingRunId}/boiler-params`),
+          axios.get(`${BASE_URL}/history/${editingRunId}/coal-mill-params`),
+        ]);
+
+        setDatasets(prev => ({ ...prev, [editingRunId]: dsRes.data }));
+        setBoilerData(prev => ({ ...prev, [editingRunId]: boilerRes.data }));
+        setCoalData(prev => ({ ...prev, [editingRunId]: coalRes.data }));
+      }
+
+      alert("Run updated successfully.");
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.detail || "Failed to update run");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const deleteRun = async (run_id) => {
     if (!isAdmin) { alert("Only administrators can delete data."); return; }
@@ -1308,21 +1259,15 @@ const saveEditedRun = async () => {
 
   const formatRunDate = (rawDate) => {
     if (!rawDate) return "";
-
     const str = String(rawDate).trim();
-
-    // Handle YYYY-MM-DD safely
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
       const [year, month, day] = str.split("-");
       return `${day}/${month}/${year}`;
     }
-
-    // Handle DD/MM/YYYY safely
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
       const [day, month, year] = str.split("/");
       return `${day}/${month}/${year}`;
     }
-
     return str;
   };
 
@@ -1357,7 +1302,6 @@ const saveEditedRun = async () => {
 
   return (
     <div style={{ background: "#f0eff8", minHeight: "100vh" }}>
-
       <header
         style={{
           height: "72px",
@@ -1378,8 +1322,6 @@ const saveEditedRun = async () => {
             gap: "20px",
           }}
         >
-
-          {/* LEFT */}
           <div
             style={{
               display: "flex",
@@ -1417,7 +1359,6 @@ const saveEditedRun = async () => {
                 />
               ))}
             </button>
-
             <div
               style={{
                 width: "46px",
@@ -1440,7 +1381,6 @@ const saveEditedRun = async () => {
                 }}
               />
             </div>
-
             <div
               style={{
                 display: "flex",
@@ -1464,7 +1404,6 @@ const saveEditedRun = async () => {
               >
                 ABHITECH FURNACE FLAME TEMPERATURE MAPPING
               </div>
-
               <div
                 style={{
                   fontFamily: "Inter, sans-serif",
@@ -1478,8 +1417,6 @@ const saveEditedRun = async () => {
               </div>
             </div>
           </div>
-
-          {/* CENTER */}
           <div
             style={{
               display: "flex",
@@ -1509,7 +1446,6 @@ const saveEditedRun = async () => {
                 >
                   STATION
                 </span>
-
                 <span
                   style={{
                     fontFamily: "Inter, sans-serif",
@@ -1520,7 +1456,6 @@ const saveEditedRun = async () => {
                 >
                   {selectedStation}
                 </span>
-
                 <div
                   style={{
                     width: "1px",
@@ -1528,7 +1463,6 @@ const saveEditedRun = async () => {
                     background: "#d1d5db",
                   }}
                 />
-
                 <span
                   style={{
                     fontFamily: "Inter, sans-serif",
@@ -1540,7 +1474,6 @@ const saveEditedRun = async () => {
                 >
                   UNIT
                 </span>
-
                 <span
                   style={{
                     fontFamily: "Inter, sans-serif",
@@ -1554,8 +1487,6 @@ const saveEditedRun = async () => {
               </div>
             )}
           </div>
-
-          {/* RIGHT */}
           <div
             style={{
               display: "flex",
@@ -1564,9 +1495,6 @@ const saveEditedRun = async () => {
               gap: "12px",
             }}
           >
-
-           
-
             {isAdmin && userLocation === "all" && (
               <div
                 style={{
@@ -1583,7 +1511,6 @@ const saveEditedRun = async () => {
                 ADMIN
               </div>
             )}
-
             <button
               onClick={handleLogout}
               style={{
@@ -1604,7 +1531,6 @@ const saveEditedRun = async () => {
           </div>
         </div>
       </header>
-
       <div style={{ display: "flex" }}>
         <aside style={{
           ...S.sidebar,
@@ -1618,14 +1544,10 @@ const saveEditedRun = async () => {
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M7 1v8M4 4l3-3 3 3M2 11h10" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-{
-  editingRunId
-    ? (savingEdit ? "SAVING…" : "SAVE CHANGES")
-    : (uploading ? "UPLOADING…" : "CREATE FTM RECORD")
-}              </button>
+                {editingRunId ? (savingEdit ? "SAVING…" : "SAVE CHANGES") : (uploading ? "UPLOADING…" : "CREATE FTM RECORD")}
+              </button>
             </div>
           )}
-
           <div style={S.sideSection}>
             <div style={S.secLabel}>DOWNLOAD REPORT</div>
             <button
@@ -1638,7 +1560,6 @@ const saveEditedRun = async () => {
               DOWNLOAD REPORT
             </button>
           </div>
-
           <div style={S.sideSection}>
             <div style={S.secLabel}>FILTER BY DATE</div>
             <CalPicker
@@ -1655,10 +1576,7 @@ const saveEditedRun = async () => {
               </div>
             )}
           </div>
-
-         
         </aside>
-
         <main style={{
           flex: 1,
           marginLeft: sidebarEffectiveOpen ? SIDEBAR_W : 0,
@@ -1732,7 +1650,6 @@ const saveEditedRun = async () => {
 
               const runMeta = history.find(r => r.run_id === id) || {};
               const runTitleDate = formatRunDate(runMeta.run_date || dataset.run_date || runMeta.run_timestamp);
-              const runSubtitle = dataset.filename || runMeta.run_date || `RUN ${id}`;
               const isDownloadingThisRun = !!runDownloading[id];
 
               return (
@@ -1744,10 +1661,8 @@ const saveEditedRun = async () => {
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", letterSpacing: "0.22em", color: "#000", marginBottom: "2px" }}>{graphLabel}</div>
                           <div style={{ ...S.runTitle, color: "#000" }}>{runTitleDate}</div>
-
                         </div>
                       </div>
-
                       <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                         <button
                           onClick={() => handleDownloadSingleRun(id)}
@@ -1768,36 +1683,31 @@ const saveEditedRun = async () => {
                           )}
                           {isDownloadingThisRun ? "…" : "XLSX"}
                         </button>
-
                         {isAdmin && (
-  <div style={{ display: "flex", gap: "6px" }}>
-
-    <button
-      onClick={() => openEditModal(id)}
-      style={{
-        ...S.downloadRunBtn,
-        background: "#dbeafe",
-        border: "1px solid #93c5fd",
-        color: "#1d4ed8",
-      }}
-      title="Edit this run"
-    >
-      EDIT
-    </button>
-
-    <button
-      onClick={() => deleteRun(id)}
-      style={S.deleteBtn}
-      title="Delete this run"
-    >
-      DELETE
-    </button>
-
-  </div>
-)}
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            <button
+                              onClick={() => openEditModal(id)}
+                              style={{
+                                ...S.downloadRunBtn,
+                                background: "#dbeafe",
+                                border: "1px solid #93c5fd",
+                                color: "#1d4ed8",
+                              }}
+                              title="Edit this run"
+                            >
+                              EDIT
+                            </button>
+                            <button
+                              onClick={() => deleteRun(id)}
+                              style={S.deleteBtn}
+                              title="Delete this run"
+                            >
+                              DELETE
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1px", marginTop: "10px" }}>
                       {[
                         { l: "MAX", v: `${maxTemp.toFixed(0)}°C`, c: "#000" },
@@ -1812,7 +1722,6 @@ const saveEditedRun = async () => {
                       ))}
                     </div>
                   </div>
-
                   <div style={S.tabBar}>
                     {[
                       { k: "graph", l: "GRAPH" },
@@ -1823,41 +1732,161 @@ const saveEditedRun = async () => {
                       <button key={k} onClick={() => setTab(id, k)} style={{ ...S.tabBtn, ...(getTab(id) === k ? S.tabActive : {}) }}>{l}</button>
                     ))}
                   </div>
-
                   {getTab(id) === "graph" && (
                     <div style={S.chartPanel}>
                       <div style={S.chartLabel}>THERMAL PROFILE — ELEVATION VS TEMPERATURE</div>
-                      <div style={{ width: "100%", height: CHART_HEIGHT }}>
+                      <div style={{ width: "100%", height: CHART_HEIGHT, position: "relative" }}>
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={runData} layout="vertical">
+                           {lockedPoint[id] && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: lockedPoint[id].y,
+                              left: lockedPoint[id].x + 20,
+                              zIndex: 9999,
+                              pointerEvents: "none",
+                            }}
+                          >
+                            <CustomTooltip
+                              active={true}
+                              payload={lockedPoint[id].payload}
+                              label={lockedPoint[id].label}
+                            />
+                          </div>
+                        )}
+                          <LineChart
+                            data={runData}
+                            layout="vertical"
+                            onMouseMove={() => { if (pinnedTooltip[id]?.active) return false; }}
+                            onMouseLeave={() => { if (!pinnedTooltip[id]?.active) { setHoverEnabled(true); } }}
+                            onClick={(state) => {
+                              if (state && state.activePayload && state.activePayload.length) {
+                                setPinnedTooltip(prev => ({
+                                  ...prev,
+                                  [id]: {
+                                    active: true,
+                                    payload: state.activePayload,
+                                    label: state.activeLabel,
+                                  },
+                                }));
+                                setHoverEnabled(false);
+                              }
+                            }}
+                          >
+                            
                             <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
-                            <YAxis dataKey="elevation" type="number" domain={[minElevation, maxElevation]} ticks={allElevations} interval={0} reversed width={44} tick={{ fill: "#a0a0c0", fontSize: 11, fontFamily: "Inter, sans-serif" }} axisLine={false} tickLine={false} />
-<XAxis
-  type="number"
-  domain={[
-    Math.floor(xMin - xPadding),
-    Math.ceil(xMax + xPadding)
-  ]}
-  allowDecimals={false}
-  tickCount={10}
-  tickFormatter={(value) => Math.round(value)}
-  tick={{
-    fill: "#a0a0c0",
-    fontSize: 11,
-    fontFamily: "Inter, sans-serif"
-  }}
-  axisLine={false}
-  tickLine={false}
-/>                            <Tooltip content={<CustomTooltip />} />
-                            {cornerKeys.map(k => currentVisibleLines[k] && (
-                              <Line key={k} type="monotone" dataKey={k} stroke={dynamicColors[k]} dot={false} strokeWidth={2} connectNulls={false} />
-                            ))}
-                            {currentVisibleLines.avg && (
-                              <Line type="monotone" dataKey="avg" stroke={dynamicColors.avg} dot={false} strokeWidth={3} connectNulls={false} />
+                            
+                            <YAxis
+                              dataKey="elevation"
+                              type="number"
+                              domain={[minElevation, maxElevation]}
+                              ticks={allElevations}
+                              interval={0}
+                              reversed
+                              width={44}
+                              tick={{ fill: "#a0a0c0", fontSize: 11, fontFamily: "Inter, sans-serif" }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            
+                            <XAxis
+                              type="number"
+                              domain={[Math.floor(xMin - xPadding), Math.ceil(xMax + xPadding)]}
+                              allowDecimals={false}
+                              tickCount={10}
+                              tickFormatter={(value) => Math.round(value)}
+                              tick={{ fill: "#a0a0c0", fontSize: 11, fontFamily: "Inter, sans-serif" }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            {cornerKeys.map(k =>
+                              currentVisibleLines[k] && (
+                                <Line
+                                  key={k}
+                                  type="monotone"
+                                  dataKey={k}
+                                  stroke={dynamicColors[k]}
+                                  strokeWidth={2}
+                                  connectNulls={false}
+                                  dot={{ r: 3 }}
+                                  activeDot={{
+                                    r: 7,
+                                    cursor: "pointer",
+                                    onClick: (e, payload) => {
+                                      const point = payload.payload;
+                                      const tooltipPayload = Object.keys(dynamicColors)
+                                        .filter(key => point[key] != null)
+                                        .map(key => ({
+                                          dataKey: key,
+                                          value: point[key],
+                                          color: dynamicColors[key],
+                                        }));
+                                      setLockedPoint(prev => ({
+                                        ...prev,
+                                        [id]: {
+                                          x: e.cx,
+                                          y: e.cy,
+                                          payload: tooltipPayload,
+                                          label: point.elevation,
+                                        },
+                                      }));
+                                    },
+                                  }}
+                                />
+                              )
                             )}
+                            {currentVisibleLines.avg && (
+                              <Line
+                                type="monotone"
+                                dataKey="avg"
+                                stroke={dynamicColors.avg}
+                                strokeWidth={3}
+                                connectNulls={false}
+                                dot={{
+                                  r: 4,
+                                  cursor: "pointer",
+                                  onClick: (_, index) => {
+                                    const point = runData[index];
+                                    const payload = Object.keys(dynamicColors)
+                                      .filter(key => point[key] != null)
+                                      .map(key => ({
+                                        dataKey: key,
+                                        value: point[key],
+                                        color: dynamicColors[key],
+                                      }));
+                                    setPinnedTooltip(prev => ({
+                                      ...prev,
+                                      [id]: {
+                                        active: true,
+                                        payload,
+                                        label: point.elevation,
+                                      },
+                                    }));
+                                    setHoverEnabled(false);
+                                  },
+                                }}
+                                activeDot={{ r: 7, cursor: "pointer" }}
+                              />
+                            )}
+                            {pinnedTooltip[id]?.active && (
+                              <ReferenceDot
+                                x={pinnedTooltip[id]?.payload?.[0]?.value}
+                                y={pinnedTooltip[id]?.label}
+                                r={8}
+                                fill="#111827"
+                                stroke="#ffffff"
+                                strokeWidth={2}
+                              />
+                              
+                            )
+                            }
+                            
                           </LineChart>
+                          
                         </ResponsiveContainer>
+                       
                       </div>
+                      
                       <div style={S.filterBar}>
                         {Object.keys(dynamicColors).map(k => (
                           <button
@@ -1865,25 +1894,17 @@ const saveEditedRun = async () => {
                             onClick={() => setVisibleLines(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [k]: !(prev[id]?.[k] ?? true) } }))}
                             style={{
                               ...S.filterBtn,
-                              background: currentVisibleLines[k]
-                                ? dynamicColors[k] + "18"
-                                : "#f3f4f6",
-
-                              borderColor: currentVisibleLines[k]
-                                ? dynamicColors[k]
-                                : "#d1d5db",
-
-                              color: currentVisibleLines[k]
-                                ? dynamicColors[k]
-                                : "#6b7280",
-                            }}                          >
+                              background: currentVisibleLines[k] ? dynamicColors[k] + "18" : "#f3f4f6",
+                              borderColor: currentVisibleLines[k] ? dynamicColors[k] : "#d1d5db",
+                              color: currentVisibleLines[k] ? dynamicColors[k] : "#6b7280",
+                            }}
+                          >
                             {dynamicLabels[k]}
                           </button>
                         ))}
                       </div>
                     </div>
                   )}
-
                   {getTab(id) === "raw" && (
                     <div style={S.tablePanel}>
                       <div style={S.chartLabel}>RAW MEASUREMENT DATA</div>
@@ -1901,9 +1922,7 @@ const saveEditedRun = async () => {
                             {runData.map((row, i) => (
                               <tr key={i} style={{ borderBottom: "0.5px solid #eeecf8" }}>
                                 <td style={S.td}>{row.elevation}m</td>
-                                <td style={S.td}>
-  {row.burner_tilt_deg ?? "—"}
-</td>
+                                <td style={S.td}>{row.burner_tilt_deg ?? "—"}</td>
                                 {cornerKeys.map(k => <td key={k} style={S.td}>{row[k] ?? "—"}</td>)}
                                 <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>{row.avg}</td>
                               </tr>
@@ -1913,14 +1932,12 @@ const saveEditedRun = async () => {
                       </div>
                     </div>
                   )}
-
                   {getTab(id) === "boiler" && (
                     <div style={S.tablePanel}>
                       <div style={S.chartLabel}>BOILER & MILL PARAMETERS</div>
                       <BoilerParamsTable data={boilerData[id]} />
                     </div>
                   )}
-
                   {getTab(id) === "coal" && (
                     <div style={S.tablePanel}>
                       <div style={S.chartLabel}>COAL MILL PARAMETERS</div>
@@ -1933,7 +1950,6 @@ const saveEditedRun = async () => {
           </div>
         </main>
       </div>
-
       {showSuccessModal && (
         <div style={S.modalOverlay}>
           <div style={S.modal}>
@@ -1943,7 +1959,6 @@ const saveEditedRun = async () => {
           </div>
         </div>
       )}
-
       {showReportModal && (
         <div style={S.modalOverlay} onMouseDown={(e) => { if (e.target === e.currentTarget) setShowReportModal(false); }}>
           <div style={{ ...S.modal, maxWidth: "420px", textAlign: "left" }}>
@@ -1956,7 +1971,6 @@ const saveEditedRun = async () => {
               </div>
               <button onClick={() => setShowReportModal(false)} style={{ border: "1px solid #eee", background: "#fff", borderRadius: "10px", width: "32px", height: "32px", cursor: "pointer", color: "#000", fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
               <div style={S.field}>
                 <div style={S.fieldLabel}>FROM DATE</div>
@@ -1967,17 +1981,14 @@ const saveEditedRun = async () => {
                 <input type="date" value={reportToDate} onChange={e => { setReportToDate(e.target.value); setReportError(""); }} style={{ ...S.fieldInput, fontSize: "15px" }} />
               </div>
             </div>
-
             {reportError && (
               <div style={{ fontFamily: "'Inter',sans-serif", fontSize: "12px", color: "#000", letterSpacing: "0.08em", marginBottom: "12px", padding: "8px 10px", background: "#fff1f2", borderRadius: "6px", border: "1px solid #fecdd3" }}>
                 {reportError}
               </div>
             )}
-
             <div style={{ fontFamily: "'Inter',sans-serif", fontSize: "11px", color: "#000", letterSpacing: "0.06em", marginBottom: "14px", padding: "8px 10px", background: "#f5f4ff", borderRadius: "6px" }}>
               Station: <strong style={{ color: "#000" }}>{getStationName() || "—"}</strong> · Unit: <strong style={{ color: "#000" }}>{getUnitName() || "—"}</strong>
             </div>
-
             <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
               <button onClick={() => setShowReportModal(false)} style={S.secondaryBtn}>CANCEL</button>
               <button
@@ -2003,7 +2014,6 @@ const saveEditedRun = async () => {
           </div>
         </div>
       )}
-
       {showIngestModal && (
         <div style={S.ingestOverlay} onMouseDown={(e) => { if (e.target === e.currentTarget) setShowIngestModal(false); }}>
           <div style={{ ...S.ingestSheet, padding: isNarrow ? 0 : "16px" }}>
@@ -2014,7 +2024,6 @@ const saveEditedRun = async () => {
               maxHeight: isNarrow ? "100%" : "min(92vh, 860px)",
               borderRadius: isNarrow ? 0 : "14px",
             }} role="dialog" aria-modal="true">
-
               <div style={{ ...S.ingestHeader, position: "sticky", top: 0, zIndex: 3 }}>
                 <div>
                   <div style={S.ingestTitle}>BASIC INFORMATION</div>
@@ -2022,7 +2031,6 @@ const saveEditedRun = async () => {
                 </div>
                 <button onClick={() => setShowIngestModal(false)} style={S.ingestClose} aria-label="Close">✕</button>
               </div>
-
               <div style={{ ...S.ingestTabs, position: "sticky", top: 64, zIndex: 2, overflowX: isNarrow ? "auto" : "visible", WebkitOverflowScrolling: "touch", flexWrap: isNarrow ? "nowrap" : S.ingestTabs.flexWrap }}>
                 {[
                   { k: "run", l: "1. RUN" },
@@ -2034,7 +2042,6 @@ const saveEditedRun = async () => {
                   <button key={t.k} onClick={() => setIngestTab(t.k)} style={{ ...S.ingestTabBtn, ...(ingestTab === t.k ? S.ingestTabActive : {}) }}>{t.l}</button>
                 ))}
               </div>
-
               <div style={{ ...S.ingestBody, padding: isNarrow ? "12px 10px 10px" : S.ingestBody.padding }}>
                 {ingestTab === "run" && (
                   <div style={{ ...S.ingestGrid, gridTemplateColumns: isNarrow ? "1fr" : S.ingestGrid.gridTemplateColumns }}>
@@ -2044,7 +2051,6 @@ const saveEditedRun = async () => {
                       { k: "load_mw", l: "LOAD (MW)", type: "number" },
                       { k: "total_coal_flow_tph", l: "TOTAL COAL FLOW (TPH)", type: "number" },
                       { k: "total_air_flow_tph", l: "TOTAL AIR FLOW (TPH)", type: "number" },
-                      
                       { k: "coal_mills_in_service_count", l: "COAL MILLS IN SERVICE (COUNT)", type: "number" },
                       { k: "coal_mills_in_service", l: "COAL MILLS IN SERVICE (E.G. ABDEFG)", type: "text" },
                       { k: "oil_guns_in_service_count", l: "OIL GUNS IN SERVICE (COUNT)", type: "number" },
@@ -2064,13 +2070,10 @@ const saveEditedRun = async () => {
                     ))}
                   </div>
                 )}
-
                 {ingestTab === "elevation" && (
                   <div>
                     <div style={S.ingestToolbar}>
                       <div style={S.helperText}>Add/remove corner columns & elevation rows, then enter temperatures by elevation.</div>
-
-                      {/* Corner Controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                         <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "#000", letterSpacing: "0.08em" }}>CORNERS</span>
                         <div style={{ display: "flex", gap: "2px" }}>
@@ -2111,8 +2114,6 @@ const saveEditedRun = async () => {
                           </button>
                         </div>
                       </div>
-
-                      {/* Elevation Row Controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: "4px", marginLeft: "12px" }}>
                         <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "#000", letterSpacing: "0.08em" }}>ROWS</span>
                         <div style={{ display: "flex", gap: "2px" }}>
@@ -2121,7 +2122,7 @@ const saveEditedRun = async () => {
                             onClick={() => (!editingRunId ? setRunDraft(p => {
                               const values = Object.fromEntries(p.elevation.columns.map((c) => [c, ""]));
                               return { ...p, elevation: { ...p.elevation, rows: [...p.elevation.rows, { elevation_m: "", values }] } };
-                            }): setEditDraft(p => {
+                            }) : setEditDraft(p => {
                               const values = Object.fromEntries(p.elevation.columns.map((c) => [c, ""]));
                               return { ...p, elevation: { ...p.elevation, rows: [...p.elevation.rows, { elevation_m: "", values }] } };
                             }))}
@@ -2155,75 +2156,80 @@ const saveEditedRun = async () => {
                             {(editingRunId ? editDraft : runDraft).elevation.columns.map((c) => <th key={c} style={S.th}>{c.toUpperCase()}</th>)}
                           </tr>
                         </thead>
-                       <tbody>
-      {(editingRunId ? editDraft : runDraft).elevation.rows.map((r, idx) => (
-        <tr key={idx + 1} style={{ borderBottom: "0.5px solid #eeecf8" }}>
-          <td style={S.td}>
-            <input 
-              value={r.elevation_m} 
-              onChange={(e) => (
-                !editingRunId 
-                  ? setRunDraft(p => { 
-                      const rows = [...p.elevation.rows]; 
-                      rows[idx] = { ...rows[idx], elevation_m: e.target.value }; 
-                      return { ...p, elevation: { ...p.elevation, rows } }; 
-                    })
-                  : setEditDraft(p => { 
-                      const rows = [...p.elevation.rows]; 
-                      rows[idx] = { ...rows[idx], elevation_m: e.target.value }; 
-                      return { ...p, elevation: { ...p.elevation, rows } }; 
-                    })
-              )} 
-              inputMode="decimal" 
-              style={{ ...S.cellInput, fontSize: isMobileSheet ? "16px" : S.cellInput.fontSize }} 
-              placeholder="e.g. 56.4" 
-            />
-          </td>
-          <td style={S.td}>
-            <input
-              value={r.burner_tilt_deg}
-              onChange={(e) => (
-                !editingRunId
-                  ? setRunDraft(p => {
-                      const rows = [...p.elevation.rows];
-                      rows[idx] = {
-                        ...rows[idx],
-                        burner_tilt_deg: e.target.value,
-                      };
-                      return {
-                        ...p,
-                        elevation: {
-                          ...p.elevation,
-                          rows,
-                        },
-                      };
-                    })
-                  : setEditDraft(p => {
-                      const rows = [...p.elevation.rows];
-                      rows[idx] = {
-                        ...rows[idx],
-                        burner_tilt_deg: e.target.value,
-                      };
-                      return {
-                        ...p,
-                        elevation: {
-                          ...p.elevation,
-                          rows,
-                        },
-                      };
-                    })
-              )}
-              inputMode="decimal"
-              style={{
-                ...S.cellInput,
-                fontSize: isMobileSheet ? "16px" : S.cellInput.fontSize,
-              }}
-              placeholder="e.g. 12.5"
-            />
-            </td>
+                        <tbody>
+                          {(editingRunId ? editDraft : runDraft).elevation.rows.map((r, idx) => (
+                            <tr key={idx + 1} style={{ borderBottom: "0.5px solid #eeecf8" }}>
+                              <td style={S.td}>
+                                <input
+                                  value={r.elevation_m}
+                                  onChange={(e) => (
+                                    !editingRunId
+                                      ? setRunDraft(p => {
+                                          const rows = [...p.elevation.rows];
+                                          rows[idx] = { ...rows[idx], elevation_m: e.target.value };
+                                          return { ...p, elevation: { ...p.elevation, rows } };
+                                        })
+                                      : setEditDraft(p => {
+                                          const rows = [...p.elevation.rows];
+                                          rows[idx] = { ...rows[idx], elevation_m: e.target.value };
+                                          return { ...p, elevation: { ...p.elevation, rows } };
+                                        })
+                                  )}
+                                  inputMode="decimal"
+                                  style={{ ...S.cellInput, fontSize: isMobileSheet ? "16px" : S.cellInput.fontSize }}
+                                  placeholder="e.g. 56.4"
+                                />
+                              </td>
+                              <td style={S.td}>
+                                <input
+                                  value={r.burner_tilt_deg}
+                                  onChange={(e) => (
+                                    !editingRunId
+                                      ? setRunDraft(p => {
+                                          const rows = [...p.elevation.rows];
+                                          rows[idx] = {
+                                            ...rows[idx],
+                                            burner_tilt_deg: e.target.value,
+                                          };
+                                          return { ...p, elevation: { ...p.elevation, rows } };
+                                        })
+                                      : setEditDraft(p => {
+                                          const rows = [...p.elevation.rows];
+                                          rows[idx] = {
+                                            ...rows[idx],
+                                            burner_tilt_deg: e.target.value,
+                                          };
+                                          return { ...p, elevation: { ...p.elevation, rows } };
+                                        })
+                                  )}
+                                  inputMode="decimal"
+                                  style={{ ...S.cellInput, fontSize: isMobileSheet ? "16px" : S.cellInput.fontSize }}
+                                  placeholder="e.g. 12.5"
+                                />
+                              </td>
                               {(editingRunId ? editDraft : runDraft).elevation.columns.map((c) => (
                                 <td key={c} style={S.td}>
-                                  <input value={r.values?.[c] ?? ""} onChange={(e) => ( !editingRunId ? setRunDraft(p => { const rows = [...p.elevation.rows]; const row = rows[idx]; rows[idx] = { ...row, values: { ...(row.values || {}), [c]: e.target.value } }; return { ...p, elevation: { ...p.elevation, rows } }; }): setEditDraft(p => { const rows = [...p.elevation.rows]; const row = rows[idx]; rows[idx] = { ...row, values: { ...(row.values || {}), [c]: e.target.value } }; return { ...p, elevation: { ...p.elevation, rows } }; }))} inputMode="decimal" style={{ ...S.cellInput, fontSize: isMobileSheet ? "14px" : S.cellInput.fontSize }} placeholder="°C" />
+                                  <input
+                                    value={r.values?.[c] ?? ""}
+                                    onChange={(e) => (
+                                      !editingRunId
+                                        ? setRunDraft(p => {
+                                            const rows = [...p.elevation.rows];
+                                            const row = rows[idx];
+                                            rows[idx] = { ...row, values: { ...(row.values || {}), [c]: e.target.value } };
+                                            return { ...p, elevation: { ...p.elevation, rows } };
+                                          })
+                                        : setEditDraft(p => {
+                                            const rows = [...p.elevation.rows];
+                                            const row = rows[idx];
+                                            rows[idx] = { ...row, values: { ...(row.values || {}), [c]: e.target.value } };
+                                            return { ...p, elevation: { ...p.elevation, rows } };
+                                          })
+                                    )}
+                                    inputMode="decimal"
+                                    style={{ ...S.cellInput, fontSize: isMobileSheet ? "14px" : S.cellInput.fontSize }}
+                                    placeholder="°C"
+                                  />
                                 </td>
                               ))}
                             </tr>
@@ -2236,7 +2242,6 @@ const saveEditedRun = async () => {
                     </div>
                   </div>
                 )}
-
                 {ingestTab === "boiler" && (
                   <div style={{ ...S.ingestGrid, gridTemplateColumns: isNarrow ? "1fr" : S.ingestGrid.gridTemplateColumns }}>
                     {[
@@ -2263,7 +2268,6 @@ const saveEditedRun = async () => {
                     ))}
                   </div>
                 )}
-
                 {ingestTab === "flue" && (
                   <div style={{ ...S.ingestGrid, gridTemplateColumns: isNarrow ? "1fr" : S.ingestGrid.gridTemplateColumns }}>
                     {[
@@ -2287,27 +2291,17 @@ const saveEditedRun = async () => {
                     ))}
                   </div>
                 )}
-
                 {ingestTab === "mills" && (
                   <div>
-                    {/* UPDATED: Side-by-side controls for Mills with MAX_MILLS cap */}
                     <div style={S.ingestToolbar}>
                       <div style={S.helperText}>Add/remove coal mill columns (A, B, C…) and enter their parameters. Max {MAX_MILLS} mills.</div>
-
-                      {/* Mill Controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                         <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "#000", letterSpacing: "0.08em" }}>MILLS</span>
                         <div style={{ display: "flex", gap: "2px" }}>
                           <button
-                            style={{
-                              ...S.smallBtn,
-                              borderRadius: "10px 0 0 10px",
-                              padding: "8px 8px",
-                              opacity: (editingRunId ? editDraft : runDraft).coalMills.mills.length >= MAX_MILLS ? 0.5 : 1,
-                              cursor: (editingRunId ? editDraft : runDraft).coalMills.mills.length >= MAX_MILLS ? "not-allowed" : "pointer"
-                            }}
+                            style={{ ...S.smallBtn, borderRadius: "10px 0 0 10px", padding: "8px 8px", opacity: (editingRunId ? editDraft : runDraft).coalMills.mills.length >= MAX_MILLS ? 0.5 : 1 }}
                             disabled={(editingRunId ? editDraft : runDraft).coalMills.mills.length >= MAX_MILLS}
-                            onClick={() => (!editingId ? setRunDraft(p => {
+                            onClick={() => (!editingRunId ? setRunDraft(p => {
                               if (p.coalMills.mills.length >= MAX_MILLS) return p;
                               const used = new Set(p.coalMills.mills);
                               const next = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").find(x => !used.has(x)) || `M${p.coalMills.mills.length + 1}`;
@@ -2322,7 +2316,7 @@ const saveEditedRun = async () => {
                               const byMill = { ...p.coalMills.byMill, [next]: { coal_flow_tph: "", pa_flow_tph: "", mill_dp_mmwc: "", mill_outlet_temp: "", mill_current_amp: "" } };
                               return { ...p, coalMills: { ...p.coalMills, mills, byMill } };
                             }))}
-                            title={(editingRunId ? editDraft : runDraft).coalMills.mills.length >= MAX_MILLS ? `Maximum ${MAX_MILLS} mills allowed` : "Add Mill"}
+                            title="Add Mill"
                           >
                             +
                           </button>
@@ -2354,27 +2348,9 @@ const saveEditedRun = async () => {
                             <th style={S.th}>PARAMETER</th>
                             {(editingRunId ? editDraft : runDraft).coalMills.mills.map(mill => (
                               <th key={mill}>
-                                <div style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: "6px"
-                                }}>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
                                   <span>{mill}</span>
-
-                                  <button
-                                    onClick={() => removeCoalMill(mill)}
-                                    style={{
-                                      border: "none",
-                                      background: "transparent",
-                                      color: "#dc2626",
-                                      cursor: "pointer",
-                                      fontWeight: 700,
-                                      fontSize: "14px",
-                                    }}
-                                  >
-                                    ✕
-                                  </button>
+                                  <button onClick={() => removeCoalMill(mill)} style={{ border: "none", background: "transparent", color: "#dc2626", cursor: "pointer", fontWeight: 700, fontSize: "14px" }}>✕</button>
                                 </div>
                               </th>
                             ))}
@@ -2392,7 +2368,13 @@ const saveEditedRun = async () => {
                               <td style={S.td}>{row.l}</td>
                               {(editingRunId ? editDraft : runDraft).coalMills.mills.map(m => (
                                 <td key={m} style={S.td}>
-                                  <input value={(editingRunId ? editDraft : runDraft).coalMills.byMill?.[m]?.[row.k] ?? ""} onChange={(e) => (!editingRunId ? setRunDraft(p => ({ ...p, coalMills: { ...p.coalMills, byMill: { ...p.coalMills.byMill, [m]: { ...(p.coalMills.byMill?.[m] || {}), [row.k]: e.target.value } } } })) : setRunDraft(p => ({ ...p, coalMills: { ...p.coalMills, byMill: { ...p.coalMills.byMill, [m]: { ...(p.coalMills.byMill?.[m] || {}), [row.k]: e.target.value } } } })))} inputMode="decimal" style={S.cellInput} placeholder="—" />
+                                  <input
+                                    value={(editingRunId ? editDraft : runDraft).coalMills.byMill?.[m]?.[row.k] ?? ""}
+                                    onChange={(e) => (!editingRunId ? setRunDraft(p => ({ ...p, coalMills: { ...p.coalMills, byMill: { ...p.coalMills.byMill, [m]: { ...(p.coalMills.byMill?.[m] || {}), [row.k]: e.target.value } } } })) : setEditDraft(p => ({ ...p, coalMills: { ...p.coalMills, byMill: { ...p.coalMills.byMill, [m]: { ...(p.coalMills.byMill?.[m] || {}), [row.k]: e.target.value } } } })))}
+                                    inputMode="decimal"
+                                    style={S.cellInput}
+                                    placeholder="—"
+                                  />
                                 </td>
                               ))}
                             </tr>
@@ -2403,30 +2385,16 @@ const saveEditedRun = async () => {
                   </div>
                 )}
               </div>
-
               <div style={{ ...S.ingestFooter, position: "sticky", bottom: 0, zIndex: 2 }}>
                 <div style={S.footerHint}>Station: <strong>{getStationName() || "—"}</strong> · Unit: <strong>{getUnitId() || "—"}</strong></div>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: isNarrow ? "stretch" : "flex-end", width: isNarrow ? "100%" : "auto" }}>
                   <button onClick={() => setShowIngestModal(false)} style={{ ...S.secondaryBtn, width: isNarrow ? "100%" : "auto" }}>CANCEL</button>
                   {ingestTab === "mills" ? (
-                    <button onClick={
-  editingRunId
-    ? saveEditedRun
-    : submitRunDraft
-} disabled={uploading} style={{ ...S.primaryBtn, width: isNarrow ? "100%" : "auto", opacity: uploading ? 0.7 : 1 }}>
+                    <button onClick={editingRunId ? saveEditedRun : submitRunDraft} disabled={uploading} style={{ ...S.primaryBtn, width: isNarrow ? "100%" : "auto", opacity: uploading ? 0.7 : 1 }}>
                       {uploading ? "SAVING…" : "SAVE RUN"}
                     </button>
                   ) : (
-                    <button
-                      onClick={() => {
-                        const tabs = ["run", "elevation", "boiler", "flue", "mills"];
-                        const currentIdx = tabs.indexOf(ingestTab);
-                        setIngestTab(tabs[currentIdx + 1]);
-                      }}
-                      style={{ ...S.primaryBtn, width: isNarrow ? "100%" : "auto" }}
-                    >
-                      SAVE & NEXT
-                    </button>
+                    <button onClick={() => { const tabs = ["run", "elevation", "boiler", "flue", "mills"]; const currentIdx = tabs.indexOf(ingestTab); setIngestTab(tabs[currentIdx + 1]); }} style={{ ...S.primaryBtn, width: isNarrow ? "100%" : "auto" }}>SAVE & NEXT</button>
                   )}
                 </div>
               </div>
@@ -2434,7 +2402,6 @@ const saveEditedRun = async () => {
           </div>
         </div>
       )}
-
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -2446,7 +2413,6 @@ const S = {
   modalIcon: { width: "50px", height: "50px", borderRadius: "50%", background: "#16a34a", color: "#000", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "30px", margin: "0 auto 12px" },
   modalTitle: { fontFamily: "'Manrope',sans-serif", fontSize: "24px", letterSpacing: "0.1em", color: "#000" },
   modalText: { fontFamily: "'Inter',sans-serif", fontSize: "15px", color: "#000", marginTop: "8px", letterSpacing: "0.05em" },
-
   ingestOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(20,18,40,0.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "stretch", justifyContent: "stretch", padding: 0, zIndex: 200 },
   ingestSheet: { flex: 1, width: "100%", height: "100%", display: "flex", alignItems: "stretch", justifyContent: "center", boxSizing: "border-box" },
   ingestModal: { width: "min(980px,100%)", maxHeight: "min(92vh,860px)", background: "#ffffff", borderRadius: "14px", boxShadow: "0 28px 60px -18px rgba(0,0,0,0.35)", overflow: "hidden", display: "flex", flexDirection: "column" },
@@ -2470,43 +2436,11 @@ const S = {
   smallBtn: { border: "1px solid #e8e6f4", background: "#ffffff", borderRadius: "10px", padding: "8px 10px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.1em", color: "#000" },
   primaryBtn: { border: "none", background: "#4f46e5", color: "#000", borderRadius: "10px", padding: "10px 14px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.12em" },
   secondaryBtn: { border: "1px solid #e8e6f4", background: "#ffffff", color: "#000", borderRadius: "10px", padding: "10px 14px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.12em" },
-
-  header: { background: "#ffffff", borderBottom: "1px solid #e8e6f4", position: "sticky", top: 0, zIndex: 50, boxShadow: "0 1px 0 rgba(79,70,229,0.06)" },
-  hamburger: { background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", gap: "4px", padding: "4px" },
-  headerInner: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", flexWrap: "wrap" },
-  hLine: { display: "block", width: "18px", height: "1.5px", background: "#9896c0" },
-  logoMark: { width: "36px", height: "36px", border: "1px solid #e2e1f0", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5fb", flexShrink: 0 },
-  brandName: {
-    fontFamily: "Inter, sans-serif",
-    fontSize: "19px",
-    fontWeight: 900,
-    letterSpacing: "0.04em",
-    color: "#111827",
-    lineHeight: 1.1,
-  },
-  brandTag: {
-    fontFamily: "Inter, sans-serif",
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#6b7280",
-    marginTop: "2px",
-    letterSpacing: "0.08em",
-  },
-  suLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.18em", color: "#000" },
-  suVal: { fontFamily: "'Manrope',sans-serif", fontSize: "17px", color: "#000", letterSpacing: "0.08em" },
-  adminBadge: { padding: "4px 10px", background: "#4f46e5", color: "#000", borderRadius: "20px", fontSize: "13px", fontWeight: "bold", letterSpacing: "0.5px" },
-  statsRow: { display: "flex", alignItems: "center", gap: "20px", marginLeft: "auto" },
-  statItem: { display: "flex", alignItems: "center", gap: "6px" },
-  statN: { fontFamily: "'Manrope',sans-serif", fontSize: "22px", color: "#000", lineHeight: 1 },
-  statL: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.15em", color: "#000" },
-  logoutButton: { display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", background: "#dc2626", color: "#000", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600", letterSpacing: "0.5px", flexShrink: 0 },
-
   sidebar: { background: "#ffffff", borderRight: "1px solid #e8e6f4", position: "fixed", left: 0, top: "56px", bottom: 0, overflowY: "auto", transition: "transform 0.3s ease", zIndex: 1000, width: "260px" },
   sideSection: { padding: "16px 14px", borderBottom: "1px solid #f0eef8" },
   secLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.28em", color: "#000", marginBottom: "10px", paddingTop: "2px" },
   uploadBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "#eeeeff", border: "none", borderRadius: "6px", color: "#000", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.15em", marginBottom: "8px" },
   downloadBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "#f0fdf4", border: "none", borderRadius: "6px", color: "#000", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.15em", cursor: "pointer", boxSizing: "border-box" },
-
   runSection: { background: "#ffffff", border: "1px solid #e8e6f4", borderRadius: "10px", overflow: "hidden" },
   runHeader: { padding: "12px 14px", borderBottom: "1px solid #f0eef8", background: "#faf9ff" },
   runTitle: { fontFamily: "'Manrope',sans-serif", fontSize: "clamp(14px,1.3vw,18px)", letterSpacing: "0.04em", color: "#000" },
@@ -2514,26 +2448,21 @@ const S = {
   kpiCard: { background: "#f5f4ff", padding: "7px 4px", textAlign: "center", borderRadius: "4px" },
   kpiVal: { fontFamily: "'Manrope',sans-serif", fontSize: "clamp(14px,3vw,17px)", letterSpacing: "0.05em", lineHeight: 1 },
   kpiLbl: { fontFamily: "'Inter',sans-serif", fontSize: "9px", letterSpacing: "0.15em", color: "#000", marginTop: "3px" },
-
   tabBar: { display: "flex", gap: "3px", padding: "8px 10px", borderBottom: "1px solid #f0eef8", background: "#faf9ff", flexWrap: "wrap" },
   tabBtn: { border: "0.5px solid #e2e1f0", background: "none", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.08em", padding: "4px 7px", cursor: "pointer", borderRadius: "4px", color: "#000" },
   tabActive: { background: "#eeeeff", borderColor: "#a5b4fc", color: "#000" },
-
   downloadRunBtn: { display: "flex", alignItems: "center", gap: "5px", background: "#92fea6", border: "1px solid #bbf7d0", color: "#24472f", padding: "5px 9px", borderRadius: "6px", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.1em", flexShrink: 0 },
   deleteBtn: { background: "#fff", border: "1px solid #f0eef8", color: "#000", padding: "5px 9px", borderRadius: "6px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.1em", flexShrink: 0 },
-
   chartPanel: { padding: "14px", background: "#ffffff" },
   chartLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: "#000", marginBottom: "10px" },
   filterBar: { display: "flex", gap: "4px", marginTop: "10px", flexWrap: "wrap" },
   filterBtn: { border: "0.5px solid", padding: "3px 7px", fontSize: "10px", fontFamily: "'Inter',sans-serif", letterSpacing: "0.07em", cursor: "pointer", borderRadius: "4px" },
-
   tablePanel: { padding: "14px", background: "#ffffff" },
   subLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: "#000", marginBottom: "10px" },
   table: { width: "100%", borderCollapse: "collapse", fontFamily: "'Inter',sans-serif", fontSize: "12px" },
   th: { padding: "6px 8px", textAlign: "left", fontSize: "10px", letterSpacing: "0.15em", color: "#000", borderBottom: "1px solid #f0eef8", fontWeight: 600 },
   td: { padding: "6px 8px", color: "#000" },
   noData: { fontFamily: "'Inter',sans-serif", fontSize: "12px", color: "#000", padding: "16px 0", letterSpacing: "0.08em" },
-
   tooltip: { background: "#ffffff", border: "1px solid #e8e6f4", padding: "10px 12px", minWidth: "150px", borderRadius: "6px", boxShadow: "0 4px 20px rgba(79,70,229,0.08)" },
   ttHead: { display: "flex", justifyContent: "space-between", marginBottom: "6px", paddingBottom: "6px", borderBottom: "1px solid #f0eef8" },
   ttLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: "#000" },
@@ -2542,24 +2471,4 @@ const S = {
   ttDot: { width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0 },
   ttKey: { fontFamily: "'Inter',sans-serif", fontSize: "10px", color: "#000", flex: 1 },
   ttNum: { fontFamily: "'Inter',sans-serif", fontSize: "11px", fontWeight: "700" },
-
-  navBtn: { border: "0.5px solid #e2e1f0", background: "none", fontFamily: "'Inter',sans-serif", fontSize: "11px", letterSpacing: "0.12em", padding: "7px 12px", cursor: "pointer", borderRadius: "4px", color: "#000", textAlign: "left" },
-  navBtnActive: { background: "#eeeeff", borderColor: "#a5b4fc", color: "#000" },
-  navWrap: {
-    height: "72px",
-    display: "grid",
-    gridTemplateColumns: "1fr auto 1fr",
-    alignItems: "center",
-    padding: "0 24px",
-    gap: "20px",
-    background: "#ffffff",
-    borderBottom: "1px solid #e5e7eb",
-  }, navLeft: {
-    display: "flex",
-    alignItems: "center",
-    gap: "14px",
-    minWidth: 0,
-  },
 };
-
-console.log("App loaded successfully");
