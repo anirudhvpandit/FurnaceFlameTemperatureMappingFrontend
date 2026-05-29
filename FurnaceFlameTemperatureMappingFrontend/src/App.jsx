@@ -1565,81 +1565,7 @@ const saveEditedRun = async () => {
             }}
           >
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <div
-                style={{
-                  minWidth: "62px",
-                  padding: "8px 10px",
-                  borderRadius: "10px",
-                  background: "#f9fafb",
-                  border: "1px solid #e5e7eb",
-                  textAlign: "center",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: "18px",
-                    fontWeight: 900,
-                    color: "#111827",
-                  }}
-                >
-                  {history.length}
-                </div>
-
-                <div
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: "12px",
-                    color: "#6b7280",
-                    letterSpacing: "0.08em",
-                    marginTop: "2px",
-                  }}
-                >
-                  RUNS
-                </div>
-              </div>
-
-              <div
-                style={{
-                  minWidth: "62px",
-                  padding: "8px 10px",
-                  borderRadius: "10px",
-                  background: "#f9fafb",
-                  border: "1px solid #e5e7eb",
-                  textAlign: "center",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: "16px",
-                    fontWeight: 900,
-                    color: "#111827",
-                  }}
-                >
-                  {selected.length}
-                </div>
-
-                <div
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: "12px",
-                    color: "#6b7280",
-                    letterSpacing: "0.08em",
-                    marginTop: "2px",
-                  }}
-                >
-                  ACTIVE
-                </div>
-              </div>
-            </div>
+           
 
             {isAdmin && userLocation === "all" && (
               <div
@@ -1730,19 +1656,7 @@ const saveEditedRun = async () => {
             )}
           </div>
 
-          <div style={{ ...S.sideSection, borderBottom: "none", flex: 1, overflowY: "auto" }}>
-            <div style={S.sideSection}>
-              <div style={S.secLabel}>NAVIGATION</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <button
-                  onClick={() => setViewMode("runs")}
-                  style={{ ...S.navBtn, ...(viewMode === "runs" ? S.navBtnActive : {}) }}
-                >
-                  RUN ARCHIVE
-                </button>
-              </div>
-            </div>
-          </div>
+         
         </aside>
 
         <main style={{
@@ -1830,7 +1744,7 @@ const saveEditedRun = async () => {
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", letterSpacing: "0.22em", color: "#000", marginBottom: "2px" }}>{graphLabel}</div>
                           <div style={{ ...S.runTitle, color: "#000" }}>{runTitleDate}</div>
-                          <div style={S.runSub}>{runSubtitle}</div>
+                            
                         </div>
                       </div>
 
