@@ -1832,8 +1832,23 @@ const saveEditedRun = async () => {
                           <LineChart data={runData} layout="vertical">
                             <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
                             <YAxis dataKey="elevation" type="number" domain={[minElevation, maxElevation]} ticks={allElevations} interval={0} reversed width={44} tick={{ fill: "#a0a0c0", fontSize: 11, fontFamily: "Inter, sans-serif" }} axisLine={false} tickLine={false} />
-                            <XAxis type="number" domain={[xMin - xPadding, xMax + xPadding]} tick={{ fill: "#a0a0c0", fontSize: 11, fontFamily: "Inter, sans-serif" }} axisLine={false} tickLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
+<XAxis
+  type="number"
+  domain={[
+    Math.floor(xMin - xPadding),
+    Math.ceil(xMax + xPadding)
+  ]}
+  allowDecimals={false}
+  tickCount={10}
+  tickFormatter={(value) => Math.round(value)}
+  tick={{
+    fill: "#a0a0c0",
+    fontSize: 11,
+    fontFamily: "Inter, sans-serif"
+  }}
+  axisLine={false}
+  tickLine={false}
+/>                            <Tooltip content={<CustomTooltip />} />
                             {cornerKeys.map(k => currentVisibleLines[k] && (
                               <Line key={k} type="monotone" dataKey={k} stroke={dynamicColors[k]} dot={false} strokeWidth={2} connectNulls={false} />
                             ))}
