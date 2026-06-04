@@ -729,6 +729,7 @@ export default function App() {
   const [runDownloading, setRunDownloading] = useState({});
   const [visibleLines, setVisibleLines] = useState({});
   const [lockedPoint, setLockedPoint] = useState({});
+  const [graphScaleSettings, setGraphScaleSettings] = useState({});
   const [activeTab, setActiveTab] = useState({});
 
   const [pinnedTooltip, setPinnedTooltip] = useState({});
@@ -1665,11 +1666,32 @@ formatMillLabel(
               };
               const visibleKeys = cornerKeys.filter(k => currentVisibleLines[k]);
               const visibleDataPoints = runData.flatMap(r =>
-                visibleKeys.map(k => r[k]).filter(v => v !== null && v !== undefined)
-              );
-              const xMin = visibleDataPoints.length ? Math.min(...visibleDataPoints) : 0;
-              const xMax = visibleDataPoints.length ? Math.max(...visibleDataPoints) : 100;
-              const xPadding = Math.max(10, (xMax - xMin) * 0.08);
+  visibleKeys.map(k => r[k]).filter(v => v !== null && v !== undefined)
+);
+
+const dataMin = visibleDataPoints.length
+  ? Math.min(...visibleDataPoints)
+  : 0;
+
+const dataMax = visibleDataPoints.length
+  ? Math.max(...visibleDataPoints)
+  : 100;
+
+const autoPadding = Math.max(10, (dataMax - dataMin) * 0.08);
+
+const currentScale = graphScaleSettings[id] || {
+  autoScale: true,
+  min: Math.floor(dataMin - autoPadding),
+  max: Math.ceil(dataMax + autoPadding),
+};
+
+const finalXMin = currentScale.autoScale
+  ? Math.floor(dataMin - autoPadding)
+  : Number(currentScale.min);
+
+const finalXMax = currentScale.autoScale
+  ? Math.ceil(dataMax + autoPadding)
+  : Number(currentScale.max);
 
               const temps = runData.map(r => r.avg);
               const maxTemp = Math.max(...temps);
@@ -1847,6 +1869,138 @@ const activeMillLabel =
                   {getTab(id) === "graph" && (
                     <div style={S.chartPanel}>
                       <div style={S.chartLabel}>THERMAL PROFILE — ELEVATION VS TEMPERATURE</div>
+                      <div
+  style={{
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    alignItems: "center",
+    marginBottom: "14px",
+    padding: "10px",
+    border: "1px solid #e5e7eb",
+    borderRadius: "10px",
+    background: "#fafafa",
+  }}
+>
+  <div
+    style={{
+      fontSize: "12px",
+      fontWeight: 700,
+      color: "#111827",
+      letterSpacing: "0.08em",
+      fontFamily: "Inter, sans-serif",
+    }}
+  >
+    AUTO SCALE
+  </div>
+
+  <label
+    style={{
+      position: "relative",
+      display: "inline-block",
+      width: "44px",
+      height: "24px",
+    }}
+  >
+    <input
+      type="checkbox"
+      checked={graphScaleSettings[id]?.autoScale ?? true}
+      onChange={(e) => {
+        setGraphScaleSettings(prev => ({
+          ...prev,
+          [id]: {
+            ...(prev[id] || {}),
+            autoScale: e.target.checked,
+          },
+        }));
+      }}
+      style={{
+        opacity: 0,
+        width: 0,
+        height: 0,
+      }}
+    />
+
+    <span
+      style={{
+        position: "absolute",
+        cursor: "pointer",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background:
+          (graphScaleSettings[id]?.autoScale ?? true)
+            ? "#4f46e5"
+            : "#cbd5e1",
+        transition: ".2s",
+        borderRadius: "999px",
+      }}
+    />
+
+    <span
+      style={{
+        position: "absolute",
+        height: "18px",
+        width: "18px",
+        left:
+          (graphScaleSettings[id]?.autoScale ?? true)
+            ? "22px"
+            : "3px",
+        bottom: "3px",
+        background: "white",
+        transition: ".2s",
+        borderRadius: "50%",
+      }}
+    />
+  </label>
+
+  <input
+    type="number"
+    placeholder="MIN"
+    disabled={graphScaleSettings[id]?.autoScale ?? true}
+    value={graphScaleSettings[id]?.min ?? ""}
+    onChange={(e) => {
+      setGraphScaleSettings(prev => ({
+        ...prev,
+        [id]: {
+          ...(prev[id] || {}),
+          min: e.target.value,
+        },
+      }));
+    }}
+    style={{
+      padding: "8px 10px",
+      borderRadius: "8px",
+      border: "1px solid #d1d5db",
+      width: "90px",
+      fontSize: "13px",
+    }}
+  />
+
+  <input
+    type="number"
+    placeholder="MAX"
+    disabled={graphScaleSettings[id]?.autoScale ?? true}
+    value={graphScaleSettings[id]?.max ?? ""}
+    onChange={(e) => {
+      setGraphScaleSettings(prev => ({
+        ...prev,
+        [id]: {
+          ...(prev[id] || {}),
+          max: e.target.value,
+        },
+      }));
+    }}
+    style={{
+      padding: "8px 10px",
+      borderRadius: "8px",
+      border: "1px solid #d1d5db",
+      width: "90px",
+      fontSize: "13px",
+    }}
+  />
+</div>
                       <div style={{ width: "100%", height: CHART_HEIGHT, position: "relative" }}>
                         <ResponsiveContainer width="100%" height="100%">
                            {lockedPoint[id] && (
@@ -1903,7 +2057,7 @@ const activeMillLabel =
                             
                             <XAxis
                               type="number"
-                              domain={[Math.floor(xMin - xPadding), Math.ceil(xMax + xPadding)]}
+                              domain={[finalXMin, finalXMax]}
                               allowDecimals={false}
                               tickCount={10}
                               tickFormatter={(value) => Math.round(value)}
