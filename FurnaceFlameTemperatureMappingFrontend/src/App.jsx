@@ -759,7 +759,13 @@ export default function App() {
     stationName: (localStorage.getItem("selectedStation") ? JSON.parse(localStorage.getItem("selectedStation")).name : ""),
     unitId: (localStorage.getItem("selectedUnit") ? JSON.parse(localStorage.getItem("selectedUnit")).id : ""),
   }));
-
+const closePinnedTooltip = (runId) => {
+  setPinnedTooltip((prev) => {
+    const updated = { ...prev };
+    delete updated[runId];
+    return updated;
+  });
+};
   const getTab = (id) => activeTab[id] ?? "graph";
   const setTab = (id, tab) => setActiveTab(p => ({ ...p, [id]: tab }));
 
@@ -815,6 +821,40 @@ export default function App() {
     return result;
   };
 
+  useEffect(() => {
+
+    const handleEscape = (e) => {
+  
+      if (e.key === "Escape") {
+        setPinnedTooltip({});
+        setLockedPoint({});
+        setHoverEnabled(true);
+      }
+  
+    };
+  
+    window.addEventListener("keydown", handleEscape);
+  
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  
+  }, []);
+
+  useEffect(() => {
+
+    const handleOutsideClick = () => {
+      setPinnedTooltip({});
+      setHoverEnabled(true);
+    };
+  
+    window.addEventListener("click", handleOutsideClick);
+  
+    return () => {
+      window.removeEventListener("click", handleOutsideClick);
+    };
+  
+  }, []);
   useEffect(() => {
     const location = localStorage.getItem("location");
     const role = localStorage.getItem("role");
@@ -1300,29 +1340,72 @@ formatMillLabel(
     return str;
   };
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div style={S.tooltip}>
-        <div style={S.ttHead}>
-          <span style={S.ttLabel}>ELEVATION</span>
-          <span style={S.ttVal}>{label}m</span>
-        </div>
-        {payload.map(e => {
-          if (e.value == null) return null;
-          const cm = e.dataKey.match(/^c(\d+)$/);
-          const lbl = cm ? `Corner ${cm[1]}` : e.dataKey === "avg" ? "Average" : e.dataKey;
-          return (
-            <div key={e.dataKey} style={S.ttRow}>
-              <span style={{ ...S.ttDot, background: e.color }} />
-              <span style={S.ttKey}>{lbl}</span>
-              <span style={{ ...S.ttNum, color: e.color }}>{Number(e.value).toFixed(1)}°C</span>
-            </div>
-          );
-        }).filter(Boolean)}
+ const CustomTooltip = ({
+  active,
+  payload,
+  label,
+  onClose,
+}) => {
+
+  if (!active) return null;
+  return (
+    <div
+      style={{
+        ...S.tooltip,
+        position: "relative",
+      }}
+    >
+
+      {/* CLOSE BUTTON */}
+      
+
+      <div style={S.ttHead}>
+        <span style={S.ttLabel}>ELEVATION</span>
+        <span style={S.ttVal}>{label}m</span>
       </div>
-    );
-  };
+
+      {payload.map((e) => {
+
+        if (e.value == null) return null;
+
+        const cm = e.dataKey.match(/^c(\d+)$/);
+
+        const lbl =
+          cm
+            ? `Corner ${cm[1]}`
+            : e.dataKey === "avg"
+            ? "Average"
+            : e.dataKey;
+
+        return (
+          <div key={e.dataKey} style={S.ttRow}>
+            <span
+              style={{
+                ...S.ttDot,
+                background: e.color,
+              }}
+            />
+
+            <span style={S.ttKey}>
+              {lbl}
+            </span>
+
+            <span
+              style={{
+                ...S.ttNum,
+                color: e.color,
+              }}
+            >
+              {Number(e.value).toFixed(1)}°C
+            </span>
+          </div>
+        );
+
+      }).filter(Boolean)}
+
+    </div>
+  );
+};
 
   const SIDEBAR_W = 268;
   const MAIN_PADDING = 16;
@@ -2014,19 +2097,31 @@ const activeMillLabel =
                             }}
                           >
                             <CustomTooltip
-                              active={true}
-                              payload={lockedPoint[id].payload}
-                              label={lockedPoint[id].label}
-                            />
+  active={!!lockedPoint[id]}
+  payload={lockedPoint[id]?.payload || []}
+  label={lockedPoint[id]?.label || ""}
+  onClose={() => {
+    setLockedPoint((prev) => {
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
+    });
+  }}
+/>
                           </div>
                         )}
                           <LineChart
                             data={runData}
                             layout="vertical"
+                            
                             onMouseMove={() => { if (pinnedTooltip[id]?.active) return false; }}
                             onMouseLeave={() => { if (!pinnedTooltip[id]?.active) { setHoverEnabled(true); } }}
                             onClick={(state) => {
+
+                              state?.event?.stopPropagation?.();
+                            
                               if (state && state.activePayload && state.activePayload.length) {
+                            
                                 setPinnedTooltip(prev => ({
                                   ...prev,
                                   [id]: {
@@ -2035,6 +2130,7 @@ const activeMillLabel =
                                     label: state.activeLabel,
                                   },
                                 }));
+                            
                                 setHoverEnabled(false);
                               }
                             }}
@@ -2134,19 +2230,70 @@ const activeMillLabel =
                                 activeDot={{ r: 7, cursor: "pointer" }}
                               />
                             )}
-                            {pinnedTooltip[id]?.active && (
-                              <ReferenceDot
-                                x={pinnedTooltip[id]?.payload?.[0]?.value}
-                                y={pinnedTooltip[id]?.label}
-                                r={8}
-                                fill="#111827"
-                                stroke="#ffffff"
-                                strokeWidth={2}
-                              />
-                              
-                            )
-                            }
-                            
+                          {pinnedTooltip[id] && (
+  <div
+    style={{
+      position: "absolute",
+      top: "12px",
+      right: "12px",
+      background: "#fff",
+      border: "1px solid #ddd",
+      borderRadius: "10px",
+      padding: "12px",
+      zIndex: 99999,
+      minWidth: "220px",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+    }}
+  >
+
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "10px",
+      }}
+    >
+
+      <div
+        style={{
+          fontWeight: 700,
+          fontSize: "13px",
+        }}
+      >
+        Elevation
+        
+        {pinnedTooltip[id]?.label}        
+      </div>
+
+     
+
+    </div>
+
+    {Object.entries(pinnedTooltip[id]?.payload || []).map(([key, value]) => {
+
+      if (value == null) return null;
+
+      return (
+        <div
+          key={entry.dataKey}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: "6px",
+            fontSize: "13px",
+          }}
+        >
+          <span>{entry.dataKey}</span>
+      
+          <span style={{ fontWeight: 700 }}>
+            {Number(entry.value).toFixed(1)}°C
+          </span>
+        </div>
+      )
+    })}
+  </div>
+)}   
                           </LineChart>
                           
                         </ResponsiveContainer>
