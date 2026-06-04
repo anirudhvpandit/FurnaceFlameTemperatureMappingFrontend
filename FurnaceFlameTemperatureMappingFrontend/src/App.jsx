@@ -414,7 +414,7 @@ function buildGeneratePayload({
         runMeta.burner_tilt_deg_4 ?? null,
 
       coal_mills_in_service_count:
-        runMeta.coal_mills_in_service ?? null,
+  runMeta.coal_mills_in_service_count ?? null,
 
       coal_mills_in_service:
         runMeta.coal_mills_in_service_label ?? "",
@@ -685,6 +685,27 @@ function CoalMillTable({ data }) {
       </div>
     </div>
   );
+}
+
+function formatMillLabel(value) {
+  if (!value) return "N/A";
+
+  return String(value)
+    .split(/[,\s]+/)
+    .filter(Boolean)
+    .join(" • ");
+}
+
+function getActiveMills(coalMills) {
+  if (!Array.isArray(coalMills)) return [];
+
+  return coalMills
+    .filter(
+      (mill) =>
+        mill.coal_flow_tph != null &&
+        Number(mill.coal_flow_tph) > 0
+    )
+    .map((m) => m.mill);
 }
 
 export default function App() {
@@ -1171,8 +1192,15 @@ export default function App() {
         burner_tilt_deg_2: runMeta.burner_tilt_deg_2 || "",
         burner_tilt_deg_3: runMeta.burner_tilt_deg_3 || "",
         burner_tilt_deg_4: runMeta.burner_tilt_deg_4 || "",
-        coal_mills_in_service_count: runMeta.coal_mills_in_service_count || "",
-        coal_mills_in_service: runMeta.coal_mills_in_service || "",
+       coal_mills_in_service_count:
+  runMeta.coal_mills_in_service_count || "",
+
+coal_mills_in_service:
+formatMillLabel(
+  runMeta.coal_mills_in_service ||
+  runMeta.coal_mills_in_service_label
+)||
+  "",
         oil_guns_in_service_count: runMeta.oil_guns_in_service_count || "",
         oil_guns_in_service: runMeta.oil_guns_in_service || "",
         notes: runMeta.notes || "",
@@ -1649,6 +1677,12 @@ export default function App() {
               const avgTemp = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1);
 
               const runMeta = history.find(r => r.run_id === id) || {};
+              const activeMills = getActiveMills(coalData[id]);
+
+const activeMillLabel =
+  activeMills.length > 0
+    ? activeMills.join(" • ")
+    : "N/A";
               const runTitleDate = formatRunDate(runMeta.run_date || dataset.run_date || runMeta.run_timestamp);
               const isDownloadingThisRun = !!runDownloading[id];
 
@@ -1659,9 +1693,47 @@ export default function App() {
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
                         <div style={{ width: "3px", height: "32px", background: accent, borderRadius: "2px", flexShrink: 0 }} />
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", letterSpacing: "0.22em", color: "#000", marginBottom: "2px" }}>{graphLabel}</div>
-                          <div style={{ ...S.runTitle, color: "#000" }}>{runTitleDate}</div>
-                        </div>
+  <div
+    style={{
+      fontFamily: "Inter, sans-serif",
+      fontSize: "10px",
+      letterSpacing: "0.22em",
+      color: "#000",
+      marginBottom: "2px"
+    }}
+  >
+    {graphLabel}
+  </div>
+
+  <div style={{ ...S.runTitle, color: "#000" }}>
+    {runTitleDate}
+  </div>
+
+  <div
+    style={{
+      marginTop: "6px",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "6px",
+      padding: "4px 10px",
+      borderRadius: "999px",
+      background: "#eef2ff",
+      border: "1px solid #c7d2fe",
+      fontSize: "11px",
+      fontWeight: 700,
+      color: "#4338ca",
+      fontFamily: "Inter, sans-serif",
+      letterSpacing: "0.04em",
+    }}
+  >
+    ACTIVE MILLS:
+    <span style={{ color: "#111827" }}>
+      {runMeta.coal_mills_in_service ||
+        runMeta.coal_mills_in_service_label ||
+        "N/A"}
+    </span>
+  </div>
+</div>
                       </div>
                       <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                         <button
@@ -1710,11 +1782,51 @@ export default function App() {
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1px", marginTop: "10px" }}>
                       {[
-                        { l: "MAX", v: `${maxTemp.toFixed(0)}°C`, c: "#000" },
-                        { l: "MIN", v: `${minTemp.toFixed(0)}°C`, c: "#000" },
-                        { l: "AVG", v: `${avgTemp}°C`, c: "#000" },
-                        { l: "LEVELS", v: runData.length, c: "#000" },
-                      ].map(kpi => (
+  {
+    l: "MAX",
+    v: `${maxTemp.toFixed(0)}°C`,
+    c: "#000",
+  },
+
+  {
+    l: "MIN",
+    v: `${minTemp.toFixed(0)}°C`,
+    c: "#000",
+  },
+
+  {
+    l: "AVG",
+    v: `${avgTemp}°C`,
+    c: "#000",
+  },
+
+  {
+    l: "LOAD",
+    v: runMeta.load
+      ? `${runMeta.load} MW`
+      : runMeta.load_mw
+      ? `${runMeta.load_mw} MW`
+      : "N/A",
+    c: "#000",
+  },
+
+  {
+    l: "COAL FLOW",
+    v: runMeta.coal_flow
+      ? `${runMeta.coal_flow} TPH`
+      : runMeta.total_coal_flow_tph
+      ? `${runMeta.total_coal_flow_tph} TPH`
+      : "N/A",
+    c: "#000",
+  },
+
+  {
+    l: "ACTIVE MILLS",
+    v:
+      activeMillLabel,
+    c: "#000",
+  },
+].map(kpi => (
                         <div key={kpi.l} style={S.kpiCard}>
                           <div style={{ ...S.kpiVal, color: kpi.c }}>{kpi.v}</div>
                           <div style={S.kpiLbl}>{kpi.l}</div>

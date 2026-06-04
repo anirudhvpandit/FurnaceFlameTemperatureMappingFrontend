@@ -195,9 +195,7 @@ export default function StationSelect() {
             <div style={styles.selectionSection}>
               <div style={styles.sectionLabel}>
                 STATION
-                {userLocation !== "all" && (
-                  <span style={styles.lockedBadge}> 🔒 Locked</span>
-                )}
+                
               </div>
               
               {userLocation !== "all" && selectedStation && (
@@ -231,18 +229,14 @@ export default function StationSelect() {
                     >
                       {station.name}
                       {isSelected && userLocation !== "all" && (
-                        <span style={styles.lockIcon}> 🔒</span>
+                        <span style={styles.lockIcon}> </span>
                       )}
                     </button>
                   );
                 })}
               </div>
               
-              {userLocation !== "all" && (
-                <div style={styles.restrictionNote}>
-                  ⚠️ Station selection is locked. Only administrators can change stations.
-                </div>
-              )}
+              
             </div>
 
             {/* Unit Selection Section */}
