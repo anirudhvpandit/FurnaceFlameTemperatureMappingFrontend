@@ -729,7 +729,11 @@ export default function App() {
   const [runDownloading, setRunDownloading] = useState({});
   const [visibleLines, setVisibleLines] = useState({});
   const [lockedPoint, setLockedPoint] = useState({});
-  const [graphScaleSettings, setGraphScaleSettings] = useState({});
+  const [globalScaleSettings, setGlobalScaleSettings] = useState({
+  autoScale: true,
+  min: "",
+  max: "",
+});
   const [activeTab, setActiveTab] = useState({});
 
   const [pinnedTooltip, setPinnedTooltip] = useState({});
@@ -1762,19 +1766,51 @@ const dataMax = visibleDataPoints.length
 
 const autoPadding = Math.max(10, (dataMax - dataMin) * 0.08);
 
-const currentScale = graphScaleSettings[id] || {
-  autoScale: true,
-  min: Math.floor(dataMin - autoPadding),
-  max: Math.ceil(dataMax + autoPadding),
-};
+// GLOBAL SCALE LOGIC
 
-const finalXMin = currentScale.autoScale
-  ? Math.floor(dataMin - autoPadding)
-  : Number(currentScale.min);
+const allSelectedRunData = selected.flatMap((runId) => {
+  const ds = datasets[runId];
 
-const finalXMax = currentScale.autoScale
-  ? Math.ceil(dataMax + autoPadding)
-  : Number(currentScale.max);
+  if (!ds) return [];
+
+  const rd = buildRunData(ds);
+
+  const visible =
+    visibleLines[runId] ||
+    {};
+
+  const keys = Object.keys(rd[0] || {}).filter((k) =>
+    k.match(/^c\d+$/)
+  );
+
+  return rd.flatMap((r) =>
+    keys
+      .filter((k) => visible[k] !== false)
+      .map((k) => r[k])
+      .filter((v) => v !== null && v !== undefined)
+  );
+});
+
+const globalDataMin = allSelectedRunData.length
+  ? Math.min(...allSelectedRunData)
+  : 0;
+
+const globalDataMax = allSelectedRunData.length
+  ? Math.max(...allSelectedRunData)
+  : 100;
+
+const globalPadding = Math.max(
+  10,
+  (globalDataMax - globalDataMin) * 0.08
+);
+
+const finalXMin = globalScaleSettings.autoScale
+  ? Math.floor(globalDataMin - globalPadding)
+  : Number(globalScaleSettings.min);
+
+const finalXMax = globalScaleSettings.autoScale
+  ? Math.ceil(globalDataMax + globalPadding)
+  : Number(globalScaleSettings.max);
 
               const temps = runData.map(r => r.avg);
               const maxTemp = Math.max(...temps);
@@ -1814,30 +1850,7 @@ const activeMillLabel =
     {runTitleDate}
   </div>
 
-  <div
-    style={{
-      marginTop: "6px",
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "6px",
-      padding: "4px 10px",
-      borderRadius: "999px",
-      background: "#eef2ff",
-      border: "1px solid #c7d2fe",
-      fontSize: "11px",
-      fontWeight: 700,
-      color: "#4338ca",
-      fontFamily: "Inter, sans-serif",
-      letterSpacing: "0.04em",
-    }}
-  >
-    ACTIVE MILLS:
-    <span style={{ color: "#111827" }}>
-      {runMeta.coal_mills_in_service ||
-        runMeta.coal_mills_in_service_label ||
-        "N/A"}
-    </span>
-  </div>
+ 
 </div>
                       </div>
                       <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
@@ -1885,59 +1898,93 @@ const activeMillLabel =
                         )}
                       </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1px", marginTop: "10px" }}>
-                      {[
-  {
-    l: "MAX",
-    v: `${maxTemp.toFixed(0)}°C`,
-    c: "#000",
-  },
+                    <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: "14px",
+    marginTop: "14px",
+  }}
+>
+  {[
+    {
+      l: "LOAD",
+      v: runMeta.load
+        ? `${runMeta.load} MW`
+        : runMeta.load_mw
+        ? `${runMeta.load_mw} MW`
+        : "N/A",
+      c: "#111",
+    },
 
-  {
-    l: "MIN",
-    v: `${minTemp.toFixed(0)}°C`,
-    c: "#000",
-  },
+    {
+      l: "COAL FLOW",
+      v: runMeta.coal_flow
+        ? `${runMeta.coal_flow} TPH`
+        : runMeta.total_coal_flow_tph
+        ? `${runMeta.total_coal_flow_tph} TPH`
+        : "N/A",
+      c: "#111",
+    },
 
-  {
-    l: "AVG",
-    v: `${avgTemp}°C`,
-    c: "#000",
-  },
+    {
+      l: "ACTIVE MILLS",
+      v: activeMillLabel,
+      c: "#111",
+    },
 
-  {
-    l: "LOAD",
-    v: runMeta.load
-      ? `${runMeta.load} MW`
-      : runMeta.load_mw
-      ? `${runMeta.load_mw} MW`
-      : "N/A",
-    c: "#000",
-  },
+    {
+      l: "MAX",
+      v: `${maxTemp.toFixed(0)}°C`,
+      c: "#d32f2f",
+    },
 
-  {
-    l: "COAL FLOW",
-    v: runMeta.coal_flow
-      ? `${runMeta.coal_flow} TPH`
-      : runMeta.total_coal_flow_tph
-      ? `${runMeta.total_coal_flow_tph} TPH`
-      : "N/A",
-    c: "#000",
-  },
+    {
+      l: "MIN",
+      v: `${minTemp.toFixed(0)}°C`,
+      c: "#1976d2",
+    },
+  ].map((kpi) => (
+    <div
+      key={kpi.l}
+      style={{
+        background: "#fff",
+        borderRadius: "14px",
+        padding: "18px 16px",
+        border: "1px solid #e5e7eb",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        minHeight: "95px",
+        transition: "0.2s ease",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "28px",
+          fontWeight: 700,
+          color: kpi.c,
+          lineHeight: 1.1,
+        }}
+      >
+        {kpi.v}
+      </div>
 
-  {
-    l: "ACTIVE MILLS",
-    v:
-      activeMillLabel,
-    c: "#000",
-  },
-].map(kpi => (
-                        <div key={kpi.l} style={S.kpiCard}>
-                          <div style={{ ...S.kpiVal, color: kpi.c }}>{kpi.v}</div>
-                          <div style={S.kpiLbl}>{kpi.l}</div>
-                        </div>
-                      ))}
-                    </div>
+      <div
+        style={{
+          marginTop: "8px",
+          fontSize: "12px",
+          fontWeight: 600,
+          color: "#6b7280",
+          letterSpacing: "0.08em",
+        }}
+      >
+        {kpi.l}
+      </div>
+    </div>
+  ))}
+</div>
                   </div>
                   <div style={S.tabBar}>
                     {[
@@ -1959,24 +2006,25 @@ const activeMillLabel =
     gap: "10px",
     alignItems: "center",
     marginBottom: "14px",
-    padding: "10px",
+    padding: "12px",
     border: "1px solid #e5e7eb",
-    borderRadius: "10px",
+    borderRadius: "12px",
     background: "#fafafa",
   }}
 >
   <div
     style={{
       fontSize: "12px",
-      fontWeight: 700,
+      fontWeight: 800,
       color: "#111827",
       letterSpacing: "0.08em",
       fontFamily: "Inter, sans-serif",
     }}
   >
-    AUTO SCALE
+    GLOBAL SCALE
   </div>
 
+  {/* TOGGLE */}
   <label
     style={{
       position: "relative",
@@ -1987,14 +2035,11 @@ const activeMillLabel =
   >
     <input
       type="checkbox"
-      checked={graphScaleSettings[id]?.autoScale ?? true}
+      checked={globalScaleSettings.autoScale}
       onChange={(e) => {
-        setGraphScaleSettings(prev => ({
+        setGlobalScaleSettings((prev) => ({
           ...prev,
-          [id]: {
-            ...(prev[id] || {}),
-            autoScale: e.target.checked,
-          },
+          autoScale: e.target.checked,
         }));
       }}
       style={{
@@ -2012,10 +2057,9 @@ const activeMillLabel =
         left: 0,
         right: 0,
         bottom: 0,
-        background:
-          (graphScaleSettings[id]?.autoScale ?? true)
-            ? "#4f46e5"
-            : "#cbd5e1",
+        background: globalScaleSettings.autoScale
+          ? "#4f46e5"
+          : "#cbd5e1",
         transition: ".2s",
         borderRadius: "999px",
       }}
@@ -2026,10 +2070,9 @@ const activeMillLabel =
         position: "absolute",
         height: "18px",
         width: "18px",
-        left:
-          (graphScaleSettings[id]?.autoScale ?? true)
-            ? "22px"
-            : "3px",
+        left: globalScaleSettings.autoScale
+          ? "22px"
+          : "3px",
         bottom: "3px",
         background: "white",
         transition: ".2s",
@@ -2040,49 +2083,54 @@ const activeMillLabel =
 
   <input
     type="number"
-    placeholder="MIN"
-    disabled={graphScaleSettings[id]?.autoScale ?? true}
-    value={graphScaleSettings[id]?.min ?? ""}
+    placeholder="GLOBAL MIN"
+    disabled={globalScaleSettings.autoScale}
+    value={globalScaleSettings.min}
     onChange={(e) => {
-      setGraphScaleSettings(prev => ({
+      setGlobalScaleSettings((prev) => ({
         ...prev,
-        [id]: {
-          ...(prev[id] || {}),
-          min: e.target.value,
-        },
+        min: e.target.value,
       }));
     }}
     style={{
       padding: "8px 10px",
       borderRadius: "8px",
       border: "1px solid #d1d5db",
-      width: "90px",
+      width: "110px",
       fontSize: "13px",
     }}
   />
 
   <input
     type="number"
-    placeholder="MAX"
-    disabled={graphScaleSettings[id]?.autoScale ?? true}
-    value={graphScaleSettings[id]?.max ?? ""}
+    placeholder="GLOBAL MAX"
+    disabled={globalScaleSettings.autoScale}
+    value={globalScaleSettings.max}
     onChange={(e) => {
-      setGraphScaleSettings(prev => ({
+      setGlobalScaleSettings((prev) => ({
         ...prev,
-        [id]: {
-          ...(prev[id] || {}),
-          max: e.target.value,
-        },
+        max: e.target.value,
       }));
     }}
     style={{
       padding: "8px 10px",
       borderRadius: "8px",
       border: "1px solid #d1d5db",
-      width: "90px",
+      width: "110px",
       fontSize: "13px",
     }}
   />
+
+  <div
+    style={{
+      fontSize: "12px",
+      color: "#6b7280",
+      fontWeight: 600,
+      marginLeft: "8px",
+    }}
+  >
+    Applies to ALL graphs
+  </div>
 </div>
                       <div style={{ width: "100%", height: CHART_HEIGHT, position: "relative" }}>
                         <ResponsiveContainer width="100%" height="100%">
