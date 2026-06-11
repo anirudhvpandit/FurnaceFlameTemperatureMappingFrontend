@@ -1898,7 +1898,7 @@ const activeMillLabel =
                         )}
                       </div>
                     </div>
-                    <div
+                   <div
   style={{
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
@@ -1906,47 +1906,141 @@ const activeMillLabel =
     marginTop: "14px",
   }}
 >
-  {[
-    {
-      l: "LOAD",
-      v: runMeta.load
+  {/* LOAD */}
+  <div
+    style={{
+      background: "#fff",
+      borderRadius: "14px",
+      padding: "18px 16px",
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      minHeight: "95px",
+    }}
+  >
+    <div
+      style={{
+        fontSize: "28px",
+        fontWeight: 700,
+        color: "#111",
+        lineHeight: 1.1,
+      }}
+    >
+      {runMeta.load
         ? `${runMeta.load} MW`
         : runMeta.load_mw
         ? `${runMeta.load_mw} MW`
-        : "N/A",
-      c: "#111",
-    },
+        : "N/A"}
+    </div>
 
-    {
-      l: "COAL FLOW",
-      v: runMeta.coal_flow
+    <div
+      style={{
+        marginTop: "8px",
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#6b7280",
+        letterSpacing: "0.08em",
+      }}
+    >
+      LOAD
+    </div>
+  </div>
+
+  {/* COAL FLOW */}
+  <div
+    style={{
+      background: "#fff",
+      borderRadius: "14px",
+      padding: "18px 16px",
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      minHeight: "95px",
+    }}
+  >
+    <div
+      style={{
+        fontSize: "28px",
+        fontWeight: 700,
+        color: "#111",
+        lineHeight: 1.1,
+      }}
+    >
+      {runMeta.coal_flow
         ? `${runMeta.coal_flow} TPH`
         : runMeta.total_coal_flow_tph
         ? `${runMeta.total_coal_flow_tph} TPH`
-        : "N/A",
-      c: "#111",
-    },
+        : "N/A"}
+    </div>
 
-    {
-      l: "ACTIVE MILLS",
-      v: activeMillLabel,
-      c: "#111",
-    },
-
-    {
-      l: "MAX",
-      v: `${maxTemp.toFixed(0)}°C`,
-      c: "#d32f2f",
-    },
-
-    {
-      l: "MIN",
-      v: `${minTemp.toFixed(0)}°C`,
-      c: "#1976d2",
-    },
-  ].map((kpi) => (
     <div
-      key={kpi.l}
+      style={{
+        marginTop: "8px",
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#6b7280",
+        letterSpacing: "0.08em",
+      }}
+    >
+      COAL FLOW
+    </div>
+  </div>
+
+  {/* ACTIVE MILLS */}
+  <div
+    style={{
+      background: "#fff",
+      borderRadius: "14px",
+      padding: "18px 16px",
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      minHeight: "95px",
+    }}
+  >
+    <div
+      style={{
+        fontSize: "28px",
+        fontWeight: 700,
+        color: "#111",
+        lineHeight: 1.1,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+      }}
+    >
+      {activeMillLabel}
+    </div>
+
+    <div
+      style={{
+        marginTop: "8px",
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#6b7280",
+        letterSpacing: "0.08em",
+      }}
+    >
+      ACTIVE MILLS
+    </div>
+  </div>
+
+  {/* MAX + MIN WRAPPER */}
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "14px",
+      gridColumn: "span 2",
+    }}
+  >
+    {/* MAX */}
+    <div
       style={{
         background: "#fff",
         borderRadius: "14px",
@@ -1957,18 +2051,17 @@ const activeMillLabel =
         flexDirection: "column",
         justifyContent: "center",
         minHeight: "95px",
-        transition: "0.2s ease",
       }}
     >
       <div
         style={{
           fontSize: "28px",
           fontWeight: 700,
-          color: kpi.c,
+          color: "#d32f2f",
           lineHeight: 1.1,
         }}
       >
-        {kpi.v}
+        {maxTemp.toFixed(0)}°C
       </div>
 
       <div
@@ -1980,10 +2073,48 @@ const activeMillLabel =
           letterSpacing: "0.08em",
         }}
       >
-        {kpi.l}
+        MAX
       </div>
     </div>
-  ))}
+
+    {/* MIN */}
+    <div
+      style={{
+        background: "#fff",
+        borderRadius: "14px",
+        padding: "18px 16px",
+        border: "1px solid #e5e7eb",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        minHeight: "95px",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "28px",
+          fontWeight: 700,
+          color: "#1976d2",
+          lineHeight: 1.1,
+        }}
+      >
+        {minTemp.toFixed(0)}°C
+      </div>
+
+      <div
+        style={{
+          marginTop: "8px",
+          fontSize: "12px",
+          fontWeight: 600,
+          color: "#6b7280",
+          letterSpacing: "0.08em",
+        }}
+      >
+        MIN
+      </div>
+    </div>
+  </div>
 </div>
                   </div>
                   <div style={S.tabBar}>
