@@ -906,7 +906,7 @@ const closePinnedTooltip = (runId) => {
 
             updated[runId] = {
               ...Object.fromEntries(
-                existingCorners.map((k, i) => [k, i < 2])
+                existingCorners.map((k) => [k,k ])
               ),
               avg: true,
             };
