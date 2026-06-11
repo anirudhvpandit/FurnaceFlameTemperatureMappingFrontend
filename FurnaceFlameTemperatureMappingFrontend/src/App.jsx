@@ -193,6 +193,254 @@ function buildUploadPayload(draft) {
   };
 }
 
+function buildUploadPayload2(draft) {
+
+  const cols = draft.elevation.columns || [];
+
+  // ─── CLEAN ELEVATION ROWS ─────────────────────────
+  const cleanRows = (draft.elevation.rows || [])
+    .map((r) => {
+
+      const elevation_m = safeNum(r.elevation_m);
+
+      if (elevation_m == null) return null;
+
+      const values = {};
+
+      cols.forEach((c) => {
+        values[c] = safeNum(r.values?.[c]);
+      });
+
+      const numericVals = Object.values(values)
+        .filter((v) => v != null);
+
+      const average =
+        numericVals.length > 0
+          ? numericVals.reduce((a, b) => a + b, 0) / numericVals.length
+          : null;
+
+      return {
+        elevation_m,
+        burner_tilt_deg: safeNum(r.burner_tilt_deg),
+        values,
+        average,
+      };
+    })
+    .filter(Boolean);
+
+  // ─── CLEAN COAL MILL PARAMS ───────────────────────
+  const coal_mill_params = (draft.coalMills.mills || [])
+    .map((mill) => ({
+
+      mill,
+
+      coal_flow_tph:
+        safeNum(
+          draft.coalMills.byMill?.[mill]?.coal_flow_tph
+        ),
+
+      pa_flow_tph:
+        safeNum(
+          draft.coalMills.byMill?.[mill]?.pa_flow_tph
+        ),
+
+      mill_dp_mmwc:
+        safeNum(
+          draft.coalMills.byMill?.[mill]?.mill_dp_mmwc
+        ),
+
+      mill_outlet_temp:
+        safeNum(
+          draft.coalMills.byMill?.[mill]?.mill_outlet_temp
+        ),
+
+      mill_current_amp:
+        safeNum(
+          draft.coalMills.byMill?.[mill]?.mill_current_amp
+        ),
+
+    }))
+    .filter(
+      (m) =>
+        m.coal_flow_tph != null ||
+        m.pa_flow_tph != null ||
+        m.mill_dp_mmwc != null ||
+        m.mill_outlet_temp != null ||
+        m.mill_current_amp != null
+    );
+
+  // ─── FINAL PAYLOAD ────────────────────────────────
+  return {
+
+    station:
+      draft.meta.station || "",
+
+    unit_id:
+      Number(draft.meta.unit_id) || null,
+
+    uploaded_by:
+      localStorage.getItem("username") || "admin",
+
+    notes:
+      draft.meta.notes || "",
+
+    // THESE 2 ARE REQUIRED AT ROOT LEVEL
+    load:
+      String(
+        draft.meta.load_mw ||
+        draft.meta.load ||
+        ""
+      ),
+
+    coal_flow:
+      String(
+        draft.meta.total_coal_flow_tph ||
+        draft.meta.coal_flow ||
+        ""
+      ),
+
+    // ─── RUN META ─────────────────────────────
+    run_meta: {
+
+      run_date:
+        draft.meta.run_date || null,
+
+      run_time:
+        draft.meta.run_time || null,
+
+      load_mw:
+        safeNum(draft.meta.load_mw),
+
+      total_coal_flow_tph:
+        safeNum(draft.meta.total_coal_flow_tph),
+
+      total_air_flow_tph:
+        safeNum(draft.meta.total_air_flow_tph),
+
+      coal_mills_in_service_count:
+        safeNum(draft.meta.coal_mills_in_service_count),
+
+      coal_mills_in_service:
+        String(
+          draft.meta.coal_mills_in_service || ""
+        ),
+
+      oil_guns_in_service_count:
+        safeNum(draft.meta.oil_guns_in_service_count),
+
+      oil_guns_in_service:
+        String(
+          draft.meta.oil_guns_in_service || ""
+        ),
+
+      burner_tilt_deg_1:
+        safeNum(draft.meta.burner_tilt_deg_1),
+
+      burner_tilt_deg_2:
+        safeNum(draft.meta.burner_tilt_deg_2),
+
+      burner_tilt_deg_3:
+        safeNum(draft.meta.burner_tilt_deg_3),
+
+      burner_tilt_deg_4:
+        safeNum(draft.meta.burner_tilt_deg_4),
+    },
+
+    // ─── ELEVATION PROFILE ────────────────────
+    elevation_profile: {
+      columns: cols,
+      rows: cleanRows,
+    },
+
+    // ─── BOILER PARAMS ────────────────────────
+    boiler_params: {
+
+      main_steam_pressure_l:
+        safeNum(draft.boiler.main_steam_pressure_l),
+
+      main_steam_pressure_r:
+        safeNum(draft.boiler.main_steam_pressure_r),
+
+      main_steam_flow_l:
+        safeNum(draft.boiler.main_steam_flow_l),
+
+      main_steam_flow_r:
+        safeNum(draft.boiler.main_steam_flow_r),
+
+      superheat_spray_l:
+        safeNum(draft.boiler.superheat_spray_l),
+
+      superheat_spray_r:
+        safeNum(draft.boiler.superheat_spray_r),
+
+      reheat_spray_l:
+        safeNum(draft.boiler.reheat_spray_l),
+
+      reheat_spray_r:
+        safeNum(draft.boiler.reheat_spray_r),
+
+      o2_aph_inlet_pcr_l:
+        safeNum(draft.boiler.o2_aph_inlet_pcr_l),
+
+      o2_aph_inlet_pcr_r:
+        safeNum(draft.boiler.o2_aph_inlet_pcr_r),
+
+      wind_box_dp_l:
+        safeNum(draft.boiler.wind_box_dp_l),
+
+      wind_box_dp_r:
+        safeNum(draft.boiler.wind_box_dp_r),
+
+      total_pa_flow:
+        safeNum(draft.boiler.total_pa_flow),
+    },
+
+    // ─── FLUE GAS TEMPS ───────────────────────
+    flue_gas_temps: {
+
+      fg_temp_after_dpsh_l:
+        safeNum(draft.flueGas.fg_temp_after_dpsh_l),
+
+      fg_temp_after_dpsh_r:
+        safeNum(draft.flueGas.fg_temp_after_dpsh_r),
+
+      fg_temp_after_psh_l:
+        safeNum(draft.flueGas.fg_temp_after_psh_l),
+
+      fg_temp_after_psh_r:
+        safeNum(draft.flueGas.fg_temp_after_psh_r),
+
+      fg_temp_after_rh_l:
+        safeNum(draft.flueGas.fg_temp_after_rh_l),
+
+      fg_temp_after_rh_r:
+        safeNum(draft.flueGas.fg_temp_after_rh_r),
+
+      fg_temp_after_hsh_l:
+        safeNum(draft.flueGas.fg_temp_after_hsh_l),
+
+      fg_temp_after_hsh_r:
+        safeNum(draft.flueGas.fg_temp_after_hsh_r),
+
+      fg_temp_after_eco_l:
+        safeNum(draft.flueGas.fg_temp_after_eco_l),
+
+      fg_temp_after_eco_r:
+        safeNum(draft.flueGas.fg_temp_after_eco_r),
+
+      fg_temp_after_aph_l:
+        safeNum(draft.flueGas.fg_temp_after_aph_l),
+
+      fg_temp_after_aph_r:
+        safeNum(draft.flueGas.fg_temp_after_aph_r),
+    },
+
+    // ─── COAL MILL PARAMS ─────────────────────
+    coal_mill_params,
+
+  };
+}
+
 // ─── BACKEND EXCEL DOWNLOAD HELPER ────────────────────────────
 async function downloadExcelFromBackend(runsArray, fallbackFilename = "FTM_export.xlsx") {
   try {
@@ -1230,7 +1478,7 @@ const closePinnedTooltip = (runId) => {
         unit_id: getUnitId(),
         run_date: runMeta.run_date || "",
         run_time: runMeta.run_time || "",
-        load_mw: runMeta.load_mw || "",
+        load: runMeta.load_mw || "",
         total_coal_flow_tph: runMeta.total_coal_flow_tph || "",
         total_air_flow_tph: runMeta.total_air_flow_tph || "",
         burner_tilt_deg_1: runMeta.burner_tilt_deg_1 || "",
@@ -1279,7 +1527,7 @@ formatMillLabel(
 
     try {
       setSavingEdit(true);
-      const payload = buildUploadPayload(editDraft);
+      const payload = buildUploadPayload2(editDraft);
       await axios.put(
         `${BASE_URL}/runs/${editingRunId}?username=${localStorage.getItem("username")}`,
         payload
