@@ -1766,7 +1766,7 @@ formatMillLabel(
                   lineHeight: 1.1,
                 }}
               >
-                ABHITECH FURNACE FLAME TEMPERATURE MAPPINGS
+                ABHITECH FURNACE FLAME TEMPERATURE MAPPING
               </div>
               <div
                 style={{
