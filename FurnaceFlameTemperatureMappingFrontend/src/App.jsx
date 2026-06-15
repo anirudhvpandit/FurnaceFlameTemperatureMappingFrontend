@@ -1208,6 +1208,8 @@ const closePinnedTooltip = (runId) => {
       const res = await axios.get(`${BASE_URL}/history`, {
         params: { station_id: getStationName(), unit_id: getUnitId(), start_date: date, end_date: date },
       });
+      console.log("history api response",res);
+      
       const data = (res.data || []).filter(item =>
         item.run_date === date
       );
@@ -1216,14 +1218,27 @@ const closePinnedTooltip = (runId) => {
       console.log(item.run_id);
 
       const [dsRes, boilerRes, coalRes] = await Promise.all([
-        axios.get(`${BASE_URL}/history/${item.run_id}`),
-        axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`),
-        axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`),
-      ]);
-      setHistory(prev => prev.find(r => r.run_id === item.run_id) ? prev : [...prev, item]);
-      setDatasets(p => ({ ...p, [item.run_id]: dsRes.data }));
-      setBoilerData(p => ({ ...p, [item.run_id]: boilerRes.data }));
-      setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
+  axios.get(`${BASE_URL}/history/${item.run_id}`),
+  axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`),
+  axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`),
+]);
+
+const mergedDataset = {
+  ...dsRes.data,
+  load_mw: item.load_mw,
+  total_coal_flow_tph: item.total_coal_flow_tph,
+  total_air_flow_tph: item.total_air_flow_tph,
+};
+
+setHistory(prev => prev.find(r => r.run_id === item.run_id) ? prev : [...prev, item]);
+
+setDatasets(p => ({
+  ...p,
+  [item.run_id]: mergedDataset
+}));
+
+setBoilerData(p => ({ ...p, [item.run_id]: boilerRes.data }));
+setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
       setSelected(prev => {
         const next = [...prev];
         next[slotIndex] = item.run_id;
@@ -1426,98 +1441,203 @@ const closePinnedTooltip = (runId) => {
   };
 
   const openEditModal = (runId) => {
-    if (!isAdmin) {
-      alert("Only administrators can edit data.");
-      return;
-    }
+  if (!isAdmin) {
+    alert("Only administrators can edit data.");
+    return;
+  }
 
-    const dataset = datasets[runId];
-    const boiler = boilerData[runId] || {};
-    const coal = coalData[runId] || [];
-    const runMeta = history.find(r => r.run_id === runId);
+  const dataset = datasets[runId];
+  const boiler = boilerData[runId] || {};
+  const coal = coalData[runId] || [];
+  const runMeta = history.find(r => r.run_id === runId);
 
-    if (!dataset || !runMeta) {
-      alert("Run data not loaded.");
-      return;
-    }
+  if (!dataset || !runMeta) {
+    alert("Run data not loaded.");
+    return;
+  }
 
-    const cornerKeys = Object.keys(dataset)
-      .filter(k => k.match(/^c\d+$/))
-      .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
-
-    const columns = cornerKeys.map(
-      k => `Corner ${k.replace("c", "")}`
+  const cornerKeys = Object.keys(dataset)
+    .filter(k => k.match(/^c\d+$/))
+    .sort(
+      (a, b) =>
+        parseInt(a.match(/\d+/)[0]) -
+        parseInt(b.match(/\d+/)[0])
     );
 
-    const rows = (dataset.elevation || []).map((el, i) => ({
-      elevation_m: String(el),
-      values: Object.fromEntries(
-        columns.map((c, idx) => [
-          c,
-          dataset[`c${idx + 1}`]?.[i] ?? ""
-        ])
-      ),
-      burner_tilt_deg: dataset.burner_tilt_deg?.[i] ?? "",
-    }));
+  const columns = cornerKeys.map(
+    k => `Corner ${k.replace("c", "")}`
+  );
 
-    const byMill = {};
+  const rows = (dataset.elevation || []).map((el, i) => ({
+    elevation_m: String(el),
 
-    coal.forEach(m => {
-      byMill[m.mill] = {
-        coal_flow_tph: m.coal_flow_tph ?? "",
-        pa_flow_tph: m.pa_flow_tph ?? "",
-        mill_dp_mmwc: m.mill_dp_mmwc ?? "",
-        mill_outlet_temp: m.mill_outlet_temp ?? "",
-        mill_current_amp: m.mill_current_amp ?? "",
-      };
-    });
+    values: Object.fromEntries(
+      columns.map((c, idx) => [
+        c,
+        dataset[`c${idx + 1}`]?.[i] ?? ""
+      ])
+    ),
 
-    const draft = {
-      meta: {
-        station: getStationName(),
-        unit_id: getUnitId(),
-        run_date: runMeta.run_date || "",
-        run_time: runMeta.run_time || "",
-        load: runMeta.load_mw || "",
-        total_coal_flow_tph: runMeta.total_coal_flow_tph || "",
-        total_air_flow_tph: runMeta.total_air_flow_tph || "",
-        burner_tilt_deg_1: runMeta.burner_tilt_deg_1 || "",
-        burner_tilt_deg_2: runMeta.burner_tilt_deg_2 || "",
-        burner_tilt_deg_3: runMeta.burner_tilt_deg_3 || "",
-        burner_tilt_deg_4: runMeta.burner_tilt_deg_4 || "",
-       coal_mills_in_service_count:
-  runMeta.coal_mills_in_service_count || "",
+    burner_tilt_deg:
+      dataset.burner_tilt_deg?.[i] ?? "",
+  }));
 
-coal_mills_in_service:
-formatMillLabel(
-  runMeta.coal_mills_in_service ||
-  runMeta.coal_mills_in_service_label
-)||
-  "",
-        oil_guns_in_service_count: runMeta.oil_guns_in_service_count || "",
-        oil_guns_in_service: runMeta.oil_guns_in_service || "",
-        notes: runMeta.notes || "",
-      },
-      elevation: {
-        columns,
-        rows,
-      },
-      boiler: {
-        ...boiler
-      },
-      flueGas: {
-        ...boiler
-      },
-      coalMills: {
-        mills: coal.map(c => c.mill),
-        byMill,
-      },
+  const byMill = {};
+
+  coal.forEach((m) => {
+    byMill[m.mill] = {
+      coal_flow_tph: m.coal_flow_tph ?? "",
+      pa_flow_tph: m.pa_flow_tph ?? "",
+      mill_dp_mmwc: m.mill_dp_mmwc ?? "",
+      mill_outlet_temp: m.mill_outlet_temp ?? "",
+      mill_current_amp: m.mill_current_amp ?? "",
     };
+  });
 
-    setEditDraft(draft);
-    setEditingRunId(runId);
-    setShowIngestModal(true);
+  console.log("run meta",runMeta);
+  
+
+  const draft = {
+    meta: {
+      station: getStationName(),
+      unit_id: getUnitId(),
+
+      run_date: runMeta.run_date || "",
+      run_time: runMeta.run_time || "",
+
+      load_mw: runMeta.load || "",
+
+      total_coal_flow_tph:
+        runMeta.coal_flow || "",
+
+      total_air_flow_tph:
+        runMeta.total_air_flow_tph || "",
+
+      burner_tilt_deg_1:
+        runMeta.burner_tilt_deg_1 || "",
+
+      burner_tilt_deg_2:
+        runMeta.burner_tilt_deg_2 || "",
+
+      burner_tilt_deg_3:
+        runMeta.burner_tilt_deg_3 || "",
+
+      burner_tilt_deg_4:
+        runMeta.burner_tilt_deg_4 || "",
+
+      
+
+      
+
+      
+
+      oil_guns_in_service:
+        runMeta.oil_guns_in_service || "",
+
+      notes:
+        runMeta.notes || "",
+    },
+
+    elevation: {
+      columns,
+      rows,
+    },
+
+    boiler: {
+      main_steam_pressure_l:
+        boiler.main_steam_pressure_l ?? "",
+
+      main_steam_pressure_r:
+        boiler.main_steam_pressure_r ?? "",
+
+      main_steam_flow_l:
+        boiler.main_steam_flow_l ?? "",
+
+      main_steam_flow_r:
+        boiler.main_steam_flow_r ?? "",
+
+      superheat_spray_l:
+        boiler.superheat_spray_l ?? "",
+
+      superheat_spray_r:
+        boiler.superheat_spray_r ?? "",
+
+      reheat_spray_l:
+        boiler.reheat_spray_l ?? "",
+
+      reheat_spray_r:
+        boiler.reheat_spray_r ?? "",
+
+      o2_aph_inlet_pcr_l:
+        boiler.o2_aph_inlet_pcr_l ?? "",
+
+      o2_aph_inlet_pcr_r:
+        boiler.o2_aph_inlet_pcr_r ?? "",
+
+      wind_box_dp_l:
+        boiler.wind_box_dp_l ?? "",
+
+      wind_box_dp_r:
+        boiler.wind_box_dp_r ?? "",
+
+      total_pa_flow:
+        boiler.total_pa_flow ?? "",
+
+      total_fd_fan_flow:
+        boiler.total_fd_fan_flow ?? "",
+
+      total_pa_to_windbox_flow:
+        boiler.total_pa_to_windbox_flow ?? "",
+    },
+
+    flueGas: {
+      fg_temp_after_dpsh_l:
+        boiler.fg_temp_after_dpsh_l ?? "",
+
+      fg_temp_after_dpsh_r:
+        boiler.fg_temp_after_dpsh_r ?? "",
+
+      fg_temp_after_psh_l:
+        boiler.fg_temp_after_psh_l ?? "",
+
+      fg_temp_after_psh_r:
+        boiler.fg_temp_after_psh_r ?? "",
+
+      fg_temp_after_rh_l:
+        boiler.fg_temp_after_rh_l ?? "",
+
+      fg_temp_after_rh_r:
+        boiler.fg_temp_after_rh_r ?? "",
+
+      fg_temp_after_hsh_l:
+        boiler.fg_temp_after_hsh_l ?? "",
+
+      fg_temp_after_hsh_r:
+        boiler.fg_temp_after_hsh_r ?? "",
+
+      fg_temp_after_eco_l:
+        boiler.fg_temp_after_eco_l ?? "",
+
+      fg_temp_after_eco_r:
+        boiler.fg_temp_after_eco_r ?? "",
+
+      fg_temp_after_aph_l:
+        boiler.fg_temp_after_aph_l ?? "",
+
+      fg_temp_after_aph_r:
+        boiler.fg_temp_after_aph_r ?? "",
+    },
+
+    coalMills: {
+      mills: coal.map((c) => c.mill),
+      byMill,
+    },
   };
+
+  setEditDraft(draft);
+  setEditingRunId(runId);
+  setShowIngestModal(true);
+};
 
   const saveEditedRun = async () => {
     if (!isAdmin) {
@@ -1663,7 +1783,66 @@ formatMillLabel(
   const MAIN_PADDING = 16;
   const GAP = 12;
   const sidebarEffectiveOpen = sidebarOpen && !showIngestModal;
+const activeDraft =
+  editingRunId ? editDraft : runDraft;
 
+const setActiveDraft =
+  editingRunId ? setEditDraft : setRunDraft;
+
+const updateMetaField = (field, value) => {
+  setActiveDraft(prev => ({
+    ...prev,
+    meta: {
+      ...prev.meta,
+      [field]: value,
+    },
+  }));
+};
+
+const updateBoilerField = (field, value) => {
+  setActiveDraft(prev => ({
+    ...prev,
+    boiler: {
+      ...prev.boiler,
+      [field]: value,
+    },
+  }));
+};
+
+const updateFlueGasField = (field, value) => {
+  setActiveDraft(prev => ({
+    ...prev,
+    flueGas: {
+      ...prev.flueGas,
+      [field]: value,
+    },
+  }));
+};
+
+const updateCoalMillField = (
+  mill,
+  field,
+  value
+) => {
+
+  setActiveDraft(prev => ({
+    ...prev,
+
+    coalMills: {
+      ...prev.coalMills,
+
+      byMill: {
+        ...prev.coalMills.byMill,
+
+        [mill]: {
+          ...prev.coalMills.byMill[mill],
+
+          [field]: value,
+        },
+      },
+    },
+  }));
+};
   return (
     <div style={{ background: "#f0eff8", minHeight: "100vh" }}>
       <header
@@ -2883,14 +3062,16 @@ const activeMillLabel =
                 ))}
               </div>
               <div style={{ ...S.ingestBody, padding: isNarrow ? "12px 10px 10px" : S.ingestBody.padding }}>
+              {ingestTab === "run" && console.log("edit Draft",editDraft)
+              }
                 {ingestTab === "run" && (
                   <div style={{ ...S.ingestGrid, gridTemplateColumns: isNarrow ? "1fr" : S.ingestGrid.gridTemplateColumns }}>
                     {[
                       { k: "run_date", l: "DATE", type: "date" },
                       { k: "run_time", l: "TIME", type: "time" },
-                      { k: "load_mw", l: "LOAD (MW)", type: "number" },
-                      { k: "total_coal_flow_tph", l: "TOTAL COAL FLOW (TPH)", type: "number" },
-                      { k: "total_air_flow_tph", l: "TOTAL AIR FLOW (TPH)", type: "number" },
+                      { k: "load_mw", l: "LOAD (MW)", type: "text" },
+                      { k: "total_coal_flow_tph", l: "TOTAL COAL FLOW (TPH)", type: "text" },
+                      { k: "total_air_flow_tph", l: "TOTAL AIR FLOW (TPH)", type: "text" },
                       { k: "coal_mills_in_service_count", l: "COAL MILLS IN SERVICE (COUNT)", type: "number" },
                       { k: "coal_mills_in_service", l: "COAL MILLS IN SERVICE (E.G. ABDEFG)", type: "text" },
                       { k: "oil_guns_in_service_count", l: "OIL GUNS IN SERVICE (COUNT)", type: "number" },
@@ -2903,13 +3084,15 @@ const activeMillLabel =
                           type={f.type}
                           inputMode={f.type === "number" ? "decimal" : undefined}
                           value={(editingRunId ? editDraft : runDraft).meta[f.k]}
-                          onChange={(e) => (!editingRunId ? setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })) : setEditDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })))}
+                          onChange={(e) => (!editingRunId ? setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })) : setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })))}
                           style={{ ...S.fieldInput, padding: isNarrow ? "12px 12px" : S.fieldInput.padding, fontSize: isNarrow ? "17px" : S.fieldInput.fontSize }}
                         />
                       </div>
                     ))}
                   </div>
                 )}
+                {ingestTab === "elevation" && console.log("run draft",runDraft)
+              }
                 {ingestTab === "elevation" && (
                   <div>
                     <div style={S.ingestToolbar}>
@@ -3103,7 +3286,17 @@ const activeMillLabel =
                     ].map(f => (
                       <div key={f.k} style={S.field}>
                         <div style={S.fieldLabel}>{f.l}</div>
-                        <input type="number" inputMode="decimal" value={(editingRunId ? editDraft : runDraft).boiler[f.k]} onChange={(e) => setRunDraft(p => ({ ...p, boiler: { ...p.boiler, [f.k]: e.target.value } }))} style={{ ...S.fieldInput, padding: isMobileSheet ? "12px 12px" : S.fieldInput.padding }} />
+                        <input type="number" inputMode="decimal" value={(editingRunId ? editDraft : runDraft).boiler[f.k]} onChange={(e) =>
+  !editingRunId
+    ? setRunDraft(p => ({
+        ...p,
+        boiler: { ...p.boiler, [f.k]: e.target.value }
+      }))
+    : setEditDraft(p => ({
+        ...p,
+        boiler: { ...p.boiler, [f.k]: e.target.value }
+      }))
+} style={{ ...S.fieldInput, padding: isMobileSheet ? "12px 12px" : S.fieldInput.padding }} />
                       </div>
                     ))}
                   </div>
@@ -3126,7 +3319,17 @@ const activeMillLabel =
                     ].map(f => (
                       <div key={f.k} style={S.field}>
                         <div style={S.fieldLabel}>{f.l}</div>
-                        <input type="number" inputMode="decimal" value={(editingRunId ? editDraft : runDraft).flueGas[f.k]} onChange={(e) => setRunDraft(p => ({ ...p, flueGas: { ...p.flueGas, [f.k]: e.target.value } }))} style={{ ...S.fieldInput, padding: isMobileSheet ? "12px 12px" : S.fieldInput.padding }} />
+                        <input type="number" inputMode="decimal" value={(editingRunId ? editDraft : runDraft).flueGas[f.k]} onChange={(e) =>
+  !editingRunId
+    ? setRunDraft(p => ({
+        ...p,
+        flueGas: { ...p.flueGas, [f.k]: e.target.value }
+      }))
+    : setEditDraft(p => ({
+        ...p,
+        flueGas: { ...p.flueGas, [f.k]: e.target.value }
+      }))
+} style={{ ...S.fieldInput, padding: isMobileSheet ? "12px 12px" : S.fieldInput.padding }} />
                       </div>
                     ))}
                   </div>
