@@ -299,6 +299,11 @@ function buildUploadPayload2(draft) {
         ""
       ),
 
+      time: String(draft.meta.run_time || ""),
+
+      total_air_flow_tph: String (draft.meta.total_air_flow_tph || ""),
+
+      oil_guns_in_service: String(draft.meta.oil_guns_in_service || ""),
     // ─── RUN META ─────────────────────────────
     run_meta: {
 
@@ -1414,7 +1419,7 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
 
   const submitRunDraft = async () => {
     if (!isAdmin) { alert("Only administrators can upload data."); return; }
-    const payload = buildUploadPayload(runDraft);
+    const payload = buildUploadPayload2(runDraft);
     if (!payload.run_meta?.run_date || !payload.run_meta?.run_time) {
       alert("Please set run date & time."); return;
     }
@@ -1503,7 +1508,7 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
       unit_id: getUnitId(),
 
       run_date: runMeta.run_date || "",
-      run_time: runMeta.run_time || "",
+      run_time: runMeta.time || "",
 
       load_mw: runMeta.load || "",
 
@@ -3072,9 +3077,6 @@ const activeMillLabel =
                       { k: "load_mw", l: "LOAD (MW)", type: "text" },
                       { k: "total_coal_flow_tph", l: "TOTAL COAL FLOW (TPH)", type: "text" },
                       { k: "total_air_flow_tph", l: "TOTAL AIR FLOW (TPH)", type: "text" },
-                      { k: "coal_mills_in_service_count", l: "COAL MILLS IN SERVICE (COUNT)", type: "number" },
-                      { k: "coal_mills_in_service", l: "COAL MILLS IN SERVICE (E.G. ABDEFG)", type: "text" },
-                      { k: "oil_guns_in_service_count", l: "OIL GUNS IN SERVICE (COUNT)", type: "number" },
                       { k: "oil_guns_in_service", l: "OIL GUNS IN SERVICE (E.G. 10,27,24,17)", type: "text" },
                       { k: "notes", l: "NOTES", type: "text", span: isNarrow ? 1 : 2 },
                     ].map(f => (
@@ -3084,7 +3086,7 @@ const activeMillLabel =
                           type={f.type}
                           inputMode={f.type === "number" ? "decimal" : undefined}
                           value={(editingRunId ? editDraft : runDraft).meta[f.k]}
-                          onChange={(e) => (!editingRunId ? setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })) : setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })))}
+                          onChange={(e) => (!editingRunId ? setRunDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })) : setEditDraft(p => ({ ...p, meta: { ...p.meta, [f.k]: e.target.value } })))}
                           style={{ ...S.fieldInput, padding: isNarrow ? "12px 12px" : S.fieldInput.padding, fontSize: isNarrow ? "17px" : S.fieldInput.fontSize }}
                         />
                       </div>
