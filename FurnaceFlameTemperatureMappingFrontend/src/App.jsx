@@ -2697,6 +2697,7 @@ const activeMillLabel =
                   <div style={S.tabBar}>
                     {[
                       { k: "graph", l: "GRAPH" },
+                      {k:"general", l:"GENERAL DATA"},
                       { k: "raw", l: "RAW DATA" },
                       { k: "boiler", l: "BOILER PARAMS" },
                       { k: "coal", l: "COAL MILLS" },
@@ -3074,6 +3075,95 @@ const activeMillLabel =
                       </div>
                     </div>
                   )}
+
+                  {getTab(id) === "general" && (
+  <div style={S.tablePanel}>
+    <div style={S.chartLabel}>GENERAL RUN DATA</div>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: isNarrow
+          ? "1fr"
+          : "repeat(auto-fit,minmax(220px,1fr))",
+        gap: "14px",
+      }}
+    >
+      {[
+        {
+          label: "DATE",
+          value: runMeta.run_date || "N/A",
+        },
+        {
+          label: "TIME",
+          value: runMeta.time || "N/A",
+        },
+        {
+          label: "LOAD",
+          value: runMeta.load
+            ? `${runMeta.load} MW`
+            : "N/A",
+        },
+        {
+          label: "TOTAL COAL FLOW",
+          value: runMeta.coal_flow
+            ? `${runMeta.coal_flow} TPH`
+            : "N/A",
+        },
+        {
+          label: "TOTAL AIR FLOW",
+          value: runMeta.total_air_flow_tph
+            ? `${runMeta.total_air_flow_tph} TPH`
+            : "N/A",
+        },
+        {
+          label: "OIL GUNS IN SERVICE",
+          value:
+            runMeta.oil_guns_in_service || "N/A",
+        },
+        
+      ].map((item) => (
+        <div
+          key={item.label}
+          style={{
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "14px",
+            padding: "18px 16px",
+            boxShadow:
+              "0 2px 8px rgba(0,0,0,0.05)",
+            gridColumn: item.full
+              ? "1 / -1"
+              : undefined,
+          }}
+        >
+          <div
+            style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              color: "#6b7280",
+              marginBottom: "10px",
+            }}
+          >
+            {item.label}
+          </div>
+
+          <div
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              color: "#111827",
+              wordBreak: "break-word",
+            }}
+          >
+            {item.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
                   {getTab(id) === "raw" && (
                     <div style={S.tablePanel}>
                       <div style={S.chartLabel}>RAW MEASUREMENT DATA</div>
