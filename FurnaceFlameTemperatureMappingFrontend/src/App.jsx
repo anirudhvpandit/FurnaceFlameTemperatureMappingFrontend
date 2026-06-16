@@ -453,7 +453,7 @@ async function downloadExcelFromBackend(runsArray, fallbackFilename = "FTM_expor
       runs: runsArray
     };
 
-    const response = await fetch(`${BASE_URL}/generate-excel-2`, {
+    const response = await fetch(`${BASE_URL}/generate-excel`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
