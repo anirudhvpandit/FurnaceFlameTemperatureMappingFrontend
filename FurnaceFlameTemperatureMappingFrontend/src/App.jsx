@@ -453,7 +453,7 @@ async function downloadExcelFromBackend(runsArray, fallbackFilename = "FTM_expor
       runs: runsArray
     };
 
-    const response = await fetch(`${BASE_URL}/generate-excel`, {
+    const response = await fetch(`${BASE_URL}/generate-excel-2`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -500,183 +500,328 @@ function buildGeneratePayload({
   stationName,
   unitId,
 }) {
+  console.log("building generate excel with payload,", runMeta);
+  
+  const safeNum = (v) => {
+    if (v === "" || v === null || v === undefined) return null;
+
+    const n = Number(v);
+
+    return Number.isFinite(n)
+      ? n
+      : null;
+  };
+
+  // ─────────────────────────────────────────────
+  // CORNER KEYS
+  // ─────────────────────────────────────────────
 
   const cornerKeys = Object.keys(dataset || {})
-    .filter((k) => k.match(/^c\d+$/))
+    .filter((k) => /^c\d+$/.test(k))
     .sort(
       (a, b) =>
-        parseInt(a.match(/\d+/)[0]) -
-        parseInt(b.match(/\d+/)[0])
+        parseInt(a.replace("c", "")) -
+        parseInt(b.replace("c", ""))
     );
 
   const columns = cornerKeys.map(
     (k) => `Corner ${k.replace("c", "")}`
   );
 
+  // ─────────────────────────────────────────────
+  // ELEVATION ROWS
+  // ─────────────────────────────────────────────
+
   const rows = (dataset?.elevation || [])
     .map((el, i) => {
+
+      const elevation_m = safeNum(el);
+
+      if (elevation_m == null) return null;
 
       const values = {};
 
       cornerKeys.forEach((k) => {
-        const v = dataset[k]?.[i];
 
-        values[`Corner ${k.replace("c", "")}`] =
-          v != null && !isNaN(Number(v))
-            ? Number(v)
-            : null;
+        const raw =
+          dataset[k]?.[i];
+
+        values[
+          `Corner ${k.replace("c", "")}`
+        ] = safeNum(raw);
+
       });
 
-      const avgRaw =
-        dataset.average?.[i] ??
-        dataset.avg_val?.[i] ??
-        dataset.avg?.[i];
+      const numericVals =
+        Object.values(values)
+          .filter((v) => v != null);
 
       const average =
-        avgRaw != null && !isNaN(Number(avgRaw))
-          ? Number(avgRaw)
+        numericVals.length > 0
+          ? numericVals.reduce((a, b) => a + b, 0) / numericVals.length
           : null;
 
       return {
-        elevation_m:
-          el != null && !isNaN(Number(el))
-            ? Number(el)
-            : null,
+        elevation_m,
+
+        burner_tilt_deg:
+          safeNum(
+            dataset.burner_tilt_deg?.[i]
+          ),
 
         values,
 
         average,
-
-        burner_tilt_deg:
-          dataset.burner_tilt_deg?.[i] != null &&
-          !isNaN(Number(dataset.burner_tilt_deg[i]))
-            ? Number(dataset.burner_tilt_deg[i])
-            : null,
       };
 
     })
-    .filter(
-      (r) =>
-        r.elevation_m != null &&
-        !isNaN(r.elevation_m)
-    );
+    .filter(Boolean);
 
-  const boiler_params = {};
-  const flue_gas_temps = {};
+  // ─────────────────────────────────────────────
+  // BOILER PARAMS
+  // ─────────────────────────────────────────────
+
   const bp = boiler || {};
 
-  const boilerKeys = [
-    "main_steam_pressure_l",
-    "main_steam_pressure_r",
-    "main_steam_flow_l",
-    "main_steam_flow_r",
-    "superheat_spray_l",
-    "superheat_spray_r",
-    "reheat_spray_l",
-    "reheat_spray_r",
-    "o2_aph_inlet_pcr_l",
-    "o2_aph_inlet_pcr_r",
-    "wind_box_dp_l",
-    "wind_box_dp_r",
-    "total_pa_flow",
-  ];
+  const boiler_params = {
 
-  const flueKeys = [
-    "fg_temp_after_dpsh_l",
-    "fg_temp_after_dpsh_r",
-    "fg_temp_after_psh_l",
-    "fg_temp_after_psh_r",
-    "fg_temp_after_rh_l",
-    "fg_temp_after_rh_r",
-    "fg_temp_after_hsh_l",
-    "fg_temp_after_hsh_r",
-    "fg_temp_after_eco_l",
-    "fg_temp_after_eco_r",
-    "fg_temp_after_aph_l",
-    "fg_temp_after_aph_r",
-  ];
+    main_steam_pressure_l:
+      safeNum(bp.main_steam_pressure_l),
 
-  boilerKeys.forEach((k) => {
-    boiler_params[k] = bp[k] ?? null;
-  });
+    main_steam_pressure_r:
+      safeNum(bp.main_steam_pressure_r),
 
-  flueKeys.forEach((k) => {
-    flue_gas_temps[k] = bp[k] ?? null;
-  });
+    main_steam_flow_l:
+      safeNum(bp.main_steam_flow_l),
 
-  const coal_mill_params = (Array.isArray(coal) ? coal : [])
-    .map((m) => ({
-      mill: m.mill,
+    main_steam_flow_r:
+      safeNum(bp.main_steam_flow_r),
 
-      coal_flow_tph:
-        m.coal_flow_tph ?? null,
+    superheat_spray_l:
+      safeNum(bp.superheat_spray_l),
 
-      pa_flow_tph:
-        m.pa_flow_tph ?? null,
+    superheat_spray_r:
+      safeNum(bp.superheat_spray_r),
 
-      mill_dp_mmwc:
-        m.mill_dp_mmwc ?? null,
+    reheat_spray_l:
+      safeNum(bp.reheat_spray_l),
 
-      mill_outlet_temp:
-        m.mill_outlet_temp ?? null,
+    reheat_spray_r:
+      safeNum(bp.reheat_spray_r),
 
-      mill_current_amp:
-        m.mill_current_amp ?? null,
-    }));
+    o2_aph_inlet_pcr_l:
+      safeNum(bp.o2_aph_inlet_pcr_l),
+
+    o2_aph_inlet_pcr_r:
+      safeNum(bp.o2_aph_inlet_pcr_r),
+
+    wind_box_dp_l:
+      safeNum(bp.wind_box_dp_l),
+
+    wind_box_dp_r:
+      safeNum(bp.wind_box_dp_r),
+
+    total_pa_flow:
+      safeNum(bp.total_pa_flow),
+  };
+
+  // ─────────────────────────────────────────────
+  // FLUE GAS TEMPS
+  // ─────────────────────────────────────────────
+
+  const flue_gas_temps = {
+
+    fg_temp_after_dpsh_l:
+      safeNum(bp.fg_temp_after_dpsh_l),
+
+    fg_temp_after_dpsh_r:
+      safeNum(bp.fg_temp_after_dpsh_r),
+
+    fg_temp_after_psh_l:
+      safeNum(bp.fg_temp_after_psh_l),
+
+    fg_temp_after_psh_r:
+      safeNum(bp.fg_temp_after_psh_r),
+
+    fg_temp_after_rh_l:
+      safeNum(bp.fg_temp_after_rh_l),
+
+    fg_temp_after_rh_r:
+      safeNum(bp.fg_temp_after_rh_r),
+
+    fg_temp_after_hsh_l:
+      safeNum(bp.fg_temp_after_hsh_l),
+
+    fg_temp_after_hsh_r:
+      safeNum(bp.fg_temp_after_hsh_r),
+
+    fg_temp_after_eco_l:
+      safeNum(bp.fg_temp_after_eco_l),
+
+    fg_temp_after_eco_r:
+      safeNum(bp.fg_temp_after_eco_r),
+
+    fg_temp_after_aph_l:
+      safeNum(bp.fg_temp_after_aph_l),
+
+    fg_temp_after_aph_r:
+      safeNum(bp.fg_temp_after_aph_r),
+  };
+
+  // ─────────────────────────────────────────────
+  // COAL MILL PARAMS
+  // ─────────────────────────────────────────────
+
+  const coal_mill_params =
+    (Array.isArray(coal) ? coal : [])
+      .map((m) => ({
+
+        mill:
+          m.mill,
+
+        coal_flow_tph:
+          safeNum(m.coal_flow_tph),
+
+        pa_flow_tph:
+          safeNum(m.pa_flow_tph),
+
+        mill_dp_mmwc:
+          safeNum(m.mill_dp_mmwc),
+
+        mill_outlet_temp:
+          safeNum(m.mill_outlet_temp),
+
+        mill_current_amp:
+          safeNum(m.mill_current_amp),
+
+      }));
+
+  // ─────────────────────────────────────────────
+  // DATE
+  // ─────────────────────────────────────────────
 
   const rawDate =
     runMeta.run_date ||
     runMeta.run_timestamp ||
     "";
 
-  const dateStr = rawDate.slice(0, 10);
+  const dateStr =
+    String(rawDate).slice(0, 10);
+
+  // ─────────────────────────────────────────────
+  // NORMALIZED VALUES
+  // ─────────────────────────────────────────────
+
+  const runTime =
+    runMeta.run_time ||
+    runMeta.time ||
+    "";
+
+  const loadMw =
+    safeNum(
+      runMeta.load_mw ??
+      runMeta.load
+    );
+
+  const coalFlow =
+    safeNum(
+      runMeta.total_coal_flow_tph ??
+      runMeta.coal_flow
+    );
+
+  const airFlow =
+    safeNum(
+      runMeta.total_air_flow_tph
+    );
+
+  const oilGuns =
+    runMeta.oil_guns_in_service || "";
+
+  // ─────────────────────────────────────────────
+  // FINAL PAYLOAD
+  // ─────────────────────────────────────────────
 
   return {
+
     station:
       stationName ||
       runMeta.location ||
       "",
 
-    unit_id: unitId,
+    unit_id:
+      Number(unitId) || null,
 
+    // ROOT LEVEL VALUES
+    time:
+      runTime,
+
+    load:
+      loadMw != null
+        ? String(loadMw)
+        : "",
+
+    coal_flow:
+      coalFlow != null
+        ? String(coalFlow)
+        : "",
+
+    total_air_flow_tph:
+      airFlow != null
+        ? String(airFlow)
+        : "",
+
+    oil_guns_in_service:
+      oilGuns,
+
+    // RUN META
     run_meta: {
-      run_date: dateStr,
+
+      run_date:
+        dateStr,
 
       run_time:
-        runMeta.run_time || "",
+        runTime,
 
       load_mw:
-        runMeta.load_mw ?? null,
+        loadMw,
 
       total_coal_flow_tph:
-        runMeta.total_coal_flow_tph ?? null,
+        coalFlow,
 
       total_air_flow_tph:
-        runMeta.total_air_flow_tph ?? null,
+        airFlow,
 
       burner_tilt_deg_1:
-        runMeta.burner_tilt_deg_1 ?? null,
+        safeNum(runMeta.burner_tilt_deg_1),
 
       burner_tilt_deg_2:
-        runMeta.burner_tilt_deg_2 ?? null,
+        safeNum(runMeta.burner_tilt_deg_2),
 
       burner_tilt_deg_3:
-        runMeta.burner_tilt_deg_3 ?? null,
+        safeNum(runMeta.burner_tilt_deg_3),
 
       burner_tilt_deg_4:
-        runMeta.burner_tilt_deg_4 ?? null,
+        safeNum(runMeta.burner_tilt_deg_4),
 
       coal_mills_in_service_count:
-  runMeta.coal_mills_in_service_count ?? null,
+        safeNum(
+          runMeta.coal_mills_in_service_count
+        ),
 
       coal_mills_in_service:
-        runMeta.coal_mills_in_service_label ?? "",
+        String(
+          runMeta.coal_mills_in_service ||
+          runMeta.coal_mills_in_service_label ||
+          ""
+        ),
 
       oil_guns_in_service_count:
-        runMeta.oil_guns_in_service ?? null,
+        safeNum(
+          runMeta.oil_guns_in_service_count
+        ),
 
       oil_guns_in_service:
-        runMeta.oil_guns_in_service_label ?? "",
+        oilGuns,
     },
 
     elevation_profile: {
