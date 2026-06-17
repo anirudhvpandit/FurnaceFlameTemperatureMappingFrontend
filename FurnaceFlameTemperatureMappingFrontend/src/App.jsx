@@ -1024,6 +1024,9 @@ const C = {
 };
 
 function BoilerParamsTable({ data }) {
+  const { width } = useWindowSize();
+  const stacked = width < 700;
+
   if (!data || Object.keys(data).length === 0)
     return <div style={S.noData}>No boiler parameters recorded for this run.</div>;
 
@@ -1049,7 +1052,7 @@ function BoilerParamsTable({ data }) {
   const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+    <div style={{ display: "grid", gridTemplateColumns: stacked ? "1fr" : "1fr 1fr", gap: "16px" }}>
       <div>
         <div style={S.subLabel}>BOILER & MILL PARAMETERS</div>
         <div style={{ overflowX: "auto", width: "100%" }}>
@@ -1170,6 +1173,10 @@ export default function App() {
   const { width: windowWidth } = useWindowSize();
   const isNarrow = windowWidth < 760;
   const isMobileSheet = windowWidth < 1100;
+  // Below this, the sidebar becomes an overlay drawer instead of pushing content.
+  const isCompactLayout = windowWidth < 1024;
+  // Below this, the two side-by-side FTM comparison panels stack into one column.
+  const showSideBySideGraphs = windowWidth >= 900;
 
   const CHART_HEIGHT = 320;
 
@@ -1213,6 +1220,8 @@ export default function App() {
   const [selectedStation, setSelectedStation] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const headerRef = useRef(null);
+  const [headerHeight, setHeaderHeight] = useState(72);
   const [editingRunId, setEditingRunId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -1340,8 +1349,20 @@ const closePinnedTooltip = (runId) => {
   }, []);
 
   useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => setHeaderHeight(el.offsetHeight || 72);
+    update();
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+  }, [windowWidth, selectedStation, selectedUnit, isAdmin, userLocation]);
+
+  useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) setSidebarOpen(false);
+      if (window.innerWidth < 1024) setSidebarOpen(false);
     };
     handleResize();
     window.addEventListener("resize", handleResize);
@@ -2084,8 +2105,9 @@ const updateCoalMillField = (
   return (
     <div style={{ background: "#f0eff8", minHeight: "100vh" }}>
       <header
+        ref={headerRef}
         style={{
-          height: "72px",
+          minHeight: "72px",
           background: "#ffffff",
           borderBottom: "1px solid #e5e7eb",
           position: "sticky",
@@ -2095,20 +2117,22 @@ const updateCoalMillField = (
       >
         <div
           style={{
-            height: "100%",
-            display: "grid",
-            gridTemplateColumns: "1fr auto 1fr",
+            display: "flex",
+            flexWrap: "wrap",
             alignItems: "center",
-            padding: "0 24px",
-            gap: "20px",
+            justifyContent: "space-between",
+            padding: isNarrow ? "10px 14px" : "0 24px",
+            gap: isNarrow ? "10px" : "20px",
+            minHeight: "72px",
           }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "14px",
+              gap: isNarrow ? "10px" : "14px",
               minWidth: 0,
+              flex: "1 1 240px",
             }}
           >
             <button
@@ -2173,7 +2197,7 @@ const updateCoalMillField = (
               <div
                 style={{
                   fontFamily: "Inter, sans-serif",
-                  fontSize: "17px",
+                  fontSize: isNarrow ? "14px" : "17px",
                   fontWeight: 900,
                   color: "#111827",
                   letterSpacing: "0.03em",
@@ -2188,10 +2212,13 @@ const updateCoalMillField = (
               <div
                 style={{
                   fontFamily: "Inter, sans-serif",
-                  fontSize: "13px",
+                  fontSize: isNarrow ? "10px" : "13px",
                   color: "#6b7280",
                   marginTop: "3px",
                   letterSpacing: "0.08em",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
                 REAL TIME THERMAL ANALYTICS PLATFORM
@@ -2202,6 +2229,9 @@ const updateCoalMillField = (
             style={{
               display: "flex",
               justifyContent: "center",
+              flex: "0 1 auto",
+              order: isNarrow ? 3 : 0,
+              width: isNarrow ? "100%" : "auto",
             }}
           >
             {selectedStation && selectedUnit && (
@@ -2209,11 +2239,13 @@ const updateCoalMillField = (
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "10px",
-                  padding: "10px 16px",
+                  gap: isNarrow ? "8px" : "10px",
+                  padding: isNarrow ? "8px 12px" : "10px 16px",
                   background: "#f9fafb",
                   border: "1px solid #e5e7eb",
                   borderRadius: "999px",
+                  maxWidth: "100%",
+                  overflow: "hidden",
                 }}
               >
                 <span
@@ -2233,6 +2265,9 @@ const updateCoalMillField = (
                     fontSize: "15px",
                     fontWeight: 800,
                     color: "#111827",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   }}
                 >
                   {selectedStation}
@@ -2242,6 +2277,7 @@ const updateCoalMillField = (
                     width: "1px",
                     height: "18px",
                     background: "#d1d5db",
+                    flexShrink: 0,
                   }}
                 />
                 <span
@@ -2261,6 +2297,9 @@ const updateCoalMillField = (
                     fontSize: "15px",
                     fontWeight: 800,
                     color: "#111827",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   }}
                 >
                   {selectedUnit}
@@ -2273,20 +2312,22 @@ const updateCoalMillField = (
               display: "flex",
               justifyContent: "flex-end",
               alignItems: "center",
-              gap: "12px",
+              gap: isNarrow ? "8px" : "12px",
+              flex: "0 0 auto",
             }}
           >
             {isAdmin && userLocation === "all" && (
               <div
                 style={{
-                  padding: "8px 12px",
+                  padding: isNarrow ? "7px 10px" : "8px 12px",
                   borderRadius: "999px",
                   background: "#ede9fe",
                   color: "#6d28d9",
                   fontFamily: "Inter, sans-serif",
-                  fontSize: "13px",
+                  fontSize: isNarrow ? "12px" : "13px",
                   fontWeight: 900,
                   letterSpacing: "0.08em",
+                  whiteSpace: "nowrap",
                 }}
               >
                 ADMIN
@@ -2296,7 +2337,7 @@ const updateCoalMillField = (
               onClick={handleLogout}
               style={{
                 height: "40px",
-                padding: "0 16px",
+                padding: isNarrow ? "0 12px" : "0 16px",
                 borderRadius: "10px",
                 border: "1px solid #e5e7eb",
                 background: "#ffffff",
@@ -2305,6 +2346,8 @@ const updateCoalMillField = (
                 fontWeight: 800,
                 fontSize: "14px",
                 cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
               }}
             >
               LOGOUT
@@ -2312,11 +2355,27 @@ const updateCoalMillField = (
           </div>
         </div>
       </header>
+      {isCompactLayout && sidebarOpen && !showIngestModal && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            top: headerHeight,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(20,18,40,0.45)",
+            zIndex: 900,
+          }}
+        />
+      )}
       <div style={{ display: "flex" }}>
         <aside style={{
           ...S.sidebar,
-          width: SIDEBAR_W,
-          transform: sidebarEffectiveOpen ? "translateX(0)" : `translateX(-${SIDEBAR_W}px)`,
+          top: headerHeight,
+          width: Math.min(SIDEBAR_W, windowWidth - 40),
+          transform: sidebarEffectiveOpen ? "translateX(0)" : `translateX(-${Math.min(SIDEBAR_W, windowWidth - 40)}px)`,
+          boxShadow: isCompactLayout && sidebarEffectiveOpen ? "6px 0 28px rgba(20,18,40,0.18)" : "none",
         }}>
           {isAdmin && (
             <div style={S.sideSection}>
@@ -2360,16 +2419,17 @@ const updateCoalMillField = (
         </aside>
         <main style={{
           flex: 1,
-          marginLeft: sidebarEffectiveOpen ? SIDEBAR_W : 0,
+          minWidth: 0,
+          marginLeft: sidebarEffectiveOpen && !isCompactLayout ? SIDEBAR_W : 0,
           transition: "margin-left 0.3s ease",
-          padding: `${MAIN_PADDING}px`,
-          minHeight: "calc(100vh - 56px)",
+          padding: isNarrow ? "12px" : `${MAIN_PADDING}px`,
+          minHeight: `calc(100vh - ${headerHeight}px)`,
           boxSizing: "border-box",
           overflowX: "auto",
         }}>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "minmax(220px,1fr) minmax(220px,1fr)",
+            gridTemplateColumns: showSideBySideGraphs ? "minmax(220px,1fr) minmax(220px,1fr)" : "1fr",
             gap: `${GAP}px`,
             width: "100%",
             minWidth: 0,
@@ -2695,89 +2755,79 @@ const activeMillLabel =
     </div>
   </div>
 
-  {/* MAX + MIN WRAPPER */}
+  {/* MAX */}
   <div
     style={{
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: "14px",
-      gridColumn: "span 2",
+      background: "#fff",
+      borderRadius: "14px",
+      padding: "18px 16px",
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      minHeight: "95px",
     }}
   >
-    {/* MAX */}
     <div
       style={{
-        background: "#fff",
-        borderRadius: "14px",
-        padding: "18px 16px",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        minHeight: "95px",
+        fontSize: "28px",
+        fontWeight: 700,
+        color: "#d32f2f",
+        lineHeight: 1.1,
       }}
     >
-      <div
-        style={{
-          fontSize: "28px",
-          fontWeight: 700,
-          color: "#d32f2f",
-          lineHeight: 1.1,
-        }}
-      >
-        {maxTemp.toFixed(0)}°C
-      </div>
-
-      <div
-        style={{
-          marginTop: "8px",
-          fontSize: "12px",
-          fontWeight: 600,
-          color: "#6b7280",
-          letterSpacing: "0.08em",
-        }}
-      >
-        MAX
-      </div>
+      {maxTemp.toFixed(0)}°C
     </div>
 
-    {/* MIN */}
     <div
       style={{
-        background: "#fff",
-        borderRadius: "14px",
-        padding: "18px 16px",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        minHeight: "95px",
+        marginTop: "8px",
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#6b7280",
+        letterSpacing: "0.08em",
       }}
     >
-      <div
-        style={{
-          fontSize: "28px",
-          fontWeight: 700,
-          color: "#1976d2",
-          lineHeight: 1.1,
-        }}
-      >
-        {minTemp.toFixed(0)}°C
-      </div>
+      MAX
+    </div>
+  </div>
 
-      <div
-        style={{
-          marginTop: "8px",
-          fontSize: "12px",
-          fontWeight: 600,
-          color: "#6b7280",
-          letterSpacing: "0.08em",
-        }}
-      >
-        MIN
-      </div>
+  {/* MIN */}
+  <div
+    style={{
+      background: "#fff",
+      borderRadius: "14px",
+      padding: "18px 16px",
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      minHeight: "95px",
+    }}
+  >
+    <div
+      style={{
+        fontSize: "28px",
+        fontWeight: 700,
+        color: "#1976d2",
+        lineHeight: 1.1,
+      }}
+    >
+      {minTemp.toFixed(0)}°C
+    </div>
+
+    <div
+      style={{
+        marginTop: "8px",
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#6b7280",
+        letterSpacing: "0.08em",
+      }}
+    >
+      MIN
     </div>
   </div>
 </div>
@@ -3327,7 +3377,7 @@ const activeMillLabel =
               </div>
               <button onClick={() => setShowReportModal(false)} style={{ border: "1px solid #eee", background: "#fff", borderRadius: "10px", width: "32px", height: "32px", cursor: "pointer", color: "#000", fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: isNarrow ? "1fr" : "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
               <div style={S.field}>
                 <div style={S.fieldLabel}>FROM DATE</div>
                 <input type="date" value={reportFromDate} onChange={e => { setReportFromDate(e.target.value); setReportError(""); }} style={{ ...S.fieldInput, fontSize: "15px" }} />
@@ -3813,7 +3863,7 @@ const S = {
   smallBtn: { border: "1px solid #e8e6f4", background: "#ffffff", borderRadius: "10px", padding: "8px 10px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.1em", color: "#000" },
   primaryBtn: { border: "none", background: "#4f46e5", color: "#000", borderRadius: "10px", padding: "10px 14px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.12em" },
   secondaryBtn: { border: "1px solid #e8e6f4", background: "#ffffff", color: "#000", borderRadius: "10px", padding: "10px 14px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.12em" },
-  sidebar: { background: "#ffffff", borderRight: "1px solid #e8e6f4", position: "fixed", left: 0, top: "56px", bottom: 0, overflowY: "auto", transition: "transform 0.3s ease", zIndex: 1000, width: "260px" },
+  sidebar: { background: "#ffffff", borderRight: "1px solid #e8e6f4", position: "fixed", left: 0, bottom: 0, overflowY: "auto", transition: "transform 0.3s ease", zIndex: 1000 },
   sideSection: { padding: "16px 14px", borderBottom: "1px solid #f0eef8" },
   secLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.28em", color: "#000", marginBottom: "10px", paddingTop: "2px" },
   uploadBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "#eeeeff", border: "none", borderRadius: "6px", color: "#000", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.15em", marginBottom: "8px" },
