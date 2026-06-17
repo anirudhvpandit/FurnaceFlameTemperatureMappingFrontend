@@ -447,11 +447,37 @@ function buildUploadPayload2(draft) {
 }
 
 // ─── BACKEND EXCEL DOWNLOAD HELPER ────────────────────────────
-async function downloadExcelFromBackend(runsArray, fallbackFilename = "FTM_export.xlsx") {
+async function loadScript(src) {
+  if (document.querySelector(`script[src="${src}"]`)) return;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function captureChartImage(chartEl) {
+  if (!chartEl) return null;
   try {
-    const payload = {
-      runs: runsArray
-    };
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+    const canvas = await window.html2canvas(chartEl, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+    return canvas.toDataURL("image/png").split(",")[1]; // base64
+  } catch (e) {
+    console.warn("Chart capture failed:", e);
+    return null;
+  }
+}
+
+async function downloadExcelFromBackend(runsArray, fallbackFilename = "FTM_export.xlsx", chartImageBase64 = null) {
+  try {
+    const payload = { runs: runsArray };
 
     const response = await fetch(`${BASE_URL}/generate-excel`, {
       method: "POST",
@@ -467,24 +493,58 @@ async function downloadExcelFromBackend(runsArray, fallbackFilename = "FTM_expor
     const disposition = response.headers.get("Content-Disposition") || "";
     const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
     let filename = fallbackFilename;
-
-    if (match && match[1]) {
-      filename = match[1].replace(/['"]/g, "");
-    }
+    if (match && match[1]) filename = match[1].replace(/['"]/g, "");
 
     const blob = await response.blob();
+
+    // If we have a chart image, inject it into the Excel using ExcelJS
+    if (chartImageBase64) {
+      try {
+        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js");
+        const ExcelJS = window.ExcelJS;
+        const arrayBuffer = await blob.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+
+        // Inject chart into first sheet (or all sheets if multi-run)
+        const sheet = workbook.worksheets[0];
+        if (sheet) {
+          const imageId = workbook.addImage({
+            base64: chartImageBase64,
+            extension: "png",
+          });
+          // Find last row with data to place chart below it
+          const lastRow = sheet.lastRow ? sheet.lastRow.number + 2 : 40;
+          sheet.addImage(imageId, {
+            tl: { col: 0, row: lastRow },
+            ext: { width: 700, height: 380 },
+          });
+          // Add a label above the chart
+          const labelRow = sheet.getRow(lastRow);
+          labelRow.getCell(1).value = "THERMAL PROFILE — ELEVATION VS TEMPERATURE";
+          labelRow.getCell(1).font = { bold: true, size: 11, name: "Arial" };
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const newBlob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const url = window.URL.createObjectURL(newBlob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+        return true;
+      } catch (imgErr) {
+        console.warn("Chart injection failed, downloading without chart:", imgErr);
+        // Fall through to plain download
+      }
+    }
+
+    // Plain download (no chart or injection failed)
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-
-    setTimeout(() => {
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    }, 100);
-
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
     return true;
   } catch (error) {
     console.error("Download failed:", error);
@@ -928,13 +988,13 @@ function CalPicker({ graph1Date, graph2Date, onGraph1, onGraph2, dataDates, isAd
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "10px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "10px" }}>
         <div>
-          <div style={C.miniLabel}>GRAPH 1</div>
+          <div style={C.miniLabel}>FTM 1</div>
           <MiniCal view={v1} onNav={d => nav(1, d)} dataDates={dataDates} selectedDate={graph1Date} onPick={onGraph1} isAdmin={isAdmin} />
         </div>
         <div>
-          <div style={C.miniLabel}>GRAPH 2</div>
+          <div style={C.miniLabel}>FTM 2</div>
           <MiniCal view={v2} onNav={d => nav(2, d)} dataDates={dataDates} selectedDate={graph2Date} onPick={onGraph2} isAdmin={isAdmin} />
         </div>
       </div>
@@ -1118,7 +1178,9 @@ export default function App() {
   const [showIngestModal, setShowIngestModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [history, setHistory] = useState([]);
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ftm_selected") || "[]"); } catch { return []; }
+  });
   const [datasets, setDatasets] = useState({});
   const [boilerData, setBoilerData] = useState({});
   const [coalData, setCoalData] = useState({});
@@ -1139,8 +1201,8 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userLocation, setUserLocation] = useState("all");
 
-  const [graph1Date, setGraph1Date] = useState("");
-  const [graph2Date, setGraph2Date] = useState("");
+  const [graph1Date, setGraph1Date] = useState(() => localStorage.getItem("ftm_graph1Date") || "");
+  const [graph2Date, setGraph2Date] = useState(() => localStorage.getItem("ftm_graph2Date") || "");
   const [dateError, setDateError] = useState("");
 
   const [reportFromDate, setReportFromDate] = useState("");
@@ -1285,6 +1347,18 @@ const closePinnedTooltip = (runId) => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("ftm_selected", JSON.stringify(selected));
+  }, [selected]);
+
+  useEffect(() => {
+    if (graph1Date) localStorage.setItem("ftm_graph1Date", graph1Date);
+  }, [graph1Date]);
+
+  useEffect(() => {
+    if (graph2Date) localStorage.setItem("ftm_graph2Date", graph2Date);
+  }, [graph2Date]);
 
   useEffect(() => {
     setVisibleLines(prev => {
@@ -1443,6 +1517,18 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
     setDateError(""); setGraph2Date(ds); fetchRunsForDate(ds, 1);
   };
 
+  // Re-fetch persisted graph dates after dataDates loads on refresh
+  const restoredRef = useRef(false);
+  const chartRefs = useRef({});
+  useEffect(() => {
+    if (dataDates.size === 0 || restoredRef.current) return;
+    restoredRef.current = true;
+    const saved1 = localStorage.getItem("ftm_graph1Date");
+    const saved2 = localStorage.getItem("ftm_graph2Date");
+    if (saved1 && dataDates.has(saved1)) fetchRunsForDate(saved1, 0);
+    if (saved2 && dataDates.has(saved2)) fetchRunsForDate(saved2, 1);
+  }, [dataDates]);
+
   const handleDownloadSingleRun = async (runId) => {
     const dataset = datasets[runId];
     const runMeta = history.find(r => r.run_id === runId) || {};
@@ -1454,17 +1540,19 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
     setRunDownloading(p => ({ ...p, [runId]: true }));
     try {
       const payload = buildGeneratePayload({
-        runMeta,
-        dataset,
-        boiler,
-        coal,
+        runMeta, dataset, boiler, coal,
         stationName: getStationName(),
         unitId: getUnitId(),
       });
 
+      // Capture the chart image before downloading
+      const chartEl = chartRefs.current[runId];
+      const chartImageBase64 = await captureChartImage(chartEl);
+
       await downloadExcelFromBackend(
         [payload],
-        `FTM_${getStationName()}_Unit${getUnitId()}_${(runMeta.run_date || "").slice(0, 10)}.xlsx`
+        `FTM_${getStationName()}_Unit${getUnitId()}_${(runMeta.run_date || "").slice(0, 10)}.xlsx`,
+        chartImageBase64
       );
     } catch (err) {
       console.error("Single run download failed:", err);
@@ -2290,7 +2378,7 @@ const updateCoalMillField = (
             {[0, 1].map(slotIdx => {
               const id = selected[slotIdx];
               const dataset = id ? datasets[id] : null;
-              const graphLabel = slotIdx === 0 ? "GRAPH 1" : "GRAPH 2";
+              const graphLabel = slotIdx === 0 ? "FTM 1" : "FTM 2";
               const accent = slotIdx === 0 ? "#4f46e5" : "#d97706";
 
               if (!id || !dataset) {
@@ -2841,7 +2929,7 @@ const activeMillLabel =
     Applies to ALL graphs
   </div>
 </div>
-                      <div style={{ width: "100%", height: CHART_HEIGHT, position: "relative" }}>
+                      <div ref={el => { chartRefs.current[id] = el; }} style={{ width: "100%", height: CHART_HEIGHT, position: "relative" }}>
                         <ResponsiveContainer width="100%" height="100%">
                            {lockedPoint[id] && (
                           <div
@@ -3092,7 +3180,16 @@ const activeMillLabel =
       {[
         {
           label: "DATE",
-          value: runMeta.run_date || "N/A",
+          value: (() => {
+            const d = runMeta.run_date;
+            if (!d) return "N/A";
+            const str = String(d).trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+              const [y, m, day] = str.split("-");
+              return `${day}-${m}-${y.slice(2)}`;
+            }
+            return str;
+          })(),
         },
         {
           label: "TIME",
