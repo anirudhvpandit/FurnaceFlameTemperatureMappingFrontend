@@ -9,13 +9,32 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+    defaults:
+      run:
+        working-directory: FurnaceFlameTemperatureMappingFrontend
 
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Debug Location
+        run: |
+          echo "CURRENT DIRECTORY:"
+          pwd
+          echo ""
+          echo "FILES:"
+          ls -la
+          echo ""
+          echo "PACKAGE FILE:"
+          ls -la package*.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - run: cd FurnaceFlameTemperatureMappingFrontend; npm ci
+      - name: Install Dependencies
+        run: npm install
 
-      - run: npm run build
+      - name: Build Application
+        run: npm run build
