@@ -9,6 +9,10 @@ jobs:
   validate:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: FurnaceFlameTemperatureMappingFrontend
+
     steps:
       - uses: actions/checkout@v4
 
@@ -16,9 +20,9 @@ jobs:
         with:
           node-version: 22
 
-      - run: cd FurnaceFlameTemperatureMappingFrontend
+      - run: npm install
+
       - run: npm run build
 
       - name: Check API
-        run: |
-          curl -f https://abhiftm.com/api/
+        run: curl -f https://abhiftm.com/api/
