@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 22
 
-      
+      - run: cd FurnaceFlameTemperatureMappingFrontend
       - run: npm run build
 
       - name: Check API
