@@ -17,6 +17,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Debug Location
+        run: |
+          echo "CURRENT DIRECTORY:"
+          pwd
+          echo ""
+          echo "FILES:"
+          ls -la
+          echo ""
+          echo "PACKAGE FILE:"
+          ls -la package*.json
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
