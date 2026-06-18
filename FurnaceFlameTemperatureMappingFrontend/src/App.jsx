@@ -1049,7 +1049,18 @@ function BoilerParamsTable({ data }) {
     { label: "FG Temp after APH (L/R) °C", l: data.fg_temp_after_aph_l, r: data.fg_temp_after_aph_r },
   ];
 
-  const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
+  const fmt = (v) => {
+  if (v == null || v === "") return "—";
+
+  const n = Number(v);
+
+  if (!Number.isNaN(n)) {
+    return n.toFixed(1);
+  }
+
+  // Non-numeric values like "2.9/5.0", "NO OIL", "NIL"
+  return String(v);
+};
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: stacked ? "1fr" : "1fr 1fr", gap: "16px" }}>
@@ -1117,7 +1128,18 @@ function CoalMillTable({ data }) {
     { key: "mill_current_amp", label: "Mill Current (Amp)" },
   ];
 
-  const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
+const fmt = (v) => {
+  if (v == null || v === "") return "—";
+
+  const n = Number(v);
+
+  if (!Number.isNaN(n)) {
+    return n.toFixed(1);
+  }
+
+  // Non-numeric values like "2.9/5.0", "NO OIL", "NIL"
+  return String(v);
+};
 
   return (
     <div>
