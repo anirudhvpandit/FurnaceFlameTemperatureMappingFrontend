@@ -1169,6 +1169,32 @@ function getActiveMills(coalMills) {
     .map((m) => m.mill);
 }
 
+
+function getActiveMillsTextStyle(label) {
+  const len = String(label || "").length;
+
+  let fontSize = 28;
+  if (len > 18) fontSize = 24;
+  if (len > 26) fontSize = 20;
+  if (len > 34) fontSize = 17;
+  if (len > 44) fontSize = 14;
+
+  return {
+    fontSize: `${fontSize}px`,
+    fontWeight: 700,
+    color: "#111",
+    lineHeight: 1.05,
+    minWidth: 0,
+    whiteSpace: "normal",
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical",
+    WebkitLineClamp: 2,
+    overflow: "hidden",
+  };
+}
+
 export default function App() {
   const { width: windowWidth } = useWindowSize();
   const isNarrow = windowWidth < 760;
@@ -2626,9 +2652,12 @@ const activeMillLabel =
                    <div
   style={{
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gridTemplateColumns: isNarrow
+      ? "1fr"
+      : "repeat(3, minmax(0, 1fr))",
     gap: "14px",
     marginTop: "14px",
+    alignItems: "stretch",
   }}
 >
   {/* LOAD */}
@@ -2643,6 +2672,7 @@ const activeMillLabel =
       flexDirection: "column",
       justifyContent: "center",
       minHeight: "95px",
+      minWidth: 0,
     }}
   >
     <div
@@ -2685,6 +2715,7 @@ const activeMillLabel =
       flexDirection: "column",
       justifyContent: "center",
       minHeight: "95px",
+      minWidth: 0,
     }}
   >
     <div
@@ -2727,18 +2758,10 @@ const activeMillLabel =
       flexDirection: "column",
       justifyContent: "center",
       minHeight: "95px",
+      minWidth: 0,
     }}
   >
-    <div
-      style={{
-        fontSize: "28px",
-        fontWeight: 700,
-        color: "#111",
-        lineHeight: 1.1,
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-      }}
-    >
+    <div style={getActiveMillsTextStyle(activeMillLabel)}>
       {activeMillLabel}
     </div>
 
@@ -2767,6 +2790,7 @@ const activeMillLabel =
       flexDirection: "column",
       justifyContent: "center",
       minHeight: "95px",
+      minWidth: 0,
     }}
   >
     <div
@@ -2805,6 +2829,7 @@ const activeMillLabel =
       flexDirection: "column",
       justifyContent: "center",
       minHeight: "95px",
+      minWidth: 0,
     }}
   >
     <div
