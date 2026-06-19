@@ -15,7 +15,7 @@ Sentry.init({
   dataCollection: { /* userInfo: false, httpBodies: [] */ }
 });
 
-myUndefinedFunction();
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
