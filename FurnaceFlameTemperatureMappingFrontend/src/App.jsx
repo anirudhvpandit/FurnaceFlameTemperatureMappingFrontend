@@ -599,9 +599,11 @@ function buildGeneratePayload({
   const rows = (dataset?.elevation || [])
     .map((el, i) => {
 
-      const elevation_m = safeNum(el);
+      const elevation_m_num = safeNum(el);
 
-      if (elevation_m == null) return null;
+      if (elevation_m_num == null) return null;
+
+      const elevation_m = String(elevation_m_num);
 
       const values = {};
 
@@ -1227,11 +1229,13 @@ function AirFlowStatsCard({ data }) {
                   background: "#faf9ff",
                   border: "0.5px solid #e2e1f0",
                   borderRadius: "6px",
-                  padding: "10px 14px",
-                  minWidth: "64px",
+                  padding: "16px 10px",
+                  flex: "1 1 80px",
+                  minWidth: "80px",
+                  textAlign: "center",
                 }}
               >
-                <div style={{ fontFamily: "'Manrope',sans-serif", fontSize: "20px", fontWeight: 700, color: "#111", lineHeight: 1.1 }}>
+                <div style={{ fontFamily: "'Manrope',sans-serif", fontSize: "clamp(18px, 2.5vw, 26px)", fontWeight: 700, color: "#111", lineHeight: 1.1 }}>
                   {ratio.toFixed(2)}
                 </div>
                 <div style={S.kpiLbl}>MILL {m.mill}</div>
@@ -3466,9 +3470,9 @@ const activeMillLabel =
                             {runData.map((row, i) => (
                               <tr key={i} style={{ borderBottom: "0.5px solid #eeecf8" }}>
                                 <td style={S.td}>{row.elevation_label || String(row.elevation || "")}</td>
-                                <td style={S.td}>{row.burner_tilt_deg ?? "—"}</td>
-                                {cornerKeys.map(k => <td key={k} style={S.td}>{row[k] ?? "—"}</td>)}
-                                <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>{row.avg}</td>
+                                <td style={S.td}>{row.burner_tilt_deg != null ? Math.round(row.burner_tilt_deg) : "—"}</td>
+                                {cornerKeys.map(k => <td key={k} style={S.td}>{row[k] != null ? Math.round(row[k]) : "—"}</td>)}
+                                <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>{row.avg != null && row.avg !== "—" ? Math.round(Number(row.avg)) : row.avg}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -4008,25 +4012,25 @@ const S = {
   runSection: { background: "#ffffff", border: "1px solid #e8e6f4", borderRadius: "10px", overflow: "hidden" },
   runHeader: { padding: "12px 14px", borderBottom: "1px solid #f0eef8", background: "#faf9ff" },
   runTitle: { fontFamily: "'Manrope',sans-serif", fontSize: "clamp(14px,1.3vw,18px)", letterSpacing: "0.04em", color: "#000" },
-  runSub: { fontFamily: "'Inter',sans-serif", fontSize: "10px", color: "#000", marginTop: "3px", letterSpacing: "0.06em" },
+  runSub: { fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", color: "#000", marginTop: "3px", letterSpacing: "0.06em" },
   kpiCard: { background: "#f5f4ff", padding: "7px 4px", textAlign: "center", borderRadius: "4px" },
   kpiVal: { fontFamily: "'Manrope',sans-serif", fontSize: "clamp(14px,3vw,17px)", letterSpacing: "0.05em", lineHeight: 1 },
   kpiLbl: { fontFamily: "'Inter',sans-serif", fontSize: "9px", letterSpacing: "0.15em", color: "#000", marginTop: "3px" },
   tabBar: { display: "flex", gap: "3px", padding: "8px 10px", borderBottom: "1px solid #f0eef8", background: "#faf9ff", flexWrap: "wrap" },
-  tabBtn: { border: "0.5px solid #e2e1f0", background: "none", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.08em", padding: "4px 7px", cursor: "pointer", borderRadius: "4px", color: "#000" },
+  tabBtn: { border: "0.5px solid #e2e1f0", background: "none", fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.08em", padding: "clamp(4px, 0.4vw, 7px) clamp(7px, 0.7vw, 11px)", cursor: "pointer", borderRadius: "4px", color: "#000" },
   tabActive: { background: "#eeeeff", borderColor: "#a5b4fc", color: "#000" },
-  downloadRunBtn: { display: "flex", alignItems: "center", gap: "5px", background: "#92fea6", border: "1px solid #bbf7d0", color: "#24472f", padding: "5px 9px", borderRadius: "6px", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.1em", flexShrink: 0 },
-  deleteBtn: { background: "#fff", border: "1px solid #f0eef8", color: "#000", padding: "5px 9px", borderRadius: "6px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.1em", flexShrink: 0 },
+  downloadRunBtn: { display: "flex", alignItems: "center", gap: "5px", background: "#92fea6", border: "1px solid #bbf7d0", color: "#24472f", padding: "5px 9px", borderRadius: "6px", fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.1em", flexShrink: 0 },
+  deleteBtn: { background: "#fff", border: "1px solid #f0eef8", color: "#000", padding: "5px 9px", borderRadius: "6px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.1em", flexShrink: 0 },
   chartPanel: { padding: "14px", background: "#ffffff" },
-  chartLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: "#000", marginBottom: "10px" },
+  chartLabel: { fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.2em", color: "#000", marginBottom: "10px" },
   filterBar: { display: "flex", gap: "4px", marginTop: "10px", flexWrap: "wrap" },
   filterBtn: { border: "0.5px solid", padding: "3px 7px", fontSize: "10px", fontFamily: "'Inter',sans-serif", letterSpacing: "0.07em", cursor: "pointer", borderRadius: "4px" },
   tablePanel: { padding: "14px", background: "#ffffff" },
-  subLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: "#000", marginBottom: "10px" },
-  table: { width: "100%", borderCollapse: "collapse", fontFamily: "'Inter',sans-serif", fontSize: "12px" },
-  th: { padding: "6px 8px", textAlign: "left", fontSize: "10px", letterSpacing: "0.15em", color: "#000", borderBottom: "1px solid #f0eef8", fontWeight: 600 },
-  td: { padding: "6px 8px", color: "#000" },
-  noData: { fontFamily: "'Inter',sans-serif", fontSize: "12px", color: "#000", padding: "16px 0", letterSpacing: "0.08em" },
+  subLabel: { fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.2em", color: "#000", marginBottom: "10px" },
+  table: { width: "100%", borderCollapse: "collapse", fontFamily: "'Inter',sans-serif", fontSize: "clamp(12px, 1.1vw, 15px)" },
+  th: { padding: "6px 8px", textAlign: "left", fontSize: "clamp(10px, 0.9vw, 13px)", letterSpacing: "0.15em", color: "#000", borderBottom: "1px solid #f0eef8", fontWeight: 600 },
+  td: { padding: "clamp(6px, 0.6vw, 10px) clamp(8px, 0.8vw, 14px)", color: "#000", fontSize: "clamp(12px, 1.1vw, 15px)" },
+  noData: { fontFamily: "'Inter',sans-serif", fontSize: "clamp(12px, 1.1vw, 15px)", color: "#000", padding: "16px 0", letterSpacing: "0.08em" },
   tooltip: { background: "#ffffff", border: "1px solid #e8e6f4", padding: "10px 12px", minWidth: "150px", borderRadius: "6px", boxShadow: "0 4px 20px rgba(79,70,229,0.08)" },
   ttHead: { display: "flex", justifyContent: "space-between", marginBottom: "6px", paddingBottom: "6px", borderBottom: "1px solid #f0eef8" },
   ttLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: "#000" },
