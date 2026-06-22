@@ -29,7 +29,11 @@ function clamp(n, min, max) {
 function safeNum(v) {
   if (v === "" || v === null || v === undefined) return null;
   const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+  if (Number.isFinite(n)) return n;
+  // Extract leading numeric part from strings like "42(ef)" or "42 m (ef)"
+  const m = String(v).match(/^(\d+(?:\.\d+)?)/);
+  if (m) { const n2 = Number(m[1]); if (Number.isFinite(n2)) return n2; }
+  return null;
 }
 
 function nextCornerLabel(existing) {
@@ -221,6 +225,7 @@ function buildUploadPayload2(draft) {
 
       return {
         elevation_m,
+        elevation_m_label: String(r.elevation_m || "").trim(),
         burner_tilt_deg: safeNum(r.burner_tilt_deg),
         values,
         average,
@@ -1037,7 +1042,7 @@ function BoilerParamsTable({ data }) {
     { label: "Re-heat Spray (TPH)", l: data.reheat_spray_l, r: data.reheat_spray_r },
     { label: "O₂ at APH Inlet (PCR) %", l: data.o2_aph_inlet_pcr_l, r: data.o2_aph_inlet_pcr_r },
     { label: "Wind Box DP - A/B (mmwc)", l: data.wind_box_dp_l, r: data.wind_box_dp_r },
-    { label: "Total PA Flow (TPH)", l: data.total_pa_flow, r: null, single: true },
+    { label: "Total PA Flow (TPH)", l: data.total_pa_flow, r: null },
   ];
 
   const fgRows = [
@@ -1048,6 +1053,8 @@ function BoilerParamsTable({ data }) {
     { label: "FG Temp after Economizer (L/R) °C", l: data.fg_temp_after_eco_l, r: data.fg_temp_after_eco_r },
     { label: "FG Temp after APH (L/R) °C", l: data.fg_temp_after_aph_l, r: data.fg_temp_after_aph_r },
   ];
+
+  const isEmpty = (v) => v == null || v === "";
 
   const fmt = (v) => {
   if (v == null || v === "") return "—";
@@ -1062,27 +1069,46 @@ function BoilerParamsTable({ data }) {
   return String(v);
 };
 
+  const renderLR = (row) => {
+    const hasL = !isEmpty(row.l);
+    const hasR = !isEmpty(row.r);
+    if (hasL && !hasR) {
+      return <td colSpan={2} style={{ ...S.td, color: "#000", fontWeight: 700, textAlign: "center" }}>{fmt(row.l)}</td>;
+    }
+    if (hasR && !hasL) {
+      return <td colSpan={2} style={{ ...S.td, color: "#000", fontWeight: 700, textAlign: "center" }}>{fmt(row.r)}</td>;
+    }
+    return (
+      <>
+        <td style={{ ...S.td, color: "#000", fontWeight: 700, textAlign: "center" }}>{fmt(row.l)}</td>
+        <td style={{ ...S.td, color: "#000", fontWeight: 700, textAlign: "center" }}>{fmt(row.r)}</td>
+      </>
+    );
+  };
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: stacked ? "1fr" : "1fr 1fr", gap: "16px" }}>
       <div>
         <div style={S.subLabel}>BOILER & MILL PARAMETERS</div>
         <div style={{ overflowX: "auto", width: "100%" }}>
           <table style={S.table}>
+            <colgroup>
+              <col style={{ width: "60%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "20%" }} />
+            </colgroup>
             <thead>
               <tr>
                 <th style={S.th}>PARAMETER</th>
-                <th style={S.th}>L</th>
-                <th style={S.th}>R</th>
+                <th style={{ ...S.th, textAlign: "center" }}>L</th>
+                <th style={{ ...S.th, textAlign: "center" }}>R</th>
               </tr>
             </thead>
             <tbody>
               {leftRows.map(row => (
                 <tr key={row.label} style={{ borderBottom: "0.5px solid #eeecf8" }}>
                   <td style={S.td}>{row.label}</td>
-                  <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>{fmt(row.l)}</td>
-                  <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>
-                    {row.single ? "—" : fmt(row.r)}
-                  </td>
+                  {renderLR(row)}
                 </tr>
               ))}
             </tbody>
@@ -1093,19 +1119,23 @@ function BoilerParamsTable({ data }) {
         <div style={S.subLabel}>FLUE GAS TEMPERATURES</div>
         <div style={{ overflowX: "auto", width: "100%" }}>
           <table style={S.table}>
+            <colgroup>
+              <col style={{ width: "60%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "20%" }} />
+            </colgroup>
             <thead>
               <tr>
                 <th style={S.th}>PARAMETER</th>
-                <th style={S.th}>L</th>
-                <th style={S.th}>R</th>
+                <th style={{ ...S.th, textAlign: "center" }}>L</th>
+                <th style={{ ...S.th, textAlign: "center" }}>R</th>
               </tr>
             </thead>
             <tbody>
               {fgRows.map(row => (
                 <tr key={row.label} style={{ borderBottom: "0.5px solid #eeecf8" }}>
                   <td style={S.td}>{row.label}</td>
-                  <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>{fmt(row.l)}</td>
-                  <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>{fmt(row.r)}</td>
+                  {renderLR(row)}
                 </tr>
               ))}
             </tbody>
@@ -1170,6 +1200,51 @@ const fmt = (v) => {
   );
 }
 
+function AirFlowStatsCard({ data }) {
+  if (!data || data.length === 0) return null;
+
+  const activeMills = data.filter(
+    (m) =>
+      m.coal_flow_tph != null &&
+      Number(m.coal_flow_tph) > 0 &&
+      m.pa_flow_tph != null &&
+      Number(m.pa_flow_tph) > 0
+  );
+
+  if (activeMills.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: "1px", borderTop: "1px solid #f0eef8" }}>
+      <div style={S.tablePanel}>
+        <div style={S.subLabel}>STATS</div>
+        <div style={S.subLabel}>AIR FLOW</div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {activeMills.map((m) => {
+            const ratio = Number(m.pa_flow_tph) / Number(m.coal_flow_tph);
+            return (
+              <div
+                key={m.mill}
+                style={{
+                  background: "#faf9ff",
+                  border: "0.5px solid #e2e1f0",
+                  borderRadius: "6px",
+                  padding: "10px 14px",
+                  minWidth: "64px",
+                }}
+              >
+                <div style={{ fontFamily: "'Manrope',sans-serif", fontSize: "20px", fontWeight: 700, color: "#111", lineHeight: 1.1 }}>
+                  {ratio.toFixed(2)}
+                </div>
+                <div style={S.kpiLbl}>MILL {m.mill}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function formatMillLabel(value) {
   if (!value) return "N/A";
 
@@ -1195,11 +1270,11 @@ function getActiveMills(coalMills) {
 function getActiveMillsTextStyle(label) {
   const len = String(label || "").length;
 
-  let fontSize = 28;
-  if (len > 18) fontSize = 24;
-  if (len > 26) fontSize = 20;
-  if (len > 34) fontSize = 17;
-  if (len > 44) fontSize = 14;
+  let fontSize = 20;
+  if (len > 14) fontSize = 17;
+  if (len > 20) fontSize = 14;
+  if (len > 28) fontSize = 12;
+  if (len > 36) fontSize = 11;
 
   return {
     fontSize: `${fontSize}px`,
@@ -1226,7 +1301,7 @@ export default function App() {
   // Below this, the two side-by-side FTM comparison panels stack into one column.
   const showSideBySideGraphs = windowWidth >= 900;
 
-  const CHART_HEIGHT = 320;
+  const CHART_HEIGHT = 500;
 
   const [viewMode, setViewMode] = useState("runs");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -1317,9 +1392,13 @@ const closePinnedTooltip = (runId) => {
 
     const result = dataset.elevation
       .map((el, i) => {
-        const elNum = Number(el);
+        const elStr = String(el ?? "");
+        const rawLabel = dataset.elevation_labels?.[i];
+        const displayLabel = rawLabel ? String(rawLabel).trim() : elStr;
+        const elNum = Number(elStr.match(/^(\d+(?:\.\d+)?)/)?.[1] ?? elStr);
         const point = {
           elevation: elNum,
+          elevation_label: displayLabel,
           burner_tilt_deg: dataset.burner_tilt_deg?.[i] ?? dataset.burner_tilt_deg?.[String(i)] ?? null,
           avg: (() => {
             const cornerValues = cornerKeys
@@ -1521,6 +1600,8 @@ const mergedDataset = {
   load_mw: item.load_mw,
   total_coal_flow_tph: item.total_coal_flow_tph,
   total_air_flow_tph: item.total_air_flow_tph,
+  elevation_labels: (dsRes.data?.elevation_rows || dsRes.data?.elevations || [])
+    .map(r => r?.elevation_m_label || null),
 };
 
 setHistory(prev => prev.find(r => r.run_id === item.run_id) ? prev : [...prev, item]);
@@ -1974,7 +2055,11 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
           axios.get(`${BASE_URL}/history/${editingRunId}/coal-mill-params`),
         ]);
 
-        setDatasets(prev => ({ ...prev, [editingRunId]: dsRes.data }));
+        setDatasets(prev => ({ ...prev, [editingRunId]: {
+          ...dsRes.data,
+          elevation_labels: (dsRes.data?.elevation_rows || dsRes.data?.elevations || [])
+            .map(r => r?.elevation_m_label || null),
+        } }));
         setBoilerData(prev => ({ ...prev, [editingRunId]: boilerRes.data }));
         setCoalData(prev => ({ ...prev, [editingRunId]: coalRes.data }));
       }
@@ -2156,8 +2241,9 @@ const updateCoalMillField = (
         ref={headerRef}
         style={{
           minHeight: "72px",
-          background: "#ffffff",
-          borderBottom: "1px solid #e5e7eb",
+          background: "linear-gradient(90deg, #0d1830 0%, #1c2f4f 55%, #3a5a8c 100%)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
           position: "sticky",
           top: 0,
           zIndex: 100,
@@ -2189,8 +2275,8 @@ const updateCoalMillField = (
                 width: "42px",
                 height: "42px",
                 borderRadius: "10px",
-                border: "1px solid #e5e7eb",
-                background: "#f9fafb",
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.08)",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -2206,7 +2292,7 @@ const updateCoalMillField = (
                   style={{
                     width: "16px",
                     height: "2px",
-                    background: "#111827",
+                    background: "#ffffff",
                     borderRadius: "999px",
                   }}
                 />
@@ -2217,7 +2303,8 @@ const updateCoalMillField = (
                 width: "46px",
                 height: "46px",
                 borderRadius: "12px",
-                background: "#f3f4f6",
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.12)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2247,7 +2334,7 @@ const updateCoalMillField = (
                   fontFamily: "Inter, sans-serif",
                   fontSize: isNarrow ? "14px" : "17px",
                   fontWeight: 900,
-                  color: "#111827",
+                  color: "#ffffff",
                   letterSpacing: "0.03em",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
@@ -2261,7 +2348,7 @@ const updateCoalMillField = (
                 style={{
                   fontFamily: "Inter, sans-serif",
                   fontSize: isNarrow ? "10px" : "13px",
-                  color: "#6b7280",
+                  color: "rgba(255,255,255,0.65)",
                   marginTop: "3px",
                   letterSpacing: "0.08em",
                   whiteSpace: "nowrap",
@@ -2289,8 +2376,8 @@ const updateCoalMillField = (
                   alignItems: "center",
                   gap: isNarrow ? "8px" : "10px",
                   padding: isNarrow ? "8px 12px" : "10px 16px",
-                  background: "#f9fafb",
-                  border: "1px solid #e5e7eb",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
                   borderRadius: "999px",
                   maxWidth: "100%",
                   overflow: "hidden",
@@ -2301,7 +2388,7 @@ const updateCoalMillField = (
                     fontFamily: "Inter, sans-serif",
                     fontSize: "12px",
                     fontWeight: 900,
-                    color: "#9ca3af",
+                    color: "rgba(255,255,255,0.55)",
                     letterSpacing: "0.12em",
                   }}
                 >
@@ -2312,7 +2399,7 @@ const updateCoalMillField = (
                     fontFamily: "Inter, sans-serif",
                     fontSize: "15px",
                     fontWeight: 800,
-                    color: "#111827",
+                    color: "#ffffff",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -2324,7 +2411,7 @@ const updateCoalMillField = (
                   style={{
                     width: "1px",
                     height: "18px",
-                    background: "#d1d5db",
+                    background: "rgba(255,255,255,0.2)",
                     flexShrink: 0,
                   }}
                 />
@@ -2333,7 +2420,7 @@ const updateCoalMillField = (
                     fontFamily: "Inter, sans-serif",
                     fontSize: "12px",
                     fontWeight: 900,
-                    color: "#9ca3af",
+                    color: "rgba(255,255,255,0.55)",
                     letterSpacing: "0.12em",
                   }}
                 >
@@ -2344,7 +2431,7 @@ const updateCoalMillField = (
                     fontFamily: "Inter, sans-serif",
                     fontSize: "15px",
                     fontWeight: 800,
-                    color: "#111827",
+                    color: "#ffffff",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -2369,8 +2456,9 @@ const updateCoalMillField = (
                 style={{
                   padding: isNarrow ? "7px 10px" : "8px 12px",
                   borderRadius: "999px",
-                  background: "#ede9fe",
-                  color: "#6d28d9",
+                  background: "rgba(124,156,201,0.25)",
+                  border: "1px solid rgba(124,156,201,0.4)",
+                  color: "#dbe6f7",
                   fontFamily: "Inter, sans-serif",
                   fontSize: isNarrow ? "12px" : "13px",
                   fontWeight: 900,
@@ -2387,9 +2475,9 @@ const updateCoalMillField = (
                 height: "40px",
                 padding: isNarrow ? "0 12px" : "0 16px",
                 borderRadius: "10px",
-                border: "1px solid #e5e7eb",
-                background: "#ffffff",
-                color: "#111827",
+                border: "1px solid rgba(248,113,113,0.4)",
+                background: "rgba(220,38,38,0.18)",
+                color: "#ffffff",
                 fontFamily: "Inter, sans-serif",
                 fontWeight: 800,
                 fontSize: "14px",
@@ -2459,7 +2547,7 @@ const updateCoalMillField = (
               isAdmin={isAdmin}
             />
             {dateError && (
-              <div style={{ marginTop: "8px", color: "#000", fontSize: "12px", fontFamily: "Inter, sans-serif", letterSpacing: "0.1em" }}>
+              <div style={{ marginTop: "8px", color: "#fca5a5", fontSize: "12px", fontFamily: "Inter, sans-serif", letterSpacing: "0.1em" }}>
                 {dateError}
               </div>
             )}
@@ -2676,9 +2764,9 @@ const activeMillLabel =
     display: "grid",
     gridTemplateColumns: isNarrow
       ? "1fr"
-      : "repeat(3, minmax(0, 1fr))",
-    gap: "14px",
-    marginTop: "14px",
+      : "repeat(5, minmax(0, 1fr))",
+    gap: "8px",
+    marginTop: "10px",
     alignItems: "stretch",
   }}
 >
@@ -2686,20 +2774,20 @@ const activeMillLabel =
   <div
     style={{
       background: "#fff",
-      borderRadius: "14px",
-      padding: "18px 16px",
+      borderRadius: "10px",
+      padding: "10px 12px",
       border: "1px solid #e5e7eb",
       boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
-      minHeight: "95px",
+      minHeight: "60px",
       minWidth: 0,
     }}
   >
     <div
       style={{
-        fontSize: "28px",
+        fontSize: "clamp(15px, 2vw, 22px)",
         fontWeight: 700,
         color: "#111",
         lineHeight: 1.1,
@@ -2714,8 +2802,8 @@ const activeMillLabel =
 
     <div
       style={{
-        marginTop: "8px",
-        fontSize: "12px",
+        marginTop: "4px",
+        fontSize: "clamp(9px, 1vw, 11px)",
         fontWeight: 600,
         color: "#6b7280",
         letterSpacing: "0.08em",
@@ -2729,20 +2817,20 @@ const activeMillLabel =
   <div
     style={{
       background: "#fff",
-      borderRadius: "14px",
-      padding: "18px 16px",
+      borderRadius: "10px",
+      padding: "10px 12px",
       border: "1px solid #e5e7eb",
       boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
-      minHeight: "95px",
+      minHeight: "60px",
       minWidth: 0,
     }}
   >
     <div
       style={{
-        fontSize: "28px",
+        fontSize: "clamp(15px, 2vw, 22px)",
         fontWeight: 700,
         color: "#111",
         lineHeight: 1.1,
@@ -2757,8 +2845,8 @@ const activeMillLabel =
 
     <div
       style={{
-        marginTop: "8px",
-        fontSize: "12px",
+        marginTop: "4px",
+        fontSize: "clamp(9px, 1vw, 11px)",
         fontWeight: 600,
         color: "#6b7280",
         letterSpacing: "0.08em",
@@ -2772,14 +2860,14 @@ const activeMillLabel =
   <div
     style={{
       background: "#fff",
-      borderRadius: "14px",
-      padding: "18px 16px",
+      borderRadius: "10px",
+      padding: "10px 12px",
       border: "1px solid #e5e7eb",
       boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
-      minHeight: "95px",
+      minHeight: "60px",
       minWidth: 0,
     }}
   >
@@ -2789,8 +2877,8 @@ const activeMillLabel =
 
     <div
       style={{
-        marginTop: "8px",
-        fontSize: "12px",
+        marginTop: "4px",
+        fontSize: "clamp(9px, 1vw, 11px)",
         fontWeight: 600,
         color: "#6b7280",
         letterSpacing: "0.08em",
@@ -2804,20 +2892,20 @@ const activeMillLabel =
   <div
     style={{
       background: "#fff",
-      borderRadius: "14px",
-      padding: "18px 16px",
+      borderRadius: "10px",
+      padding: "10px 12px",
       border: "1px solid #e5e7eb",
       boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
-      minHeight: "95px",
+      minHeight: "60px",
       minWidth: 0,
     }}
   >
     <div
       style={{
-        fontSize: "28px",
+        fontSize: "clamp(15px, 2vw, 22px)",
         fontWeight: 700,
         color: "#d32f2f",
         lineHeight: 1.1,
@@ -2828,8 +2916,8 @@ const activeMillLabel =
 
     <div
       style={{
-        marginTop: "8px",
-        fontSize: "12px",
+        marginTop: "4px",
+        fontSize: "clamp(9px, 1vw, 11px)",
         fontWeight: 600,
         color: "#6b7280",
         letterSpacing: "0.08em",
@@ -2843,20 +2931,20 @@ const activeMillLabel =
   <div
     style={{
       background: "#fff",
-      borderRadius: "14px",
-      padding: "18px 16px",
+      borderRadius: "10px",
+      padding: "10px 12px",
       border: "1px solid #e5e7eb",
       boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
-      minHeight: "95px",
+      minHeight: "60px",
       minWidth: 0,
     }}
   >
     <div
       style={{
-        fontSize: "28px",
+        fontSize: "clamp(15px, 2vw, 22px)",
         fontWeight: 700,
         color: "#1976d2",
         lineHeight: 1.1,
@@ -2867,8 +2955,8 @@ const activeMillLabel =
 
     <div
       style={{
-        marginTop: "8px",
-        fontSize: "12px",
+        marginTop: "4px",
+        fontSize: "clamp(9px, 1vw, 11px)",
         fontWeight: 600,
         color: "#6b7280",
         letterSpacing: "0.08em",
@@ -3087,7 +3175,11 @@ const activeMillLabel =
                               ticks={allElevations}
                               interval={0}
                               reversed
-                              width={44}
+                              width={54}
+                              tickFormatter={(val) => {
+                                const pt = runData.find(d => d.elevation === val);
+                                return pt?.elevation_label ?? val;
+                              }}
                               tick={{ fill: "#a0a0c0", fontSize: 11, fontFamily: "Inter, sans-serif" }}
                               axisLine={false}
                               tickLine={false}
@@ -3374,7 +3466,13 @@ const activeMillLabel =
                           <tbody>
                             {runData.map((row, i) => (
                               <tr key={i} style={{ borderBottom: "0.5px solid #eeecf8" }}>
-                                <td style={S.td}>{row.elevation}m</td>
+                                <td style={S.td}>{(() => {
+  const lbl = row.elevation_label || String(row.elevation);
+  // If label already has non-numeric chars (like "(ef)"), append m between number and text
+  const match = lbl.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+  if (match && match[2]) return `${match[1]}m (${match[2].replace(/^\(|\)$/g, "").trim()})`;
+  return `${lbl}m`;
+})()}</td>
                                 <td style={S.td}>{row.burner_tilt_deg ?? "—"}</td>
                                 {cornerKeys.map(k => <td key={k} style={S.td}>{row[k] ?? "—"}</td>)}
                                 <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>{row.avg}</td>
@@ -3387,14 +3485,13 @@ const activeMillLabel =
                   )}
                   {getTab(id) === "boiler" && (
                     <div style={S.tablePanel}>
-                      <div style={S.chartLabel}>BOILER & MILL PARAMETERS</div>
                       <BoilerParamsTable data={boilerData[id]} />
                     </div>
                   )}
                   {getTab(id) === "coal" && (
                     <div style={S.tablePanel}>
-                      <div style={S.chartLabel}>COAL MILL PARAMETERS</div>
                       <CoalMillTable data={coalData[id]} />
+                      <AirFlowStatsCard data={coalData[id]} />
                     </div>
                   )}
                 </section>
@@ -3910,11 +4007,11 @@ const S = {
   smallBtn: { border: "1px solid #e8e6f4", background: "#ffffff", borderRadius: "10px", padding: "8px 10px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.1em", color: "#000" },
   primaryBtn: { border: "none", background: "#4f46e5", color: "#000", borderRadius: "10px", padding: "10px 14px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.12em" },
   secondaryBtn: { border: "1px solid #e8e6f4", background: "#ffffff", color: "#000", borderRadius: "10px", padding: "10px 14px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.12em" },
-  sidebar: { background: "#ffffff", borderRight: "1px solid #e8e6f4", position: "fixed", left: 0, bottom: 0, overflowY: "auto", transition: "transform 0.3s ease", zIndex: 1000 },
-  sideSection: { padding: "16px 14px", borderBottom: "1px solid #f0eef8" },
-  secLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.28em", color: "#000", marginBottom: "10px", paddingTop: "2px" },
-  uploadBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "#eeeeff", border: "none", borderRadius: "6px", color: "#000", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.15em", marginBottom: "8px" },
-  downloadBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "#f0fdf4", border: "none", borderRadius: "6px", color: "#000", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.15em", cursor: "pointer", boxSizing: "border-box" },
+  sidebar: { background: "linear-gradient(180deg, #0d1830 0%, #1c2f4f 60%, #2c4870 100%)", borderRight: "1px solid rgba(255,255,255,0.08)", position: "fixed", left: 0, bottom: 0, overflowY: "auto", transition: "transform 0.3s ease", zIndex: 1000 },
+  sideSection: { padding: "16px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" },
+  secLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.28em", color: "rgba(255,255,255,0.55)", marginBottom: "10px", paddingTop: "2px" },
+  uploadBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.16)", borderRadius: "6px", color: "#ffffff", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.15em", marginBottom: "8px" },
+  downloadBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "rgba(34,197,94,0.15)", border: "1px solid rgba(74,222,128,0.35)", borderRadius: "6px", color: "#bbf7d0", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.15em", cursor: "pointer", boxSizing: "border-box" },
   runSection: { background: "#ffffff", border: "1px solid #e8e6f4", borderRadius: "10px", overflow: "hidden" },
   runHeader: { padding: "12px 14px", borderBottom: "1px solid #f0eef8", background: "#faf9ff" },
   runTitle: { fontFamily: "'Manrope',sans-serif", fontSize: "clamp(14px,1.3vw,18px)", letterSpacing: "0.04em", color: "#000" },

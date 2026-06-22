@@ -1,10 +1,12 @@
 import axios from "axios";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import logo from "./assets/abhitech-logo.png";
 
 const LoginPage = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
 
     const handleLogin = async () => {
@@ -47,20 +49,28 @@ const LoginPage = () => {
     }
 };
 
+    const handleKeyDown = (e) => {
+        if (e.key === "Enter") {
+            handleLogin();
+        }
+    };
+
     const UI = {
-        bg: "#f6f7fb",
-        panel: "#ffffff",
-        text: "#12121a",
-        muted: "#6e6c96",
-        primary: "#4f46e5",
-        border: "#e6e4f2",
-        radius: "12px",
-        shadowCard: "0 6px 24px rgba(79,70,229,0.08)",
+        pageBg: "linear-gradient(135deg, #0c1730 0%, #16223d 45%, #2c4870 100%)",
+        panel: "linear-gradient(160deg, rgba(122,140,170,0.55) 0%, rgba(68,93,136,0.6) 100%)",
+        panelBorder: "rgba(255,255,255,0.18)",
+        text: "#ffffff",
+        muted: "rgba(255,255,255,0.65)",
+        inputBg: "rgba(255,255,255,0.1)",
+        inputBorder: "rgba(255,255,255,0.16)",
+        placeholder: "rgba(255,255,255,0.55)",
+        radius: "20px",
+        shadowCard: "0 25px 60px -15px rgba(0,0,0,0.55)",
     };
 
     const S = {
         container: {
-            background: UI.bg,
+            background: UI.pageBg,
             minHeight: "100vh",
             display: "flex",
             alignItems: "center",
@@ -69,83 +79,135 @@ const LoginPage = () => {
         },
         card: {
             background: UI.panel,
-            padding: "40px",
+            border: `1px solid ${UI.panelBorder}`,
+            backdropFilter: "blur(18px)",
+            padding: "44px 40px",
             borderRadius: UI.radius,
             boxShadow: UI.shadowCard,
             width: "100%",
             maxWidth: "400px",
             textAlign: "center",
         },
-        title: {
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: "26px",
-            letterSpacing: "0.1em",
-            color: UI.text,
+        logoWrap: {
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: "10px",
+        },
+        logo: {
+            width: "150px",
+            height: "auto",
+            objectFit: "contain",
+            filter: "drop-shadow(0 6px 14px rgba(0,0,0,0.35))",
+        },
+        tagline: {
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "11px",
+            letterSpacing: "0.18em",
+            color: UI.muted,
             marginBottom: "30px",
         },
-        label: {
-            display: "block",
-            fontFamily: "'DM Mono', monospace",
-            fontSize: "12px",
-            letterSpacing: "0.2em",
-            color: UI.muted,
-            marginBottom: "8px",
-            textAlign: "left",
+        fieldWrap: {
+            position: "relative",
+            marginBottom: "16px",
         },
         input: {
             width: "100%",
-            padding: "12px 16px",
-            border: `1px solid ${UI.border}`,
-            borderRadius: "6px",
-            fontSize: "16px",
+            padding: "14px 16px",
+            border: `1px solid ${UI.inputBorder}`,
+            borderRadius: "12px",
+            fontSize: "15px",
             color: UI.text,
-            background: UI.panel,
-            marginBottom: "20px",
+            background: UI.inputBg,
             outline: "none",
             transition: "border-color 0.2s",
+            boxSizing: "border-box",
+            fontFamily: "'Inter', sans-serif",
+        },
+        eyeBtn: {
+            position: "absolute",
+            right: "14px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "rgba(255,255,255,0.75)",
+            display: "flex",
+            alignItems: "center",
+            padding: 0,
         },
         button: {
             width: "100%",
-            padding: "12px",
-            background: UI.primary,
-            color: "#000",
+            marginTop: "10px",
+            padding: "14px",
+            background: "linear-gradient(90deg, #18243e 0%, #3a5a8c 100%)",
+            color: "#ffffff",
             border: "none",
-            borderRadius: "6px",
-            fontFamily: "'DM Mono', monospace",
-            fontSize: "14px",
-            letterSpacing: "0.1em",
+            borderRadius: "12px",
+            fontFamily: "'Inter', sans-serif",
+            fontWeight: 800,
+            fontSize: "15px",
+            letterSpacing: "0.03em",
             cursor: "pointer",
-            transition: "background 0.2s",
+            boxShadow: "0 10px 25px -8px rgba(0,0,0,0.5)",
+            transition: "filter 0.2s",
         },
     };
 
     return (
         <div style={S.container}>
             <div style={S.card}>
-                <div style={S.title}>LOGIN</div>
-                <div>
-                    <label style={S.label}>USERNAME</label>
+                <div style={S.logoWrap}>
+                    <img src={logo} alt="Abhitech" style={S.logo} />
+                </div>
+                <div style={S.tagline}>FURNACE FLAME TEMPERATURE MAPPING SYSTEM</div>
+
+                <div style={S.fieldWrap}>
                     <input
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         style={S.input}
-                        placeholder="Enter your username"
+                        placeholder="Username"
+                        autoComplete="username"
                     />
                 </div>
-                <div>
-                    <label style={S.label}>PASSWORD</label>
+
+                <div style={S.fieldWrap}>
                     <input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        style={S.input}
-                        placeholder="Enter your password"
+                        onKeyDown={handleKeyDown}
+                        style={{ ...S.input, paddingRight: "44px" }}
+                        placeholder="Password"
+                        autoComplete="current-password"
                     />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword((s) => !s)}
+                        style={S.eyeBtn}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                        {showPassword ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                            </svg>
+                        ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                        )}
+                    </button>
                 </div>
+
                 <button onClick={handleLogin} style={S.button}>
-                    LOGIN
+                    Log In
                 </button>
+
             </div>
         </div>
     );
