@@ -113,8 +113,8 @@ function buildUploadPayload(draft) {
   const cols = draft.elevation.columns;
   const cleanRows = (draft.elevation.rows || [])
     .map((r) => {
-      const elevation_m = safeNum(r.elevation_m);
-      if (elevation_m == null) return null;
+      const elevation_m = String(r.elevation_m || '').trim();
+      if (!elevation_m) return null;
       const values = cols.map((c) => safeNum(r.values?.[c]));
       const present = values.filter(
         (v) => v != null && v !== 0
@@ -205,9 +205,9 @@ function buildUploadPayload2(draft) {
   const cleanRows = (draft.elevation.rows || [])
     .map((r) => {
 
-      const elevation_m = safeNum(r.elevation_m);
+      const elevation_m = String(r.elevation_m || "").trim();
 
-      if (elevation_m == null) return null;
+      if (!elevation_m) return null;
 
       const values = {};
 
@@ -225,7 +225,6 @@ function buildUploadPayload2(draft) {
 
       return {
         elevation_m,
-        elevation_m_label: String(r.elevation_m || "").trim(),
         burner_tilt_deg: safeNum(r.burner_tilt_deg),
         values,
         average,
@@ -1601,7 +1600,7 @@ const mergedDataset = {
   total_coal_flow_tph: item.total_coal_flow_tph,
   total_air_flow_tph: item.total_air_flow_tph,
   elevation_labels: (dsRes.data?.elevation_rows || dsRes.data?.elevations || [])
-    .map(r => r?.elevation_m_label || null),
+    .map(r => r?.elevation_m_label || r?.elevation || null),
 };
 
 setHistory(prev => prev.find(r => r.run_id === item.run_id) ? prev : [...prev, item]);
@@ -1857,7 +1856,7 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
   );
 
   const rows = (dataset.elevation || []).map((el, i) => ({
-    elevation_m: String(el),
+    elevation_m: String(dataset.elevation_labels?.[i] ?? el ?? ""),
 
     values: Object.fromEntries(
       columns.map((c, idx) => [
@@ -2058,7 +2057,7 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
         setDatasets(prev => ({ ...prev, [editingRunId]: {
           ...dsRes.data,
           elevation_labels: (dsRes.data?.elevation_rows || dsRes.data?.elevations || [])
-            .map(r => r?.elevation_m_label || null),
+    .map(r => r?.elevation_m_label || r?.elevation || null),
         } }));
         setBoilerData(prev => ({ ...prev, [editingRunId]: boilerRes.data }));
         setCoalData(prev => ({ ...prev, [editingRunId]: coalRes.data }));
@@ -3466,13 +3465,7 @@ const activeMillLabel =
                           <tbody>
                             {runData.map((row, i) => (
                               <tr key={i} style={{ borderBottom: "0.5px solid #eeecf8" }}>
-                                <td style={S.td}>{(() => {
-  const lbl = row.elevation_label || String(row.elevation);
-  // If label already has non-numeric chars (like "(ef)"), append m between number and text
-  const match = lbl.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
-  if (match && match[2]) return `${match[1]}m (${match[2].replace(/^\(|\)$/g, "").trim()})`;
-  return `${lbl}m`;
-})()}</td>
+                                <td style={S.td}>{row.elevation_label || String(row.elevation || "")}</td>
                                 <td style={S.td}>{row.burner_tilt_deg ?? "—"}</td>
                                 {cornerKeys.map(k => <td key={k} style={S.td}>{row[k] ?? "—"}</td>)}
                                 <td style={{ ...S.td, color: "#000", fontWeight: 700 }}>{row.avg}</td>
