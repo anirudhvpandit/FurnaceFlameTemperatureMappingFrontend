@@ -144,7 +144,7 @@ export default function StationSelect() {
 
   return (
     <>
-      <div style={{ minHeight: "100vh", background: "#ededf5" }}>
+      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0c1730 0%, #16223d 45%, #2c4870 100%)" }}>
         <header style={styles.header}>
           <div style={styles.headerInner}>
             <div style={styles.logoBlock}>
@@ -218,9 +218,11 @@ export default function StationSelect() {
                       disabled={isDisabled}
                       style={{
                         ...styles.selectionButton,
-                        background: isSelected ? "#0000d9" : "#ffffff",
-                        color: isSelected ? "#000" : "#000",
-                        borderColor: isSelected ? "#000" : "#000",
+                        background: isSelected
+                          ? "linear-gradient(90deg, #18243e 0%, #3a5a8c 100%)"
+                          : "rgba(255,255,255,0.08)",
+                        color: "#ffffff",
+                        borderColor: isSelected ? "rgba(124,156,201,0.8)" : "rgba(255,255,255,0.2)",
                         filter: shouldBlur ? "blur(3px)" : "none",
                         opacity: shouldBlur ? 0.4 : isDisabled ? 0.5 : 1,
                         transform: isSelected ? "scale(1.05)" : "scale(1)",
@@ -256,9 +258,11 @@ export default function StationSelect() {
                         onClick={() => handleUnitSelect(unit)}
                         style={{
                           ...styles.selectionButton,
-                          background: isSelected ? "#0000d9" : "#ffffff",
-                          color: isSelected ? "#000" : "#000",
-                          borderColor: isSelected ? "#000" : "#000",
+                          background: isSelected
+                            ? "linear-gradient(90deg, #18243e 0%, #3a5a8c 100%)"
+                            : "rgba(255,255,255,0.08)",
+                          color: "#ffffff",
+                          borderColor: isSelected ? "rgba(124,156,201,0.8)" : "rgba(255,255,255,0.2)",
                           filter: shouldBlur ? "blur(3px)" : "none",
                           opacity: shouldBlur ? 0.4 : 1,
                           transform: isSelected ? "scale(1.05)" : "scale(1)",
@@ -279,12 +283,12 @@ export default function StationSelect() {
                 ...styles.proceedButton,
                 background:
                   selectedStation && selectedUnit
-                    ? "#0000d9"
-                    : "#e0e0ef",
+                    ? "linear-gradient(90deg, #18243e 0%, #3a5a8c 100%)"
+                    : "rgba(255,255,255,0.08)",
                 color:
                   selectedStation && selectedUnit
-                    ? "#000"
-                    : "#000",
+                    ? "#ffffff"
+                    : "rgba(255,255,255,0.4)",
                 cursor: selectedStation && selectedUnit ? "pointer" : "not-allowed",
               }}
             >
@@ -299,8 +303,9 @@ export default function StationSelect() {
 
 const styles = {
   header: {
-    borderBottom: "1px solid #d1cfe0",
-    background: "rgba(238, 237, 245, 0.95)",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
+    background: "linear-gradient(90deg, #0d1830 0%, #1c2f4f 55%, #3a5a8c 100%)",
+    boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
     position: "sticky",
     top: 0,
     zIndex: 100,
@@ -331,10 +336,11 @@ const styles = {
   brandName: {
     fontSize: "18px",
     fontWeight: "bold",
+    color: "#ffffff",
   },
   brandTagline: {
     fontSize: "12px",
-    color: "#000",
+    color: "rgba(255,255,255,0.65)",
   },
   userInfo: {
     display: "flex",
@@ -348,14 +354,16 @@ const styles = {
     fontSize: "13px",
     fontWeight: "bold",
     letterSpacing: "0.5px",
-    background: "#2d3748",
-    color: "#000",
+    background: "rgba(124,156,201,0.25)",
+    border: "1px solid rgba(124,156,201,0.4)",
+    color: "#dbe6f7",
   },
   usernameDisplay: {
     padding: "4px 8px",
     fontSize: "13px",
-    color: "#000",
-    background: "#e2e8f0",
+    color: "#ffffff",
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.12)",
     borderRadius: "6px",
   },
   logoutButton: {
@@ -363,9 +371,9 @@ const styles = {
     alignItems: "center",
     gap: "8px",
     padding: "8px 16px",
-    background: "#dc2626",
-    color: "#000",
-    border: "none",
+    background: "rgba(220,38,38,0.18)",
+    color: "#ffffff",
+    border: "1px solid rgba(248,113,113,0.4)",
     borderRadius: "6px",
     cursor: "pointer",
     fontSize: "14px",
@@ -382,10 +390,19 @@ const styles = {
     maxWidth: "600px",
     width: "100%",
     textAlign: "center",
+    background: "linear-gradient(160deg, rgba(122,140,170,0.4) 0%, rgba(68,93,136,0.45) 100%)",
+    border: "1px solid rgba(255,255,255,0.18)",
+    backdropFilter: "blur(18px)",
+    borderRadius: "24px",
+    padding: "40px",
+    boxShadow: "0 25px 60px -15px rgba(0,0,0,0.55)",
   },
   selectionTitle: {
     fontSize: "30px",
     marginBottom: "20px",
+    color: "#ffffff",
+    fontWeight: 800,
+    letterSpacing: "0.04em",
   },
   selectionSection: {
     marginBottom: "30px",
@@ -394,22 +411,26 @@ const styles = {
     fontSize: "14px",
     marginBottom: "10px",
     fontWeight: "bold",
+    color: "rgba(255,255,255,0.7)",
+    letterSpacing: "0.1em",
   },
   lockedBadge: {
     fontSize: "13px",
-    color: "#000",
+    color: "rgba(255,255,255,0.6)",
   },
   currentStationInfo: {
     fontSize: "15px",
     marginBottom: "15px",
     padding: "8px 12px",
-    background: "#e0f2fe",
+    background: "rgba(255,255,255,0.1)",
+    border: "1px solid rgba(255,255,255,0.15)",
     borderRadius: "8px",
     display: "inline-block",
+    color: "#ffffff",
   },
   restrictionNote: {
     fontSize: "13px",
-    color: "#000",
+    color: "rgba(255,255,255,0.6)",
     marginTop: "10px",
     fontStyle: "italic",
   },
@@ -421,10 +442,10 @@ const styles = {
   },
   selectionButton: {
     padding: "10px 20px",
-    border: "1px solid #ccc",
+    border: "1px solid rgba(255,255,255,0.2)",
     cursor: "pointer",
     transition: "all 0.2s ease",
-    borderRadius: "4px",
+    borderRadius: "8px",
     fontWeight: "700",
     display: "inline-flex",
     alignItems: "center",
@@ -434,13 +455,14 @@ const styles = {
     fontSize: "12px",
   },
   proceedButton: {
-    padding: "12px 24px",
+    padding: "14px 24px",
     border: "none",
     cursor: "pointer",
-    borderRadius: "6px",
+    borderRadius: "12px",
     fontWeight: "800",
     fontSize: "16px",
     transition: "all 0.2s ease",
     marginTop: "20px",
+    boxShadow: "0 10px 25px -8px rgba(0,0,0,0.5)",
   },
 };
