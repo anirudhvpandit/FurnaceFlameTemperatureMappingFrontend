@@ -1023,10 +1023,10 @@ const C = {
   dayOther: { color: "#000" },
   daySel: { background: "#4f46e5", color: "#000", borderRadius: "3px" },
   miniLabel: {
-    fontSize: "10px", letterSpacing: "0.14em", color: "#000", marginBottom: "5px",
+    fontSize: "10px", letterSpacing: "0.14em", color: "#fff", marginBottom: "5px",
     fontFamily: "Inter, sans-serif"
   },
-  legItem: { display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: "#000", letterSpacing: "0.06em", fontFamily: "Inter, sans-serif" },
+  legItem: { display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: "#fff", letterSpacing: "0.06em", fontFamily: "Inter, sans-serif" },
   legDot: { display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0 },
 };
 
