@@ -1218,7 +1218,7 @@ function AirFlowStatsCard({ data }) {
     <div style={{ marginTop: "1px", borderTop: "1px solid #f0eef8" }}>
       <div style={S.tablePanel}>
         <div style={S.subLabel}>STATS</div>
-        <div style={S.subLabel}>AIR FLOW</div>
+        <div style={S.subLabel}>Air to Fuel Ratio</div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {activeMills.map((m) => {
             const ratio = Number(m.pa_flow_tph) / Number(m.coal_flow_tph);
