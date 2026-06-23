@@ -3179,7 +3179,7 @@ const activeMillLabel =
                                 y1={minElevation}
                                 y2={maxElevation}
                                 fill="#ffd9c2"
-                                fillOpacity={0.35}
+                                fillOpacity={0.15}
                                 stroke="none"
                                 ifOverflow="hidden"
                               />
@@ -3191,7 +3191,7 @@ const activeMillLabel =
                                 y1={minElevation}
                                 y2={maxElevation}
                                 fill="#ffd9c2"
-                                fillOpacity={0.15}
+                                fillOpacity={0.35}
                                 stroke="none"
                                 ifOverflow="hidden"
                               />
