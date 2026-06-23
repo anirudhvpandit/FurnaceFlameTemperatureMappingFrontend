@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   ReferenceDot,
+  ReferenceArea,
 } from "recharts";
 import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
@@ -3170,7 +3171,32 @@ const activeMillLabel =
                           >
                             
                             <CartesianGrid strokeDasharray="2 8" stroke="#e8e6f4" vertical />
-                            
+
+                            {finalXMax > 1300 && (
+                              <ReferenceArea
+                                x1={Math.max(1300, finalXMin)}
+                                x2={Math.min(1350, finalXMax)}
+                                y1={minElevation}
+                                y2={maxElevation}
+                                fill="#ffd9c2"
+                                fillOpacity={0.35}
+                                stroke="none"
+                                ifOverflow="hidden"
+                              />
+                            )}
+                            {finalXMax > 1350 && (
+                              <ReferenceArea
+                                x1={Math.max(1350, finalXMin)}
+                                x2={finalXMax}
+                                y1={minElevation}
+                                y2={maxElevation}
+                                fill="#ffd9c2"
+                                fillOpacity={0.15}
+                                stroke="none"
+                                ifOverflow="hidden"
+                              />
+                            )}
+
                             <YAxis
                               dataKey="elevation"
                               type="number"
