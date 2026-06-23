@@ -1205,13 +1205,7 @@ const fmt = (v) => {
 function AirFlowStatsCard({ data }) {
   if (!data || data.length === 0) return null;
 
-  const activeMills = data.filter(
-    (m) =>
-      m.coal_flow_tph != null &&
-      Number(m.coal_flow_tph) > 0 &&
-      m.pa_flow_tph != null &&
-      Number(m.pa_flow_tph) > 0
-  );
+  const activeMills = data.filter((m) => m.air_to_fuel_ratio != null);
 
   if (activeMills.length === 0) return null;
 
@@ -1222,7 +1216,7 @@ function AirFlowStatsCard({ data }) {
         <div style={S.subLabel}>Air to Fuel Ratio</div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {activeMills.map((m) => {
-            const ratio = Number(m.pa_flow_tph) / Number(m.coal_flow_tph);
+            const ratio = Number(m.air_to_fuel_ratio);
             return (
               <div
                 key={m.mill}
@@ -1318,6 +1312,7 @@ export default function App() {
   const [datasets, setDatasets] = useState({});
   const [boilerData, setBoilerData] = useState({});
   const [coalData, setCoalData] = useState({});
+  const [statsData, setStatsData] = useState({});
   const [uploading, setUploading] = useState(false);
   const [reportDownloading, setReportDownloading] = useState(false);
   const [runDownloading, setRunDownloading] = useState({});
@@ -1593,10 +1588,11 @@ const closePinnedTooltip = (runId) => {
       const item = data[0];
       console.log(item.run_id);
 
-      const [dsRes, boilerRes, coalRes] = await Promise.all([
+      const [dsRes, boilerRes, coalRes, statsRes] = await Promise.all([
   axios.get(`${BASE_URL}/history/${item.run_id}`),
   axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`),
   axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`),
+  axios.get(`${BASE_URL}/history/${item.run_id}/stats`),
 ]);
 
 const mergedDataset = {
@@ -1617,6 +1613,7 @@ setDatasets(p => ({
 
 setBoilerData(p => ({ ...p, [item.run_id]: boilerRes.data }));
 setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
+setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
       setSelected(prev => {
         const next = [...prev];
         next[slotIndex] = item.run_id;
@@ -2053,10 +2050,11 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
       await fetchMappingDates();
 
       if (selected.includes(editingRunId)) {
-        const [dsRes, boilerRes, coalRes] = await Promise.all([
+        const [dsRes, boilerRes, coalRes, statsRes] = await Promise.all([
           axios.get(`${BASE_URL}/history/${editingRunId}`),
           axios.get(`${BASE_URL}/history/${editingRunId}/boiler-params`),
           axios.get(`${BASE_URL}/history/${editingRunId}/coal-mill-params`),
+          axios.get(`${BASE_URL}/history/${editingRunId}/stats`),
         ]);
 
         setDatasets(prev => ({ ...prev, [editingRunId]: {
@@ -2066,6 +2064,7 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
         } }));
         setBoilerData(prev => ({ ...prev, [editingRunId]: boilerRes.data }));
         setCoalData(prev => ({ ...prev, [editingRunId]: coalRes.data }));
+        setStatsData(prev => ({ ...prev, [editingRunId]: statsRes.data }));
       }
 
       alert("Run updated successfully.");
@@ -2087,6 +2086,7 @@ setCoalData(p => ({ ...p, [item.run_id]: coalRes.data }));
       setDatasets(prev => { const c = { ...prev }; delete c[run_id]; return c; });
       setBoilerData(prev => { const c = { ...prev }; delete c[run_id]; return c; });
       setCoalData(prev => { const c = { ...prev }; delete c[run_id]; return c; });
+      setStatsData(prev => { const c = { ...prev }; delete c[run_id]; return c; });
       setVisibleLines(prev => { const c = { ...prev }; delete c[run_id]; return c; });
     } catch (err) {
       console.error("Delete failed:", err);
@@ -3514,7 +3514,7 @@ const activeMillLabel =
                   {getTab(id) === "coal" && (
                     <div style={S.tablePanel}>
                       <CoalMillTable data={coalData[id]} />
-                      <AirFlowStatsCard data={coalData[id]} />
+                      <AirFlowStatsCard data={statsData[id]} />
                     </div>
                   )}
                 </section>
