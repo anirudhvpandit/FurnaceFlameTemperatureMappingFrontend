@@ -2529,18 +2529,6 @@ const updateCoalMillField = (
             </div>
           )}
           <div style={S.sideSection}>
-            <div style={S.secLabel}>DOWNLOAD REPORT</div>
-            <button
-              onClick={() => { setShowReportModal(true); setReportError(""); }}
-              style={S.downloadBtn}
-            >
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              DOWNLOAD REPORT
-            </button>
-          </div>
-          <div style={S.sideSection}>
             <div style={S.secLabel}>FILTER BY DATE</div>
             <CalPicker
               graph1Date={graph1Date}
@@ -2555,6 +2543,18 @@ const updateCoalMillField = (
                 {dateError}
               </div>
             )}
+          </div>
+          <div style={S.sideSection}>
+            <div style={S.secLabel}>DOWNLOAD REPORT</div>
+            <button
+              onClick={() => { setShowReportModal(true); setReportError(""); }}
+              style={S.downloadBtn}
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M7 1v8M4 10l3 3 3-3M2 13h10" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              DOWNLOAD REPORT
+            </button>
           </div>
         </aside>
         <main style={{
@@ -2984,7 +2984,6 @@ const activeMillLabel =
                   </div>
                   {getTab(id) === "graph" && (
                     <div style={S.chartPanel}>
-                      <div style={S.chartLabel}>THERMAL PROFILE — ELEVATION VS TEMPERATURE</div>
                       <div
   style={{
     display: "flex",
