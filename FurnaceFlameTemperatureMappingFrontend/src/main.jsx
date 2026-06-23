@@ -7,6 +7,15 @@ import StationSelect from './StationSelect.jsx'
 import EventLog from './EventLog.jsx'
 import LoginPage from './LoginPage.jsx'
 
+import * as Sentry from "@sentry/browser";
+
+
+Sentry.init({
+  dsn: "https://84f5989145ac045cdff7921af7758749@o4511590229016576.ingest.de.sentry.io/4511590242189392",
+  dataCollection: { /* userInfo: false, httpBodies: [] */ }
+});
+
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>

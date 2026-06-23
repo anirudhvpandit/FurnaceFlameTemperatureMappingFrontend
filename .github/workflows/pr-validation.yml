@@ -1,0 +1,40 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: FurnaceFlameTemperatureMappingFrontend
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Debug Location
+        run: |
+          echo "CURRENT DIRECTORY:"
+          pwd
+          echo ""
+          echo "FILES:"
+          ls -la
+          echo ""
+          echo "PACKAGE FILE:"
+          ls -la package*.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Application
+        run: npm run build
