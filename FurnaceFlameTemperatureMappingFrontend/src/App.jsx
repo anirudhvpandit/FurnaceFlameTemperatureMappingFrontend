@@ -3069,7 +3069,7 @@ const activeMillLabel =
 
   <input
     type="number"
-    placeholder="GLOBAL MIN"
+    placeholder="GLOBAL MINIMUM"
     disabled={globalScaleSettings.autoScale}
     value={globalScaleSettings.min}
     onChange={(e) => {
