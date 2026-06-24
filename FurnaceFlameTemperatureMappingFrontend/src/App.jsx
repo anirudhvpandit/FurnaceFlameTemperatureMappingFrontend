@@ -1573,6 +1573,14 @@ const closePinnedTooltip = (runId) => {
     } catch (err) { console.error("History fetch error:", err); }
   };
 
+  const clearSlot = (slotIndex) => {
+    setSelected(prev => {
+      const next = [...prev];
+      next[slotIndex] = null;
+      return next;
+    });
+  };
+
   const fetchRunsForDate = async (date, slotIndex) => {
     if (!date) return;
     try {
@@ -1584,7 +1592,7 @@ const closePinnedTooltip = (runId) => {
       const data = (res.data || []).filter(item =>
         item.run_date === date
       );
-      if (data.length === 0) return;
+      if (data.length === 0) { clearSlot(slotIndex); return; }
       const item = data[0];
       console.log(item.run_id);
 
@@ -1617,7 +1625,7 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
       setSelected(prev => {
         const next = [...prev];
         next[slotIndex] = item.run_id;
-        return next.filter(Boolean);
+        return next;
       });
     } catch (err) { console.error("Date fetch error:", err); }
   };
@@ -1660,11 +1668,21 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
   };
 
   const handleGraph1Pick = (ds) => {
-    if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
+    if (!dataDates.has(ds)) {
+      setDateError("N/A — No data available for selected date");
+      setGraph1Date(ds);
+      clearSlot(0);
+      return;
+    }
     setDateError(""); setGraph1Date(ds); fetchRunsForDate(ds, 0);
   };
   const handleGraph2Pick = (ds) => {
-    if (!dataDates.has(ds)) { setDateError("N/A — No data available for selected date"); return; }
+    if (!dataDates.has(ds)) {
+      setDateError("N/A — No data available for selected date");
+      setGraph2Date(ds);
+      clearSlot(1);
+      return;
+    }
     setDateError(""); setGraph2Date(ds); fetchRunsForDate(ds, 1);
   };
 
@@ -2581,12 +2599,17 @@ const updateCoalMillField = (
               const graphLabel = slotIdx === 0 ? "FTM 1" : "FTM 2";
               const accent = slotIdx === 0 ? "#4f46e5" : "#d97706";
 
+              const pickedDate = slotIdx === 0 ? graph1Date : graph2Date;
+              const hasNoDataForPickedDate = !!pickedDate && !dataDates.has(pickedDate);
+
               if (!id || !dataset) {
                 return (
                   <section key={`empty-${slotIdx}`} style={{ ...S.runSection, minHeight: "180px", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "10px", opacity: 0.45 }}>
                     <div style={{ width: "3px", height: "28px", background: accent, borderRadius: "2px" }} />
                     <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", letterSpacing: "0.22em", color: "#000" }}>{graphLabel}</div>
-                    <div style={{ fontFamily: "Inter, sans-serif", fontSize: "15px", letterSpacing: "0.2em", color: "#000" }}>SELECT A DATE</div>
+                    <div style={{ fontFamily: "Inter, sans-serif", fontSize: "15px", letterSpacing: "0.2em", color: "#000" }}>
+                      {hasNoDataForPickedDate ? "NO FTM DATA FOR THIS DATE" : "SELECT A DATE"}
+                    </div>
                   </section>
                 );
               }
@@ -3178,7 +3201,7 @@ const activeMillLabel =
                                 y1={minElevation}
                                 y2={maxElevation}
                                 fill="#ffd9c2"
-                                fillOpacity={0.15}
+                                fillOpacity={0.35}
                                 stroke="none"
                                 ifOverflow="hidden"
                               />
@@ -3190,7 +3213,7 @@ const activeMillLabel =
                                 y1={minElevation}
                                 y2={maxElevation}
                                 fill="#ffd9c2"
-                                fillOpacity={0.35}
+                                fillOpacity={0.55}
                                 stroke="none"
                                 ifOverflow="hidden"
                               />
