@@ -304,7 +304,7 @@ const LoginPage = () => {
             animationFillMode: "forwards",
             opacity: 0,
           }}>
-            © Abhitech Solutions • All rights reserved
+            © Abhitech Energycon Limited • All rights reserved
           </p>
         </div>
 
