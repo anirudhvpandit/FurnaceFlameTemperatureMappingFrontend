@@ -10,11 +10,42 @@ import {
   ResponsiveContainer,
   ReferenceDot,
   ReferenceArea,
+  Dot,
 } from "recharts";
 import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
 
 const BASE_URL = "https://abhiftm.com/api";
+
+// ─── TEMPERATURE ALERT GLOW (>1350) ────────────────────────────
+const TEMP_ALERT_THRESHOLD = 1350;
+
+// Renders the exact same dot as before; if the plotted value is over the
+// threshold it additionally draws a pulsing "blink" glow ring around it
+// (grows big -> shrinks small, fades in/out, on a loop) using native SVG
+// SMIL animation so it doesn't depend on any extra CSS/keyframes.
+function GlowDot(props) {
+  const { cx, cy, value } = props;
+  if (cx == null || cy == null) return null;
+  const isOverLimit = typeof value === "number" && value > TEMP_ALERT_THRESHOLD;
+  return (
+    <g>
+      {isOverLimit && (
+        <>
+          <circle cx={cx} cy={cy} r={5} fill="none" stroke="#ff3b30" strokeWidth={2} opacity={0.85} pointerEvents="none">
+            <animate attributeName="r" values="5;16;5" dur="1.1s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.85;0.05;0.85" dur="1.1s" repeatCount="indefinite" />
+          </circle>
+          <circle cx={cx} cy={cy} r={7} fill="none" stroke="#ff8a3d" strokeWidth={1.5} opacity={0.55} pointerEvents="none">
+            <animate attributeName="r" values="7;22;7" dur="1.1s" repeatCount="indefinite" begin="0.25s" />
+            <animate attributeName="opacity" values="0.55;0;0.55" dur="1.1s" repeatCount="indefinite" begin="0.25s" />
+          </circle>
+        </>
+      )}
+      <Dot {...props} />
+    </g>
+  );
+}
 
 // ─── INGEST (NO FILE) HELPERS ──────────────────────────────────
 const DEFAULT_ELEVATION_COLS = ["Corner 1", "Corner 2", "Corner 3", "Corner 4", "Corner 5", "Corner 6", "Corner 7"];
@@ -3255,7 +3286,7 @@ const activeMillLabel =
                                   stroke={dynamicColors[k]}
                                   strokeWidth={2}
                                   connectNulls={false}
-                                  dot={{ r: 3 }}
+                                  dot={(dotProps) => <GlowDot {...dotProps} r={3} />}
                                   activeDot={{
                                     r: 7,
                                     cursor: "pointer",
@@ -3289,29 +3320,32 @@ const activeMillLabel =
                                 stroke={dynamicColors.avg}
                                 strokeWidth={3}
                                 connectNulls={false}
-                                dot={{
-                                  r: 4,
-                                  cursor: "pointer",
-                                  onClick: (_, index) => {
-                                    const point = runData[index];
-                                    const payload = Object.keys(dynamicColors)
-                                      .filter(key => point[key] != null)
-                                      .map(key => ({
-                                        dataKey: key,
-                                        value: point[key],
-                                        color: dynamicColors[key],
+                                dot={(dotProps) => (
+                                  <GlowDot
+                                    {...dotProps}
+                                    r={4}
+                                    cursor="pointer"
+                                    onClick={(_, index) => {
+                                      const point = runData[index];
+                                      const payload = Object.keys(dynamicColors)
+                                        .filter(key => point[key] != null)
+                                        .map(key => ({
+                                          dataKey: key,
+                                          value: point[key],
+                                          color: dynamicColors[key],
+                                        }));
+                                      setPinnedTooltip(prev => ({
+                                        ...prev,
+                                        [id]: {
+                                          active: true,
+                                          payload,
+                                          label: point.elevation,
+                                        },
                                       }));
-                                    setPinnedTooltip(prev => ({
-                                      ...prev,
-                                      [id]: {
-                                        active: true,
-                                        payload,
-                                        label: point.elevation,
-                                      },
-                                    }));
-                                    setHoverEnabled(false);
-                                  },
-                                }}
+                                      setHoverEnabled(false);
+                                    }}
+                                  />
+                                )}
                                 activeDot={{ r: 7, cursor: "pointer" }}
                               />
                             )}
