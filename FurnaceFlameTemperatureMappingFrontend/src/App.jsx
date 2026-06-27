@@ -2732,8 +2732,13 @@ const finalXMax = globalScaleSettings.autoScale
   : Number(globalScaleSettings.max);
 
               const temps = runData.map(r => r.avg);
-              const maxTemp = Math.max(...temps);
-              const minTemp = Math.min(...temps);
+              // MAX/MIN should reflect the raw underlying data (every corner reading
+              // plus the average column), not just the average column on its own.
+              const rawTempValues = runData
+                .flatMap(r => [...cornerKeys.map(k => r[k]), r.avg])
+                .filter(v => v !== null && v !== undefined && !isNaN(v));
+              const maxTemp = rawTempValues.length ? Math.max(...rawTempValues) : 0;
+              const minTemp = rawTempValues.length ? Math.min(...rawTempValues) : 0;
               const avgTemp = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1);
 
               const runMeta = history.find(r => r.run_id === id) || {};
