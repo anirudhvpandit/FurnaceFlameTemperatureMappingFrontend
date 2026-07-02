@@ -1061,12 +1061,16 @@ const C = {
   legDot: { display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0 },
 };
 
-function BoilerParamsTable({ data }) {
+function BoilerParamsTable({ data, totalAirFlow }) {
   const { width } = useWindowSize();
   const stacked = width < 700;
 
   if (!data || Object.keys(data).length === 0)
     return <div style={S.noData}>No boiler parameters recorded for this run.</div>;
+
+  const paFlow = safeNum(data.total_pa_flow);
+  const airFlow = safeNum(totalAirFlow);
+  const saFlow = (paFlow != null && airFlow != null) ? airFlow - paFlow : null;
 
   const leftRows = [
     { label: "Main Steam Pressure (Kg/cm²)", l: data.main_steam_pressure_l, r: data.main_steam_pressure_r },
@@ -1076,6 +1080,8 @@ function BoilerParamsTable({ data }) {
     { label: "O₂ at APH Inlet (PCR) %", l: data.o2_aph_inlet_pcr_l, r: data.o2_aph_inlet_pcr_r },
     { label: "Wind Box DP - A/B (mmwc)", l: data.wind_box_dp_l, r: data.wind_box_dp_r },
     { label: "Total PA Flow (TPH)", l: data.total_pa_flow, r: null },
+    { label: "Total Air Flow (TPH)", l: airFlow, r: null },
+    { label: "Total SA Flow (TPH)", l: saFlow, r: null },
   ];
 
   const fgRows = [
@@ -1119,10 +1125,34 @@ function BoilerParamsTable({ data }) {
     );
   };
 
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: stacked ? "1fr" : "1fr 1fr", gap: "16px" }}>
+  const rowCount = Math.max(leftRows.length, fgRows.length);
+  const combinedRows = Array.from({ length: rowCount }, (_, i) => ({
+    left: leftRows[i] || null,
+    right: fgRows[i] || null,
+  }));
+
+  const renderSide = (row, sideKey) => {
+    if (!row) {
+      return (
+        <>
+          <td style={S.td}></td>
+          <td style={S.td}></td>
+          <td style={S.td}></td>
+        </>
+      );
+    }
+    return (
+      <>
+        <td style={S.td}>{row.label}</td>
+        {renderLR(row)}
+      </>
+    );
+  };
+
+  if (stacked) {
+    return (
       <div>
-        <div style={S.subLabel}>BOILER & MILL PARAMETERS</div>
+        <div style={S.subLabel}>BOILER PARAMETERS</div>
         <div style={{ overflowX: "auto", width: "100%" }}>
           <table style={S.table}>
             <colgroup>
@@ -1147,10 +1177,7 @@ function BoilerParamsTable({ data }) {
             </tbody>
           </table>
         </div>
-      </div>
-      <div>
-        <div style={S.subLabel}>FLUE GAS TEMPERATURES</div>
-        <div style={{ overflowX: "auto", width: "100%" }}>
+        <div style={{ overflowX: "auto", width: "100%", marginTop: "16px" }}>
           <table style={S.table}>
             <colgroup>
               <col style={{ width: "60%" }} />
@@ -1174,6 +1201,43 @@ function BoilerParamsTable({ data }) {
             </tbody>
           </table>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={S.subLabel}>BOILER PARAMETERS</div>
+      <div style={{ overflowX: "auto", width: "100%" }}>
+        <table style={{ ...S.table, tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "30%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "30%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th style={S.th}>PARAMETER</th>
+              <th style={{ ...S.th, textAlign: "center" }}>L</th>
+              <th style={{ ...S.th, textAlign: "center" }}>R</th>
+              <th style={{ ...S.th, borderLeft: "1px solid #f0eef8" }}>PARAMETER</th>
+              <th style={{ ...S.th, textAlign: "center" }}>L</th>
+              <th style={{ ...S.th, textAlign: "center" }}>R</th>
+            </tr>
+          </thead>
+          <tbody>
+            {combinedRows.map((pair, i) => (
+              <tr key={i} style={{ borderBottom: "0.5px solid #eeecf8" }}>
+                {renderSide(pair.left)}
+                <td style={{ ...S.td, borderLeft: "1px solid #f0eef8" }}>{pair.right ? pair.right.label : ""}</td>
+                {pair.right ? renderLR(pair.right) : (<><td style={S.td}></td><td style={S.td}></td></>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -1244,7 +1308,7 @@ function AirFlowStatsCard({ data }) {
     <div style={{ marginTop: "1px", borderTop: "1px solid #f0eef8" }}>
       <div style={S.tablePanel}>
         <div style={S.subLabel}>STATS</div>
-        <div style={S.subLabel}>Air to Fuel Ratio</div>
+        <div style={{ ...S.subLabel, textAlign: "center" }}>Air to Fuel Ratio</div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {activeMills.map((m) => {
             const ratio = Number(m.air_to_fuel_ratio);
@@ -1268,6 +1332,45 @@ function AirFlowStatsCard({ data }) {
               </div>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BoilerAirStatsCard({ data, totalAirFlow }) {
+  if (!data || Object.keys(data).length === 0) return null;
+
+  const paFlow = safeNum(data.total_pa_flow);
+  const airFlow = safeNum(totalAirFlow);
+
+  if (paFlow == null || airFlow == null || paFlow === 0) return null;
+
+  const saFlow = airFlow - paFlow;
+  const ratio = saFlow / paFlow;
+
+  return (
+    <div style={{ marginTop: "1px", borderTop: "1px solid #f0eef8" }}>
+      <div style={S.tablePanel}>
+        <div style={S.subLabel}>STATS</div>
+        <div style={S.subLabel}>SA to PA Ratio</div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <div
+            style={{
+              background: "#faf9ff",
+              border: "0.5px solid #e2e1f0",
+              borderRadius: "6px",
+              padding: "16px 10px",
+              flex: "1 1 80px",
+              minWidth: "80px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontFamily: "'Manrope',sans-serif", fontSize: "clamp(18px, 2.5vw, 26px)", fontWeight: 700, color: "#111", lineHeight: 1.1 }}>
+              {ratio.toFixed(2)}
+            </div>
+            <div style={S.kpiLbl}>SA / PA</div>
+          </div>
         </div>
       </div>
     </div>
@@ -3569,7 +3672,8 @@ const activeMillLabel =
                   )}
                   {getTab(id) === "boiler" && (
                     <div style={S.tablePanel}>
-                      <BoilerParamsTable data={boilerData[id]} />
+                      <BoilerParamsTable data={boilerData[id]} totalAirFlow={runMeta.total_air_flow_tph} />
+                      <BoilerAirStatsCard data={boilerData[id]} totalAirFlow={runMeta.total_air_flow_tph} />
                     </div>
                   )}
                   {getTab(id) === "coal" && (
