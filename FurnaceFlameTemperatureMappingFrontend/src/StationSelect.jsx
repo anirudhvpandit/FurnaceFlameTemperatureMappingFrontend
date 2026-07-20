@@ -560,7 +560,7 @@ export default function StationSelect() {
   const fetchUnits = (stationId) => {
     const unitMap = {
       1: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }, { id: 6, name: "Unit 6" }],
-      2: [{ id: 1, name: "Unit 1" }, { id: 2, name: "Unit 2" }, { id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }, { id: 6, name: "Unit 6" }, { id: 7, name: "Unit 7" }],
+      2: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }, { id: 6, name: "Unit 6" }, { id: 7, name: "Unit 7" },{ id: 8, name: "Unit 8" }, { id: 9, name: "Unit 9" }],
       3: [{ id: 1, name: "Unit 1" }, { id: 2, name: "Unit 2" }, { id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }],
       4: [{ id: 6, name: "Unit 6" }, { id: 8, name: "Unit 8" }, { id: 9, name: "Unit 9" }, { id: 10, name: "Unit 10" }],
       5: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }],
