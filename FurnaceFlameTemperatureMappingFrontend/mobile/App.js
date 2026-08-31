@@ -165,19 +165,6 @@ export default function App() {
       avg: Number(dataset.average[i]),
     }));
 
-  const buildComparisonData = () => {
-    if (!selected.length) return [];
-    const base = datasets[selected[0]];
-    if (!base) return [];
-    return base.elevation.map((el, i) => {
-      let row = { elevation: Number(el) };
-      selected.forEach((id) => {
-        row[`run_${id}`] = Number(datasets[id]?.average[i]);
-      });
-      return row;
-    });
-  };
-
   const visibleHistory = history.filter((item) => {
     if (!startDate && !endDate) return true;
     const ts = new Date(item.timestamp);

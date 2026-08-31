@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import img from "./assets/abhitech-logo.png";
 
 /* ─────────────────────────────────────────────
-   Inline CSS injected once into <head>
+   Enhanced Inline CSS injected once into <head>
 ───────────────────────────────────────────── */
 const GLOBAL_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -11,39 +11,52 @@ const GLOBAL_CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --navy-900: #040d1a;
-    --navy-800: #071428;
-    --navy-700: #0d2040;
-    --navy-600: #162d55;
-    --blue-500: #1a4f9c;
-    --blue-400: #2563c6;
-    --blue-300: #4d8de8;
-    --blue-200: #7eb3f8;
-    --blue-100: #bdd8ff;
-    --cyan-400: #22d3ee;
-    --cyan-300: #67e8f9;
+    /* Enhanced Slate Color Palette */
+    --slate-900: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-400: #94a3b8;
+    --slate-300: #cbd5e1;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50: #f8fafc;
+
+    /* Enhanced Indigo Color Palette */
+    --indigo-900: #312e81;
+    --indigo-800: #3730a3;
+    --indigo-700: #4338ca;
+    --indigo-600: #4f46e5;
+    --indigo-500: #6366f1;
+    --indigo-400: #818cf8;
+    --indigo-300: #a5b4fc;
+    --indigo-200: #c7d2fe;
+    --indigo-100: #e0e7ff;
+    --indigo-50: #eef2ff;
+
     --white: #ffffff;
-    --glass-bg: rgba(13,32,64,0.55);
-    --glass-border: rgba(77,141,232,0.25);
-    --selected-bg: linear-gradient(135deg, #1a4f9c 0%, #2563c6 50%, #1d4ed8 100%);
-    --selected-border: rgba(99,179,255,0.8);
-    --glow: 0 0 20px rgba(77,141,232,0.4);
-    --glow-strong: 0 0 40px rgba(77,141,232,0.6), 0 0 80px rgba(37,99,198,0.3);
+    --glass-bg: rgba(15, 23, 42, 0.6);
+    --glass-border: rgba(99, 102, 241, 0.3);
+    --selected-bg: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%);
+    --selected-border: rgba(129, 140, 248, 0.9);
+    --glow: 0 0 20px rgba(99, 102, 241, 0.4);
+    --glow-strong: 0 0 40px rgba(99, 102, 241, 0.6), 0 0 80px rgba(79, 70, 229, 0.3);
   }
 
-  /* ── Animated background ── */
+  /* ── Enhanced Animated background ── */
   .ss-bg {
     position: fixed; inset: 0; z-index: 0;
-    background: radial-gradient(ellipse at 20% 50%, #0a2040 0%, var(--navy-900) 60%),
-                radial-gradient(ellipse at 80% 20%, #0d1e3a 0%, transparent 50%);
+    background: radial-gradient(ellipse at 20% 50%, #1e293b 0%, var(--slate-900) 60%),
+                radial-gradient(ellipse at 80% 20%, #1e3a8a 0%, transparent 50%);
     overflow: hidden;
   }
 
   .ss-bg-grid {
     position: absolute; inset: 0;
     background-image:
-      linear-gradient(rgba(77,141,232,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(77,141,232,0.04) 1px, transparent 1px);
+      linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
     background-size: 50px 50px;
     animation: gridPulse 8s ease-in-out infinite;
   }
@@ -52,7 +65,7 @@ const GLOBAL_CSS = `
     50% { opacity: 0.8; }
   }
 
-  /* Orb blobs */
+  /* Enhanced Orb blobs */
   .ss-orb {
     position: absolute; border-radius: 50%;
     filter: blur(80px); animation: orbFloat linear infinite;
@@ -60,17 +73,17 @@ const GLOBAL_CSS = `
   }
   .ss-orb-1 {
     width: 500px; height: 500px;
-    background: radial-gradient(circle, rgba(37,99,198,0.25) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(79, 70, 229, 0.25) 0%, transparent 70%);
     top: -100px; left: -100px; animation-duration: 25s;
   }
   .ss-orb-2 {
     width: 400px; height: 400px;
-    background: radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
     bottom: -80px; right: -80px; animation-duration: 30s; animation-delay: -10s;
   }
   .ss-orb-3 {
     width: 300px; height: 300px;
-    background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(129, 140, 248, 0.12) 0%, transparent 70%);
     top: 40%; left: 60%; animation-duration: 20s; animation-delay: -5s;
   }
   @keyframes orbFloat {
@@ -95,17 +108,17 @@ const GLOBAL_CSS = `
     50% { d: path("M0,120 C200,80 400,160 600,120 C800,80 1000,160 1200,120 C1400,80 1600,160 1920,120 L1920,200 L0,200 Z"); }
   }
 
-  /* ── Header ── */
+  /* ── Enhanced Header ── */
   .ss-header {
     position: sticky; top: 0; z-index: 200;
-    background: rgba(4,13,26,0.85);
+    background: rgba(15, 23, 42, 0.9);
     backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid rgba(77,141,232,0.15);
-    box-shadow: 0 1px 0 rgba(77,141,232,0.1), 0 4px 30px rgba(0,0,0,0.4);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+    box-shadow: 0 1px 0 rgba(99, 102, 241, 0.15), 0 4px 30px rgba(0,0,0,0.4);
   }
   .ss-header::after {
     content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(77,141,232,0.6), rgba(34,211,238,0.4), transparent);
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.7), rgba(129, 140, 248, 0.5), transparent);
     animation: scanLine 4s linear infinite;
   }
   @keyframes scanLine {
@@ -501,13 +514,46 @@ function ParticleCanvas() {
 /* ══════════════════════════════════════════
    Main Component
 ══════════════════════════════════════════ */
+const STATIONS = [
+  { id: 1, name: "BTPS" },
+  { id: 2, name: "CSTPS" },
+  { id: 3, name: "KPKD" },
+  { id: 4, name: "KTPS" },
+  { id: 5, name: "NTPS" },
+  { id: 6, name: "PARAS TPS" },
+  { id: 7, name: "PARALI TPS" },
+];
+
+const UNIT_MAP = {
+  1: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }, { id: 6, name: "Unit 6" }],
+  2: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }, { id: 6, name: "Unit 6" }, { id: 7, name: "Unit 7" }, { id: 8, name: "Unit 8" }, { id: 9, name: "Unit 9" }],
+  3: [{ id: 1, name: "Unit 1" }, { id: 2, name: "Unit 2" }, { id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }],
+  4: [{ id: 6, name: "Unit 6" }, { id: 8, name: "Unit 8" }, { id: 9, name: "Unit 9" }, { id: 10, name: "Unit 10" }],
+  5: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }],
+  6: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }],
+  7: [{ id: 6, name: "Unit 6" }, { id: 7, name: "Unit 7" }, { id: 8, name: "Unit 8" }],
+};
+
+const getUnitsForStation = (stationId) => UNIT_MAP[stationId] || [];
+
 export default function StationSelect() {
-  const [stations, setStations] = useState([]);
-  const [selectedStation, setSelectedStation] = useState(null);
-  const [units, setUnits] = useState([]);
+  const [stations] = useState(STATIONS);
+  // Initialize all state from localStorage lazily so we never call setState
+  // synchronously inside an effect (avoids cascading renders).
+  const [username] = useState(() => localStorage.getItem("username"));
+  const [userLocation] = useState(() => localStorage.getItem("location"));
+  const [selectedStation, setSelectedStation] = useState(() => {
+    const loc = localStorage.getItem("location");
+    if (!loc || loc === "all") return null;
+    return STATIONS.find(s => s.name === loc) || null;
+  });
+  const [units, setUnits] = useState(() => {
+    const loc = localStorage.getItem("location");
+    if (!loc || loc === "all") return [];
+    const station = STATIONS.find(s => s.name === loc);
+    return station ? getUnitsForStation(station.id) : [];
+  });
   const [selectedUnit, setSelectedUnit] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
-  const [username, setUsername] = useState(null);
   const navigate = useNavigate();
 
   // Inject global CSS once
@@ -521,54 +567,12 @@ export default function StationSelect() {
     return () => { /* leave styles for SPA navigation */ };
   }, []);
 
-  useEffect(() => {
-    const stationsList = [
-      { id: 1, name: "BTPS" },
-      { id: 2, name: "CSTPS" },
-      { id: 3, name: "KPKD" },
-      { id: 4, name: "KTPS" },
-      { id: 5, name: "NTPS" },
-      { id: 6, name: "PARAS TPS" },
-      { id: 7, name: "PARALI TPS" },
-    ];
-    setStations(stationsList);
-
-    const storedUsername = localStorage.getItem("username");
-    const storedLocation = localStorage.getItem("location");
-    setUsername(storedUsername);
-
-    if (storedLocation === "all") {
-      setUserLocation("all");
-      setSelectedStation(null);
-      setUnits([]);
-    } else if (storedLocation && storedLocation !== "all") {
-      setUserLocation(storedLocation);
-      const station = stationsList.find(s => s.name === storedLocation);
-      if (station) { setSelectedStation(station); fetchUnits(station.id); }
-    } else if (storedUsername) {
-      setUserLocation(storedLocation);
-      const station = stationsList.find(s => s.name === storedLocation);
-      if (station) { setSelectedStation(station); fetchUnits(station.id); }
-    }
-  }, []);
+  const fetchUnits = (stationId) => setUnits(getUnitsForStation(stationId));
 
   useEffect(() => {
     localStorage.setItem("selectedStation", JSON.stringify(selectedStation));
     localStorage.setItem("selectedUnit", JSON.stringify(selectedUnit));
   }, [selectedStation, selectedUnit]);
-
-  const fetchUnits = (stationId) => {
-    const unitMap = {
-      1: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }, { id: 6, name: "Unit 6" }],
-      2: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }, { id: 6, name: "Unit 6" }, { id: 7, name: "Unit 7" },{ id: 8, name: "Unit 8" }, { id: 9, name: "Unit 9" }],
-      3: [{ id: 1, name: "Unit 1" }, { id: 2, name: "Unit 2" }, { id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }],
-      4: [{ id: 6, name: "Unit 6" }, { id: 8, name: "Unit 8" }, { id: 9, name: "Unit 9" }, { id: 10, name: "Unit 10" }],
-      5: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }, { id: 5, name: "Unit 5" }],
-      6: [{ id: 3, name: "Unit 3" }, { id: 4, name: "Unit 4" }],
-      7: [{ id: 6, name: "Unit 6" }, { id: 7, name: "Unit 7" }, { id: 8, name: "Unit 8" }],
-    };
-    setUnits(unitMap[stationId] || []);
-  };
 
   const handleStationSelect = (station) => {
     if (userLocation !== "all") return;

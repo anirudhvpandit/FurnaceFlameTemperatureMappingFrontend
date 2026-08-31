@@ -52,12 +52,6 @@ const DEFAULT_ELEVATION_COLS = ["Corner 1", "Corner 2", "Corner 3", "Corner 4", 
 const DEFAULT_COAL_MILLS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const MAX_MILLS = 10;
 
-function clamp(n, min, max) {
-  const x = Number(n);
-  if (Number.isNaN(x)) return min;
-  return Math.min(max, Math.max(min, x));
-}
-
 function safeNum(v) {
   if (v === "" || v === null || v === undefined) return null;
   const n = Number(v);
@@ -138,94 +132,6 @@ function createEmptyRunDraft({ stationName, unitId }) {
         mill_current_amp: "",
       }])),
     },
-  };
-}
-
-function buildUploadPayload(draft) {
-  const cols = draft.elevation.columns;
-  const cleanRows = (draft.elevation.rows || [])
-    .map((r) => {
-      const elevation_m = String(r.elevation_m || '').trim();
-      if (!elevation_m) return null;
-      const values = cols.map((c) => safeNum(r.values?.[c]));
-      const present = values.filter(
-        (v) => v != null && v !== 0
-      );
-      const avg = present.length ? present.reduce((a, b) => a + b, 0) / present.length : null;
-      return {
-        elevation_m,
-        values: Object.fromEntries(cols.map((c, i) => [c, values[i]])),
-        average: avg,
-        burner_tilt_deg: safeNum(r.burner_tilt_deg),
-      };
-    })
-    .filter(Boolean);
-
-  const coal = (draft.coalMills.mills || []).map((mill) => ({
-    mill,
-    coal_flow_tph: safeNum(draft.coalMills.byMill?.[mill]?.coal_flow_tph),
-    pa_flow_tph: safeNum(draft.coalMills.byMill?.[mill]?.pa_flow_tph),
-    mill_dp_mmwc: safeNum(draft.coalMills.byMill?.[mill]?.mill_dp_mmwc),
-    mill_outlet_temp: safeNum(draft.coalMills.byMill?.[mill]?.mill_outlet_temp),
-    mill_current_amp: safeNum(draft.coalMills.byMill?.[mill]?.mill_current_amp),
-  }));
-
-  return {
-    station_id: draft.meta.station || null,
-    unit_id: draft.meta.unit_id || null,
-    uploaded_by: localStorage.getItem("username") || "admin",
-    notes: draft.meta.notes || "",
-    run_meta: {
-      run_date: draft.meta.run_date || null,
-      run_time: draft.meta.run_time || null,
-      load_mw: safeNum(draft.meta.load_mw),
-      total_coal_flow_tph: safeNum(draft.meta.total_coal_flow_tph),
-      total_air_flow_tph: safeNum(draft.meta.total_air_flow_tph),
-      burner_tilt_deg_1: safeNum(draft.meta.burner_tilt_deg_1),
-      burner_tilt_deg_2: safeNum(draft.meta.burner_tilt_deg_2),
-      burner_tilt_deg_3: safeNum(draft.meta.burner_tilt_deg_3),
-      burner_tilt_deg_4: safeNum(draft.meta.burner_tilt_deg_4),
-      coal_mills_in_service_count: safeNum(draft.meta.coal_mills_in_service_count),
-      coal_mills_in_service: String(draft.meta.coal_mills_in_service || "").trim() || null,
-      oil_guns_in_service_count: safeNum(draft.meta.oil_guns_in_service_count),
-      oil_guns_in_service: String(draft.meta.oil_guns_in_service || "").trim() || null,
-    },
-    elevation_profile: {
-      columns: cols,
-      rows: cleanRows,
-    },
-    boiler_params: {
-      main_steam_pressure_l: safeNum(draft.boiler.main_steam_pressure_l),
-      main_steam_pressure_r: safeNum(draft.boiler.main_steam_pressure_r),
-      main_steam_flow_l: safeNum(draft.boiler.main_steam_flow_l),
-      main_steam_flow_r: safeNum(draft.boiler.main_steam_flow_r),
-      superheat_spray_l: safeNum(draft.boiler.superheat_spray_l),
-      superheat_spray_r: safeNum(draft.boiler.superheat_spray_r),
-      reheat_spray_l: safeNum(draft.boiler.reheat_spray_l),
-      reheat_spray_r: safeNum(draft.boiler.reheat_spray_r),
-      o2_aph_inlet_pcr_l: safeNum(draft.boiler.o2_aph_inlet_pcr_l),
-      o2_aph_inlet_pcr_r: safeNum(draft.boiler.o2_aph_inlet_pcr_r),
-      wind_box_dp_l: safeNum(draft.boiler.wind_box_dp_l),
-      wind_box_dp_r: safeNum(draft.boiler.wind_box_dp_r),
-      total_pa_flow: safeNum(draft.boiler.total_pa_flow),
-      total_fd_fan_flow: safeNum(draft.boiler.total_fd_fan_flow),
-      total_pa_to_windbox_flow: safeNum(draft.boiler.total_pa_to_windbox_flow),
-    },
-    flue_gas_temps: {
-      fg_temp_after_dpsh_l: safeNum(draft.flueGas.fg_temp_after_dpsh_l),
-      fg_temp_after_dpsh_r: safeNum(draft.flueGas.fg_temp_after_dpsh_r),
-      fg_temp_after_psh_l: safeNum(draft.flueGas.fg_temp_after_psh_l),
-      fg_temp_after_psh_r: safeNum(draft.flueGas.fg_temp_after_psh_r),
-      fg_temp_after_rh_l: safeNum(draft.flueGas.fg_temp_after_rh_l),
-      fg_temp_after_rh_r: safeNum(draft.flueGas.fg_temp_after_rh_r),
-      fg_temp_after_hsh_l: safeNum(draft.flueGas.fg_temp_after_hsh_l),
-      fg_temp_after_hsh_r: safeNum(draft.flueGas.fg_temp_after_hsh_r),
-      fg_temp_after_eco_l: safeNum(draft.flueGas.fg_temp_after_eco_l),
-      fg_temp_after_eco_r: safeNum(draft.flueGas.fg_temp_after_eco_r),
-      fg_temp_after_aph_l: safeNum(draft.flueGas.fg_temp_after_aph_l),
-      fg_temp_after_aph_r: safeNum(draft.flueGas.fg_temp_after_aph_r),
-    },
-    coal_mill_params: coal,
   };
 }
 
@@ -1131,7 +1037,7 @@ function BoilerParamsTable({ data, totalAirFlow }) {
     right: fgRows[i] || null,
   }));
 
-  const renderSide = (row, sideKey) => {
+  const renderSide = (row) => {
     if (!row) {
       return (
         <>
@@ -1377,15 +1283,6 @@ function BoilerAirStatsCard({ data, totalAirFlow }) {
   );
 }
 
-function formatMillLabel(value) {
-  if (!value) return "N/A";
-
-  return String(value)
-    .split(/[,\s]+/)
-    .filter(Boolean)
-    .join(" • ");
-}
-
 function getActiveMills(coalMills) {
   if (!Array.isArray(coalMills)) return [];
 
@@ -1435,7 +1332,6 @@ export default function App() {
 
   const CHART_HEIGHT = 500;
 
-  const [viewMode, setViewMode] = useState("runs");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showIngestModal, setShowIngestModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -1460,7 +1356,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState({});
 
   const [pinnedTooltip, setPinnedTooltip] = useState({});
-  const [hoverEnabled, setHoverEnabled] = useState(true);
+  const [, setHoverEnabled] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userLocation, setUserLocation] = useState("all");
 
@@ -2276,7 +2172,29 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
       }}
     >
 
-      {/* CLOSE BUTTON */}
+      <button
+        onClick={onClose}
+        aria-label="Close tooltip"
+        style={{
+          position: "absolute",
+          top: "4px",
+          right: "4px",
+          background: "rgba(255,255,255,0.12)",
+          border: "1px solid rgba(255,255,255,0.25)",
+          borderRadius: "50%",
+          width: "20px",
+          height: "20px",
+          cursor: "pointer",
+          color: "rgba(220,230,255,0.85)",
+          fontSize: "13px",
+          lineHeight: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        ×
+      </button>
       
 
       <div style={S.ttHead}>
@@ -2331,68 +2249,8 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
   const MAIN_PADDING = 16;
   const GAP = 12;
   const sidebarEffectiveOpen = sidebarOpen && !showIngestModal;
-const activeDraft =
-  editingRunId ? editDraft : runDraft;
-
-const setActiveDraft =
-  editingRunId ? setEditDraft : setRunDraft;
-
-const updateMetaField = (field, value) => {
-  setActiveDraft(prev => ({
-    ...prev,
-    meta: {
-      ...prev.meta,
-      [field]: value,
-    },
-  }));
-};
-
-const updateBoilerField = (field, value) => {
-  setActiveDraft(prev => ({
-    ...prev,
-    boiler: {
-      ...prev.boiler,
-      [field]: value,
-    },
-  }));
-};
-
-const updateFlueGasField = (field, value) => {
-  setActiveDraft(prev => ({
-    ...prev,
-    flueGas: {
-      ...prev.flueGas,
-      [field]: value,
-    },
-  }));
-};
-
-const updateCoalMillField = (
-  mill,
-  field,
-  value
-) => {
-
-  setActiveDraft(prev => ({
-    ...prev,
-
-    coalMills: {
-      ...prev.coalMills,
-
-      byMill: {
-        ...prev.coalMills.byMill,
-
-        [mill]: {
-          ...prev.coalMills.byMill[mill],
-
-          [field]: value,
-        },
-      },
-    },
-  }));
-};
   return (
-    <div style={{ background: "#f0eff8", minHeight: "100vh" }}>
+    <div style={{ background: "linear-gradient(180deg, #f0eff8 0%, #e0e7ff 100%)", minHeight: "100vh" }}>
       <header
         ref={headerRef}
         style={{
@@ -2698,6 +2556,12 @@ const updateCoalMillField = (
           </div>
           <div style={S.sideSection}>
             <div style={S.secLabel}>DOWNLOAD REPORT</div>
+            <div style={S.sideSection}>
+  <div style={S.secLabel}>3D VISUALIZATION</div>
+  <button onClick={() => navigation("/furnace-3d")} style={S.downloadBtn}>
+    OPEN 3D FURNACE VIEW
+  </button>
+</div>
             <button
               onClick={() => { setShowReportModal(true); setReportError(""); }}
               style={S.downloadBtn}
@@ -2773,21 +2637,6 @@ const updateCoalMillField = (
                 ...Object.fromEntries(cornerKeys.map(k => [k, true])),
                 avg: true,
               };
-              const visibleKeys = cornerKeys.filter(k => currentVisibleLines[k]);
-              const visibleDataPoints = runData.flatMap(r =>
-  visibleKeys.map(k => r[k]).filter(v => v !== null && v !== undefined)
-);
-
-const dataMin = visibleDataPoints.length
-  ? Math.min(...visibleDataPoints)
-  : 0;
-
-const dataMax = visibleDataPoints.length
-  ? Math.max(...visibleDataPoints)
-  : 100;
-
-const autoPadding = Math.max(10, (dataMax - dataMin) * 0.08);
-
 // GLOBAL SCALE LOGIC
 
 const allSelectedRunData = selected.flatMap((runId) => {
@@ -2842,7 +2691,7 @@ const finalXMax = globalScaleSettings.autoScale
                 .filter(v => v !== null && v !== undefined && !isNaN(v));
               const maxTemp = rawTempValues.length ? Math.max(...rawTempValues) : 0;
               const minTemp = rawTempValues.length ? Math.min(...rawTempValues) : 0;
-              const avgTemp = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1);
+              const avgTemp = temps.length ? (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1) : "—";
 
               const runMeta = history.find(r => r.run_id === id) || {};
               const activeMills = getActiveMills(coalData[id]);
@@ -3129,6 +2978,45 @@ const activeMillLabel =
       }}
     >
       MIN
+    </div>
+  </div>
+
+  {/* AVG */}
+  <div
+    style={{
+      background: "#fff",
+      borderRadius: "10px",
+      padding: "10px 12px",
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      minHeight: "60px",
+      minWidth: 0,
+    }}
+  >
+    <div
+      style={{
+        fontSize: "clamp(15px, 2vw, 22px)",
+        fontWeight: 700,
+        color: "#6366f1",
+        lineHeight: 1.1,
+      }}
+    >
+      {avgTemp}°C
+    </div>
+
+    <div
+      style={{
+        marginTop: "4px",
+        fontSize: "clamp(9px, 1vw, 11px)",
+        fontWeight: 600,
+        color: "#6b7280",
+        letterSpacing: "0.08em",
+      }}
+    >
+      AVG
     </div>
   </div>
 </div>
@@ -3492,9 +3380,26 @@ const activeMillLabel =
         
         {pinnedTooltip[id]?.label}        
       </div>
-
-     
-
+      <button
+        onClick={() => closePinnedTooltip(id)}
+        aria-label="Close pinned tooltip"
+        style={{
+          background: "#e5e7eb",
+          border: "none",
+          borderRadius: "6px",
+          width: "22px",
+          height: "22px",
+          cursor: "pointer",
+          color: "#6b7280",
+          fontSize: "14px",
+          lineHeight: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        ×
+      </button>
     </div>
 
     {Object.entries(pinnedTooltip[id]?.payload || []).map(([key, value]) => {
@@ -3503,7 +3408,7 @@ const activeMillLabel =
 
       return (
         <div
-          key={entry.dataKey}
+          key={key}
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -3511,10 +3416,10 @@ const activeMillLabel =
             fontSize: "13px",
           }}
         >
-          <span>{entry.dataKey}</span>
+          <span>{key}</span>
       
           <span style={{ fontWeight: 700 }}>
-            {Number(entry.value).toFixed(1)}°C
+            {Number(value).toFixed(1)}°C
           </span>
         </div>
       )
@@ -4166,68 +4071,640 @@ const activeMillLabel =
   );
 }
 
+// ============================================================================
+// ENHANCED STYLING SYSTEM WITH BEAUTIFUL UI/UX
+// ============================================================================
+
 const S = {
-  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(20,18,40,0.4)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 },
-  modal: { width: "90%", maxWidth: "360px", padding: "24px", background: "#ffffff", borderRadius: "12px", textAlign: "center", boxShadow: "0 20px 35px -10px rgba(0,0,0,0.2)" },
-  modalIcon: { width: "50px", height: "50px", borderRadius: "50%", background: "#16a34a", color: "#000", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "30px", margin: "0 auto 12px" },
-  modalTitle: { fontFamily: "'Manrope',sans-serif", fontSize: "24px", letterSpacing: "0.1em", color: "#000" },
-  modalText: { fontFamily: "'Inter',sans-serif", fontSize: "15px", color: "#000", marginTop: "8px", letterSpacing: "0.05em" },
-  ingestOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(20,18,40,0.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "stretch", justifyContent: "stretch", padding: 0, zIndex: 200 },
-  ingestSheet: { flex: 1, width: "100%", height: "100%", display: "flex", alignItems: "stretch", justifyContent: "center", boxSizing: "border-box" },
-  ingestModal: { width: "min(980px,100%)", maxHeight: "min(92vh,860px)", background: "#ffffff", borderRadius: "14px", boxShadow: "0 28px 60px -18px rgba(0,0,0,0.35)", overflow: "hidden", display: "flex", flexDirection: "column" },
-  ingestHeader: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", padding: "14px 16px", borderBottom: "1px solid #f0eef8", background: "linear-gradient(180deg,#fbfaff 0%,#ffffff 100%)" },
-  ingestTitle: { fontFamily: "'Manrope',sans-serif", fontSize: "22px", letterSpacing: "0.1em", color: "#000" },
-  ingestSub: { fontFamily: "'Inter',sans-serif", fontSize: "12px", color: "#000", marginTop: "4px", letterSpacing: "0.08em" },
-  ingestClose: { border: "1px solid #eee", background: "#fff", borderRadius: "10px", width: "36px", height: "36px", cursor: "pointer", color: "#000" },
-  ingestTabs: { display: "flex", gap: "6px", padding: "10px 12px", borderBottom: "1px solid #f0eef8", flexWrap: "wrap", background: "#ffffff" },
-  ingestTabBtn: { border: "0.5px solid #e2e1f0", background: "#fff", fontFamily: "'Inter',sans-serif", fontSize: "11px", letterSpacing: "0.12em", padding: "7px 10px", cursor: "pointer", borderRadius: "10px", color: "#000" },
-  ingestTabActive: { background: "#eeeeff", borderColor: "#a5b4fc", color: "#000" },
-  ingestBody: { padding: "12px 12px 10px", overflow: "auto" },
-  ingestFooter: { padding: "12px 12px", borderTop: "1px solid #f0eef8", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", background: "#ffffff" },
-  footerHint: { fontFamily: "'Inter',sans-serif", fontSize: "12px", color: "#000", letterSpacing: "0.08em" },
-  ingestGrid: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "10px" },
-  ingestToolbar: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "10px", flexWrap: "wrap" },
-  helperText: { fontFamily: "'Inter',sans-serif", fontSize: "12px", color: "#000", letterSpacing: "0.06em" },
-  field: { display: "flex", flexDirection: "column", gap: "6px" },
-  fieldLabel: { fontFamily: "'Inter',sans-serif", fontSize: "11px", letterSpacing: "0.18em", color: "#000" },
-  fieldInput: { width: "100%", border: "1px solid #e8e6f4", borderRadius: "10px", padding: "10px 10px", fontSize: "15px", outline: "none", background: "#fbfaff", boxSizing: "border-box" },
-  cellInput: { width: "100%", border: "1px solid #e8e6f4", borderRadius: "8px", padding: "8px 8px", fontSize: "14px", outline: "none", background: "#ffffff" },
-  smallBtn: { border: "1px solid #e8e6f4", background: "#ffffff", borderRadius: "10px", padding: "8px 10px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.1em", color: "#000" },
-  primaryBtn: { border: "none", background: "#4f46e5", color: "#000", borderRadius: "10px", padding: "10px 14px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.12em" },
-  secondaryBtn: { border: "1px solid #e8e6f4", background: "#ffffff", color: "#000", borderRadius: "10px", padding: "10px 14px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.12em" },
-  sidebar: { background: "linear-gradient(180deg, #0d1830 0%, #1c2f4f 60%, #2c4870 100%)", borderRight: "1px solid rgba(255,255,255,0.08)", position: "fixed", left: 0, bottom: 0, overflowY: "auto", transition: "transform 0.3s ease", zIndex: 1000 },
-  sideSection: { padding: "16px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" },
-  secLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.28em", color: "rgba(255,255,255,0.55)", marginBottom: "10px", paddingTop: "2px" },
-  uploadBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.16)", borderRadius: "6px", color: "#ffffff", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.15em", marginBottom: "8px" },
-  downloadBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "rgba(34,197,94,0.15)", border: "1px solid rgba(74,222,128,0.35)", borderRadius: "6px", color: "#bbf7d0", fontFamily: "'Inter',sans-serif", fontSize: "12px", letterSpacing: "0.15em", cursor: "pointer", boxSizing: "border-box" },
-  runSection: { background: "#ffffff", border: "1px solid #e8e6f4", borderRadius: "10px", overflow: "hidden" },
-  runHeader: { padding: "12px 14px", borderBottom: "1px solid #f0eef8", background: "#faf9ff" },
-  runTitle: { fontFamily: "'Manrope',sans-serif", fontSize: "clamp(14px,1.3vw,18px)", letterSpacing: "0.04em", color: "#000" },
-  runSub: { fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", color: "#000", marginTop: "3px", letterSpacing: "0.06em" },
-  kpiCard: { background: "#f5f4ff", padding: "7px 4px", textAlign: "center", borderRadius: "4px" },
-  kpiVal: { fontFamily: "'Manrope',sans-serif", fontSize: "clamp(14px,3vw,17px)", letterSpacing: "0.05em", lineHeight: 1 },
-  kpiLbl: { fontFamily: "'Inter',sans-serif", fontSize: "9px", letterSpacing: "0.15em", color: "#000", marginTop: "3px" },
-  tabBar: { display: "flex", gap: "3px", padding: "8px 10px", borderBottom: "1px solid #f0eef8", background: "#faf9ff", flexWrap: "wrap" },
-  tabBtn: { border: "0.5px solid #e2e1f0", background: "none", fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.08em", padding: "clamp(4px, 0.4vw, 7px) clamp(7px, 0.7vw, 11px)", cursor: "pointer", borderRadius: "4px", color: "#000" },
-  tabActive: { background: "#eeeeff", borderColor: "#a5b4fc", color: "#000" },
-  downloadRunBtn: { display: "flex", alignItems: "center", gap: "5px", background: "#92fea6", border: "1px solid #bbf7d0", color: "#24472f", padding: "5px 9px", borderRadius: "6px", fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.1em", flexShrink: 0 },
-  deleteBtn: { background: "#fff", border: "1px solid #f0eef8", color: "#000", padding: "5px 9px", borderRadius: "6px", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.1em", flexShrink: 0 },
-  chartPanel: { padding: "14px", background: "#ffffff" },
-  chartLabel: { fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.2em", color: "#000", marginBottom: "10px" },
-  filterBar: { display: "flex", gap: "4px", marginTop: "10px", flexWrap: "wrap" },
-  filterBtn: { border: "0.5px solid", padding: "3px 7px", fontSize: "10px", fontFamily: "'Inter',sans-serif", letterSpacing: "0.07em", cursor: "pointer", borderRadius: "4px" },
-  tablePanel: { padding: "14px", background: "#ffffff" },
-  subLabel: { fontFamily: "'Inter',sans-serif", fontSize: "clamp(10px, 0.85vw, 13px)", letterSpacing: "0.2em", color: "#000", marginBottom: "10px" },
-  table: { width: "100%", borderCollapse: "collapse", fontFamily: "'Inter',sans-serif", fontSize: "clamp(12px, 1.1vw, 15px)" },
-  th: { padding: "6px 8px", textAlign: "left", fontSize: "clamp(10px, 0.9vw, 13px)", letterSpacing: "0.15em", color: "#000", borderBottom: "1px solid #f0eef8", fontWeight: 600 },
-  td: { padding: "clamp(6px, 0.6vw, 10px) clamp(8px, 0.8vw, 14px)", color: "#000", fontSize: "clamp(12px, 1.1vw, 15px)" },
-  noData: { fontFamily: "'Inter',sans-serif", fontSize: "clamp(12px, 1.1vw, 15px)", color: "#000", padding: "16px 0", letterSpacing: "0.08em" },
-  tooltip: { background: "#ffffff", border: "1px solid #e8e6f4", padding: "10px 12px", minWidth: "150px", borderRadius: "6px", boxShadow: "0 4px 20px rgba(79,70,229,0.08)" },
-  ttHead: { display: "flex", justifyContent: "space-between", marginBottom: "6px", paddingBottom: "6px", borderBottom: "1px solid #f0eef8" },
-  ttLabel: { fontFamily: "'Inter',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: "#000" },
-  ttVal: { fontFamily: "'Manrope',sans-serif", fontSize: "16px", color: "#000" },
-  ttRow: { display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" },
-  ttDot: { width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0 },
-  ttKey: { fontFamily: "'Inter',sans-serif", fontSize: "10px", color: "#000", flex: 1 },
-  ttNum: { fontFamily: "'Inter',sans-serif", fontSize: "11px", fontWeight: "700" },
+  // Enhanced modal overlay with beautiful backdrop blur
+  modalOverlay: { 
+    position: "fixed", 
+    top: 0, 
+    left: 0, 
+    right: 0, 
+    bottom: 0, 
+    background: "linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(30, 41, 59, 0.5) 100%)", 
+    backdropFilter: "blur(12px)", 
+    display: "flex", 
+    alignItems: "center", 
+    justifyContent: "center", 
+    zIndex: 100 
+  },
+  
+  // Enhanced modal with gradient and beautiful shadows
+  modal: { 
+    width: "90%", 
+    maxWidth: "380px", 
+    padding: "28px", 
+    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)", 
+    borderRadius: "16px", 
+    textAlign: "center", 
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(79, 70, 229, 0.1)" 
+  },
+  
+  // Enhanced modal icon with gradient
+  modalIcon: { 
+    width: "56px", 
+    height: "56px", 
+    borderRadius: "50%", 
+    background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)", 
+    color: "#ffffff", 
+    display: "flex", 
+    alignItems: "center", 
+    justifyContent: "center", 
+    fontSize: "32px", 
+    margin: "0 auto 16px",
+    boxShadow: "0 4px 15px rgba(34, 197, 94, 0.3)"
+  },
+  
+  // Enhanced modal typography
+  modalTitle: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "26px", 
+    letterSpacing: "0.08em", 
+    color: "#1e293b", 
+    fontWeight: 700 
+  },
+  modalText: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "16px", 
+    color: "#475569", 
+    marginTop: "10px", 
+    letterSpacing: "0.02em", 
+    lineHeight: 1.5 
+  },
+  
+  // Enhanced ingest overlay
+  ingestOverlay: { 
+    position: "fixed", 
+    top: 0, 
+    left: 0, 
+    right: 0, 
+    bottom: 0, 
+    background: "linear-gradient(135deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.6) 100%)", 
+    backdropFilter: "blur(12px)", 
+    display: "flex", 
+    alignItems: "stretch", 
+    justifyContent: "stretch", 
+    padding: 0, 
+    zIndex: 200 
+  },
+  
+  ingestSheet: { 
+    flex: 1, 
+    width: "100%", 
+    height: "100%", 
+    display: "flex", 
+    alignItems: "stretch", 
+    justifyContent: "center", 
+    boxSizing: "border-box" 
+  },
+  
+  // Enhanced ingest modal
+  ingestModal: { 
+    width: "min(1000px,100%)", 
+    maxHeight: "min(94vh, 880px)", 
+    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)", 
+    borderRadius: "16px", 
+    boxShadow: "0 32px 64px -16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(79, 70, 229, 0.15)", 
+    overflow: "hidden", 
+    display: "flex", 
+    flexDirection: "column" 
+  },
+  
+  // Enhanced ingest header
+  ingestHeader: { 
+    display: "flex", 
+    alignItems: "center", 
+    justifyContent: "space-between", 
+    gap: "12px", 
+    padding: "16px 20px", 
+    borderBottom: "1px solid rgba(226, 232, 240, 0.15)", 
+    background: "linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)" 
+  },
+  
+  ingestTitle: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "24px", 
+    letterSpacing: "0.06em", 
+    color: "#1e293b", 
+    fontWeight: 700 
+  },
+  
+  ingestSub: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "13px", 
+    color: "#64748b", 
+    marginTop: "4px", 
+    letterSpacing: "0.02em" 
+  },
+  
+  // Enhanced close button
+  ingestClose: { 
+    border: "1px solid #e2e8f0", 
+    background: "#ffffff", 
+    borderRadius: "12px", 
+    width: "40px", 
+    height: "40px", 
+    cursor: "pointer", 
+    color: "#64748b", 
+    transition: "all 0.2s ease",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "20px"
+  },
+  
+  // Enhanced tabs
+  ingestTabs: { 
+    display: "flex", 
+    gap: "8px", 
+    padding: "12px 16px", 
+    borderBottom: "1px solid #e2e8f0", 
+    flexWrap: "wrap", 
+    background: "#ffffff" 
+  },
+  
+  ingestTabBtn: { 
+    border: "1px solid #e2e8f0", 
+    background: "#ffffff", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "12px", 
+    letterSpacing: "0.1em", 
+    padding: "8px 14px", 
+    cursor: "pointer", 
+    borderRadius: "10px", 
+    color: "#64748b", 
+    transition: "all 0.2s ease" 
+  },
+  
+  ingestTabActive: { 
+    background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", 
+    borderColor: "#3b82f6", 
+    color: "#1e40af", 
+    fontWeight: 600 
+  },
+  
+  ingestBody: { 
+    padding: "16px 16px 12px", 
+    overflow: "auto" 
+  },
+  
+  ingestFooter: { 
+    padding: "16px 16px", 
+    borderTop: "1px solid #e2e8f0", 
+    display: "flex", 
+    alignItems: "center", 
+    justifyContent: "space-between", 
+    gap: "12px", 
+    flexWrap: "wrap", 
+    background: "#ffffff" 
+  },
+  
+  footerHint: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "13px", 
+    color: "#64748b", 
+    letterSpacing: "0.02em" 
+  },
+  
+  ingestGrid: { 
+    display: "grid", 
+    gridTemplateColumns: "repeat(2,minmax(0,1fr))", 
+    gap: "12px" 
+  },
+  
+  ingestToolbar: { 
+    display: "flex", 
+    alignItems: "center", 
+    justifyContent: "space-between", 
+    gap: "12px", 
+    marginBottom: "12px", 
+    flexWrap: "wrap" 
+  },
+  
+  // Enhanced field styling
+  helperText: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "13px", 
+    color: "#64748b", 
+    letterSpacing: "0.02em" 
+  },
+  
+  field: { 
+    display: "flex", 
+    flexDirection: "column", 
+    gap: "8px" 
+  },
+  
+  fieldLabel: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "12px", 
+    letterSpacing: "0.12em", 
+    color: "#475569", 
+    fontWeight: 600 
+  },
+  
+  fieldInput: { 
+    width: "100%", 
+    border: "1px solid #cbd5e1", 
+    borderRadius: "10px", 
+    padding: "12px 14px", 
+    fontSize: "15px", 
+    outline: "none", 
+    background: "#f8fafc", 
+    boxSizing: "border-box",
+    transition: "all 0.2s ease",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+  },
+  
+  cellInput: { 
+    width: "100%", 
+    border: "1px solid #cbd5e1", 
+    borderRadius: "8px", 
+    padding: "10px 10px", 
+    fontSize: "14px", 
+    outline: "none", 
+    background: "#ffffff", 
+    transition: "all 0.2s ease",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+  },
+  
+  // Enhanced button styling
+  smallBtn: { 
+    border: "1px solid #cbd5e1", 
+    background: "#ffffff", 
+    borderRadius: "10px", 
+    padding: "10px 12px", 
+    cursor: "pointer", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "12px", 
+    letterSpacing: "0.08em", 
+    color: "#475569", 
+    transition: "all 0.2s ease" 
+  },
+  
+  primaryBtn: { 
+    border: "none", 
+    background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)", 
+    color: "#ffffff", 
+    borderRadius: "10px", 
+    padding: "12px 16px", 
+    cursor: "pointer", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "13px", 
+    letterSpacing: "0.08em", 
+    fontWeight: 600,
+    transition: "all 0.2s ease",
+    boxShadow: "0 4px 14px rgba(79, 70, 229, 0.3)"
+  },
+  
+  secondaryBtn: { 
+    border: "1px solid #cbd5e1", 
+    background: "#ffffff", 
+    color: "#475569", 
+    borderRadius: "10px", 
+    padding: "12px 16px", 
+    cursor: "pointer", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "13px", 
+    letterSpacing: "0.08em", 
+    transition: "all 0.2s ease" 
+  },
+  
+  // Enhanced sidebar
+  sidebar: { 
+    background: "linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%)", 
+    borderRight: "1px solid rgba(255,255,255,0.1)", 
+    position: "fixed", 
+    left: 0, 
+    bottom: 0, 
+    overflowY: "auto", 
+    transition: "transform 0.3s ease", 
+    zIndex: 1000,
+    boxShadow: "4px 0 24px rgba(0, 0, 0, 0.15)"
+  },
+  
+  sideSection: { 
+    padding: "18px 16px", 
+    borderBottom: "1px solid rgba(255,255,255,0.1)" 
+  },
+  
+  secLabel: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "11px", 
+    letterSpacing: "0.25em", 
+    color: "rgba(255,255,255,0.7)", 
+    marginBottom: "12px", 
+    paddingTop: "4px", 
+    fontWeight: 600 
+  },
+  
+  // Enhanced action buttons
+  uploadBtn: { 
+    display: "flex", 
+    alignItems: "center", 
+    justifyContent: "center", 
+    gap: "10px", 
+    width: "100%", 
+    padding: "12px", 
+    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.1) 100%)", 
+    border: "1px solid rgba(34, 197, 94, 0.3)", 
+    borderRadius: "8px", 
+    color: "#bbf7d0", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "13px", 
+    letterSpacing: "0.12em", 
+    marginBottom: "10px",
+    cursor: "pointer",
+    transition: "all 0.2s ease"
+  },
+  
+  downloadBtn: { 
+    display: "flex", 
+    alignItems: "center", 
+    justifyContent: "center", 
+    gap: "10px", 
+    width: "100%", 
+    padding: "12px", 
+    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.1) 100%)", 
+    border: "1px solid rgba(34, 197, 94, 0.3)", 
+    borderRadius: "8px", 
+    color: "#bbf7d0", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "13px", 
+    letterSpacing: "0.12em", 
+    cursor: "pointer", 
+    boxSizing: "border-box",
+    transition: "all 0.2s ease"
+  },
+  
+  // Enhanced run section
+  runSection: { 
+    background: "#ffffff", 
+    border: "1px solid #e2e8f0", 
+    borderRadius: "12px", 
+    overflow: "hidden",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)"
+  },
+  
+  runHeader: { 
+    padding: "14px 16px", 
+    borderBottom: "1px solid #e2e8f0", 
+    background: "linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)" 
+  },
+  
+  runTitle: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(15px,1.3vw,19px)", 
+    letterSpacing: "0.04em", 
+    color: "#1e293b", 
+    fontWeight: 700 
+  },
+  
+  runSub: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(11px, 0.85vw, 14px)", 
+    color: "#64748b", 
+    marginTop: "4px", 
+    letterSpacing: "0.04em" 
+  },
+  
+  // Enhanced KPI cards
+  kpiCard: { 
+    background: "linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%)", 
+    padding: "10px 6px", 
+    textAlign: "center", 
+    borderRadius: "8px",
+    border: "1px solid rgba(99, 102, 241, 0.15)"
+  },
+  
+  kpiVal: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(15px,3vw,18px)", 
+    letterSpacing: "0.04em", 
+    lineHeight: 1.1,
+    color: "#1e293b",
+    fontWeight: 700
+  },
+  
+  kpiLbl: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "10px", 
+    letterSpacing: "0.12em", 
+    color: "#64748b", 
+    marginTop: "4px",
+    fontWeight: 500
+  },
+  
+  // Enhanced tab system
+  tabBar: { 
+    display: "flex", 
+    gap: "4px", 
+    padding: "10px 12px", 
+    borderBottom: "1px solid #e2e8f0", 
+    background: "#ffffff", 
+    flexWrap: "wrap" 
+  },
+  
+  tabBtn: { 
+    border: "1px solid #e2e8f0", 
+    background: "none", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(11px, 0.85vw, 14px)", 
+    letterSpacing: "0.06em", 
+    padding: "clamp(5px, 0.4vw, 8px) clamp(8px, 0.7vw, 12px)", 
+    cursor: "pointer", 
+    borderRadius: "6px", 
+    color: "#64748b", 
+    transition: "all 0.2s ease" 
+  },
+  
+  tabActive: { 
+    background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", 
+    borderColor: "#3b82f6", 
+    color: "#1e40af", 
+    fontWeight: 600 
+  },
+  
+  // Enhanced action buttons
+  downloadRunBtn: { 
+    display: "flex", 
+    alignItems: "center", 
+    gap: "6px", 
+    background: "linear-gradient(135deg, #92fea6 0%, #4ade80 100%)", 
+    border: "1px solid #bbf7d0", 
+    color: "#065f46", 
+    padding: "6px 10px", 
+    borderRadius: "8px", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(11px, 0.85vw, 14px)", 
+    letterSpacing: "0.08em", 
+    flexShrink: 0,
+    transition: "all 0.2s ease",
+    boxShadow: "0 2px 8px rgba(74, 222, 128, 0.2)"
+  },
+  
+  deleteBtn: { 
+    background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)", 
+    border: "1px solid #fecaca", 
+    color: "#991b1b", 
+    padding: "6px 10px", 
+    borderRadius: "8px", 
+    cursor: "pointer", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(11px, 0.85vw, 14px)", 
+    letterSpacing: "0.08em", 
+    flexShrink: 0,
+    transition: "all 0.2s ease"
+  },
+  
+  // Enhanced chart panel
+  chartPanel: { 
+    padding: "16px", 
+    background: "#ffffff", 
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)"
+  },
+  
+  chartLabel: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(11px, 0.85vw, 14px)", 
+    letterSpacing: "0.15em", 
+    color: "#1e293b", 
+    marginBottom: "12px", 
+    fontWeight: 600 
+  },
+  
+  filterBar: { 
+    display: "flex", 
+    gap: "6px", 
+    marginTop: "12px", 
+    flexWrap: "wrap" 
+  },
+  
+  filterBtn: { 
+    border: "1px solid #cbd5e1", 
+    padding: "4px 10px", 
+    fontSize: "11px", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    letterSpacing: "0.06em", 
+    cursor: "pointer", 
+    borderRadius: "6px", 
+    transition: "all 0.2s ease" 
+  },
+  
+  // Enhanced table styling
+  tablePanel: { 
+    padding: "16px", 
+    background: "#ffffff", 
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)"
+  },
+  
+  subLabel: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(11px, 0.85vw, 14px)", 
+    letterSpacing: "0.15em", 
+    color: "#1e293b", 
+    marginBottom: "12px", 
+    fontWeight: 600 
+  },
+  
+  table: { 
+    width: "100%", 
+    borderCollapse: "collapse", 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(13px, 1.1vw, 16px)" 
+  },
+  
+  th: { 
+    padding: "8px 10px", 
+    textAlign: "left", 
+    fontSize: "clamp(11px, 0.9vw, 14px)", 
+    letterSpacing: "0.12em", 
+    color: "#1e293b", 
+    borderBottom: "1px solid #e2e8f0", 
+    fontWeight: 600,
+    background: "#f8fafc"
+  },
+  
+  td: { 
+    padding: "clamp(8px, 0.6vw, 12px) clamp(10px, 0.8vw, 16px)", 
+    color: "#475569", 
+    fontSize: "clamp(13px, 1.1vw, 16px)",
+    borderBottom: "1px solid #f1f5f9"
+  },
+  
+  noData: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "clamp(13px, 1.1vw, 16px)", 
+    color: "#64748b", 
+    padding: "20px 0", 
+    letterSpacing: "0.06em",
+    textAlign: "center"
+  },
+  
+  // Enhanced tooltip
+  tooltip: { 
+    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)", 
+    border: "1px solid #e2e8f0", 
+    padding: "12px 14px", 
+    minWidth: "160px", 
+    borderRadius: "8px", 
+    boxShadow: "0 8px 32px rgba(79, 70, 229, 0.12), 0 0 0 1px rgba(79, 70, 229, 0.08)" 
+  },
+  
+  ttHead: { 
+    display: "flex", 
+    justifyContent: "space-between", 
+    marginBottom: "8px", 
+    paddingBottom: "8px", 
+    borderBottom: "1px solid #e2e8f0" 
+  },
+  
+  ttLabel: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "11px", 
+    letterSpacing: "0.15em", 
+    color: "#64748b",
+    fontWeight: 500
+  },
+  
+  ttVal: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "17px", 
+    color: "#1e293b", 
+    fontWeight: 600 
+  },
+  
+  ttRow: { 
+    display: "flex", 
+    alignItems: "center", 
+    gap: "8px", 
+    marginBottom: "4px" 
+  },
+  
+  ttDot: { 
+    width: "6px", 
+    height: "6px", 
+    borderRadius: "50%", 
+    flexShrink: 0 
+  },
+  
+  ttKey: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "11px", 
+    color: "#64748b", 
+    flex: 1 
+  },
+  
+  ttNum: { 
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", 
+    fontSize: "12px", 
+    fontWeight: 700,
+    color: "#1e293b"
+  },
 };

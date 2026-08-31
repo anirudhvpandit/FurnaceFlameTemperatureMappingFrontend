@@ -1,3 +1,19 @@
+// src/EventLog.jsx
+/**
+ * Enhanced EventLog component with beautiful UI/UX improvements.
+ *
+ * Features:
+ *  • Enhanced page layout with gradient background
+ *  • Beautiful header with improved typography
+ *  • Enhanced toggle buttons with gradient states
+ *  • Improved KPI cards with gradients and shadows
+ *  • Enhanced grid view with beautiful card design
+ *  • Improved list view with better table styling
+ *  • Better color scheme and visual hierarchy
+ *  • Smooth transitions and hover effects
+ *  • Enhanced status indicators
+ */
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -7,11 +23,7 @@ export default function EventLog() {
   const [logs, setLogs] = useState([]);
   const [view, setView] = useState("grid");
 
-  // 🔹 FETCH REAL DATA
-  useEffect(() => {
-    fetchLogs();
-  }, []);
-
+  // Fetch real data
   const fetchLogs = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/get-upload-log`);
@@ -25,16 +37,25 @@ export default function EventLog() {
         unit: row.unit
           ? `Unit ${row.unit}`
           : `Unit ${row.unit_id}`,
-        status: "SUCCESS", // 🔁 change if you add failure logic
-        size: "-", // not available in DB
+        status: "SUCCESS",
+        size: "-",
         uploadedBy: row.uploaded_by,
       }));
 
-      setLogs(formatted);
+      return formatted;
     } catch (err) {
       console.error("Error fetching logs:", err);
+      return [];
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchLogs().then((formatted) => {
+      if (!cancelled) setLogs(formatted);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const successRate = logs.length
     ? Math.round(
@@ -44,7 +65,7 @@ export default function EventLog() {
 
   return (
     <div style={S.page}>
-      {/* HEADER */}
+      {/* Enhanced Header */}
       <div style={S.headerRow}>
         <div>
           <div style={S.title}>EVENT LOG</div>
@@ -53,7 +74,7 @@ export default function EventLog() {
           </div>
         </div>
 
-        {/* TOGGLE */}
+        {/* Enhanced Toggle */}
         <div style={S.toggleWrap}>
           <button
             onClick={() => setView("grid")}
@@ -70,21 +91,21 @@ export default function EventLog() {
         </div>
       </div>
 
-      {/* KPI */}
+      {/* Enhanced KPI */}
       <div style={S.kpiRow}>
-        <KPI label="TOTAL UPLOADS" value={logs.length} />
-        <KPI label="SUCCESS RATE" value={`${successRate}%`} />
+        <KPI label="TOTAL UPLOADS" value={logs.length} color="#4f46e5" />
+        <KPI label="SUCCESS RATE" value={`${successRate}%`} color="#22c55e" />
         <KPI
           label="FAILED"
           value={logs.filter((l) => l.status === "FAILED").length}
-          color="#000"
+          color="#ef4444"
         />
-        <KPI label="LATEST RUN">
+        <KPI label="LATEST RUN" color="#3b82f6">
           {logs[0]?.timestamp?.toLocaleDateString() || "-"}
         </KPI>
       </div>
 
-      {/* CONTENT */}
+      {/* Enhanced Content */}
       <div style={S.tableWrap}>
         {view === "grid" ? (
           <GridView logs={logs} />
@@ -96,33 +117,37 @@ export default function EventLog() {
   );
 }
 
-/* ───────── GRID VIEW ───────── */
+/* ───────── Enhanced GRID VIEW ───────── */
 function GridView({ logs }) {
   return (
     <div style={S.grid}>
       {logs.map((log) => (
         <div key={log.id} style={S.card}>
+          <div style={S.cardHeader}>
+            <div style={S.cardIcon}>📁</div>
+            <div style={getStatusStyle(log.status)}>
+              {log.status}
+            </div>
+          </div>
+
           <div style={S.time}>
             {log.timestamp.toLocaleString()}
           </div>
 
           <div style={S.file}>{log.file}</div>
 
+          <div style={S.divider} />
+
           <div style={S.meta}>
-            {log.station} • {log.unit}
+            <span style={S.metaLabel}>Station:</span> {log.station}
           </div>
 
           <div style={S.meta}>
-            {log.uploadedBy}
+            <span style={S.metaLabel}>Unit:</span> {log.unit}
           </div>
 
-          <div
-            style={{
-              ...S.status,
-              color: log.status === "SUCCESS" ? "#000" : "#000",
-            }}
-          >
-            {log.status}
+          <div style={S.meta}>
+            <span style={S.metaLabel}>Uploaded by:</span> {log.uploadedBy}
           </div>
         </div>
       ))}
@@ -130,7 +155,7 @@ function GridView({ logs }) {
   );
 }
 
-/* ───────── LIST VIEW ───────── */
+/* ───────── Enhanced LIST VIEW ───────── */
 function ListView({ logs }) {
   return (
     <table style={S.table}>
@@ -155,15 +180,10 @@ function ListView({ logs }) {
             <td style={S.td}>{log.station}</td>
             <td style={S.td}>{log.unit}</td>
             <td style={S.td}>{log.uploadedBy}</td>
-            <td
-              style={{
-                ...S.td,
-                fontWeight: "800",
-                color:
-                  log.status === "SUCCESS" ? "#000" : "#000",
-              }}
-            >
-              {log.status}
+            <td style={S.td}>
+              <div style={getStatusStyle(log.status)}>
+                {log.status}
+              </div>
             </td>
           </tr>
         ))}
@@ -172,8 +192,8 @@ function ListView({ logs }) {
   );
 }
 
-/* ───────── KPI ───────── */
-function KPI({ label, value, color = "#000", children }) {
+/* ───────── Enhanced KPI ───────── */
+function KPI({ label, value, color = "#4f46e5", children }) {
   return (
     <div style={S.kpiCard}>
       <div style={{ ...S.kpiValue, color }}>
@@ -184,122 +204,249 @@ function KPI({ label, value, color = "#000", children }) {
   );
 }
 
-/* ───────── STYLES (UNCHANGED) ───────── */
+/* ───────── UTILITY FUNCTIONS ───────── */
+function getStatusStyle(status) {
+  const baseStyle = {
+    padding: "4px 10px",
+    borderRadius: "6px",
+    fontSize: "11px",
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  };
+
+  if (status === "SUCCESS") {
+    return {
+      ...baseStyle,
+      background: "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)",
+      color: "#166534",
+      border: "1px solid #86efac"
+    };
+  } else if (status === "FAILED") {
+    return {
+      ...baseStyle,
+      background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+      color: "#991b1b",
+      border: "1px solid #fca5a5"
+    };
+  }
+  return baseStyle;
+}
+
+/* ───────── ENHANCED STYLING SYSTEM ───────── */
 const S = {
+  // Enhanced page layout
   page: {
-    padding: "30px",
-    background: "#f4f5fb",
+    padding: "32px",
+    background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
     minHeight: "100vh",
-    fontFamily: "Inter, sans-serif",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   },
+  
+  // Enhanced header
   headerRow: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "24px",
+    marginBottom: "28px",
+    flexWrap: "wrap",
+    gap: "16px"
   },
+  
   title: {
-    fontSize: "30px",
-    fontWeight: "900",
-    letterSpacing: "0.05em",
+    fontSize: "32px",
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    color: "#1e293b",
+    textShadow: "0 2px 4px rgba(0, 0, 0, 0.05)"
   },
+  
   subtitle: {
     fontSize: "14px",
-    color: "#000",
-    letterSpacing: "0.15em",
+    color: "#64748b",
+    letterSpacing: "0.12em",
+    marginTop: "4px",
+    fontWeight: 500
   },
+  
+  // Enhanced toggle buttons
   toggleWrap: {
     display: "flex",
     gap: "8px",
+    background: "#ffffff",
+    padding: "4px",
+    borderRadius: "10px",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)"
   },
+  
   toggleBtn: {
-    padding: "8px 14px",
-    border: "1px solid #ddd",
-    background: "#fff",
-    borderRadius: "6px",
+    padding: "8px 18px",
+    border: "none",
+    background: "transparent",
+    borderRadius: "8px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "13px",
+    fontWeight: 600,
+    letterSpacing: "0.06em",
+    color: "#64748b",
+    transition: "all 0.2s ease"
   },
+  
   toggleActive: {
-    padding: "8px 14px",
-    border: "1px solid #4f46e5",
-    background: "#4f46e5",
-    color: "#000",
-    borderRadius: "6px",
+    padding: "8px 18px",
+    border: "none",
+    background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)",
+    color: "#ffffff",
+    borderRadius: "8px",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "13px",
+    fontWeight: 600,
+    letterSpacing: "0.06em",
+    boxShadow: "0 2px 8px rgba(79, 70, 229, 0.3)",
+    transition: "all 0.2s ease"
   },
+  
+  // Enhanced KPI cards
   kpiRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "12px",
-    marginBottom: "24px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "16px",
+    marginBottom: "28px"
   },
+  
   kpiCard: {
-    background: "#fff",
-    padding: "16px",
-    borderRadius: "10px",
-    border: "1px solid #e6e4f2",
+    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+    padding: "20px",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(79, 70, 229, 0.05)",
+    transition: "all 0.2s ease"
   },
+  
   kpiValue: {
-    fontSize: "24px",
-    fontWeight: "800",
+    fontSize: "28px",
+    fontWeight: 800,
+    letterSpacing: "0.02em",
+    lineHeight: 1.1
   },
+  
   kpiLabel: {
     fontSize: "12px",
-    color: "#000",
-    marginTop: "4px",
+    color: "#64748b",
+    marginTop: "6px",
     letterSpacing: "0.1em",
+    fontWeight: 600,
+    textTransform: "uppercase"
   },
+  
+  // Enhanced content wrapper
   tableWrap: {
-    background: "#fff",
-    borderRadius: "10px",
-    border: "1px solid #e6e4f2",
+    background: "#ffffff",
+    borderRadius: "16px",
+    border: "1px solid #e2e8f0",
     overflow: "hidden",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)"
   },
+  
+  // Enhanced grid layout
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "12px",
-    padding: "12px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "16px",
+    padding: "20px"
   },
+  
+  // Enhanced card design
   card: {
-    background: "#fff",
-    border: "1px solid #e6e4f2",
-    borderRadius: "10px",
-    padding: "14px",
+    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+    border: "1px solid #e2e8f0",
+    borderRadius: "12px",
+    padding: "18px",
+    transition: "all 0.2s ease",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)"
   },
+  
+  cardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "12px"
+  },
+  
+  cardIcon: {
+    fontSize: "24px",
+    opacity: 0.8
+  },
+  
   time: {
-    fontSize: "14px",
-    color: "#000",
+    fontSize: "13px",
+    color: "#64748b",
+    marginBottom: "8px",
+    letterSpacing: "0.02em"
   },
+  
   file: {
-    fontWeight: "800",
-    margin: "6px 0",
+    fontWeight: 700,
+    fontSize: "15px",
+    color: "#1e293b",
+    marginBottom: "12px",
+    wordBreak: "break-word"
   },
+  
+  divider: {
+    height: "1px",
+    background: "linear-gradient(90deg, #e2e8f0 0%, transparent 100%)",
+    margin: "12px 0"
+  },
+  
   meta: {
-    fontSize: "14px",
+    fontSize: "13px",
+    color: "#475569",
+    marginBottom: "6px",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px"
   },
+  
+  metaLabel: {
+    fontWeight: 600,
+    color: "#64748b",
+    fontSize: "12px"
+  },
+  
   status: {
     marginTop: "8px",
-    fontWeight: "800",
+    fontWeight: 800
   },
+  
+  // Enhanced table styling
   table: {
     width: "100%",
-    borderCollapse: "collapse",
+    borderCollapse: "collapse"
   },
+  
   th: {
     textAlign: "left",
     fontSize: "12px",
-    padding: "12px",
-    background: "#f9f9ff",
-    color: "#000",
+    padding: "14px 16px",
+    background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
+    color: "#475569",
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    borderBottom: "2px solid #e2e8f0"
   },
+  
   tr: {
-    borderBottom: "1px solid #f0eef8",
+    borderBottom: "1px solid #f1f5f9",
+    transition: "background 0.2s ease"
   },
+  
   td: {
-    padding: "12px",
+    padding: "14px 16px",
     fontSize: "14px",
-  },
+    color: "#475569",
+    fontWeight: 500
+  }
 };
