@@ -18,7 +18,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import * as Sentry from '@sentry/browser';
 import ErrorBoundary from '../components/ErrorBoundary';
-import '../index.css';
+import './index.css';
 
 // Lazy-load pages for better performance
 const LoginPage = lazy(() => import('./LoginPage'));
