@@ -76,6 +76,14 @@ const IconCrosshair = () => (
   </svg>
 );
 
+const IconCTScan = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" strokeWidth="1.5" stroke="currentColor" fill="none"/>
+    <path d="M12 5V19M5 12H19" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round"/>
+    <circle cx="12" cy="12" r="2" fill="currentColor"/>
+  </svg>
+);
+
 // ============================================================================
 // SUB-COMPONENT: PillToggle — compact on/off toggle button
 // ============================================================================
@@ -211,14 +219,65 @@ function AxisCutCard({ axis, icon, axisColor, axisName, clipPlane, onToggle, onO
 }
 
 // ============================================================================
+// SUB-COMPONENT: FocusedViewIndicator — shows when focused view is active
+// ============================================================================
+
+function FocusedViewIndicator({ layerId, model, onExitFocus }) {
+  const layer = model?.layers.find(l => l.id === layerId);
+  
+  if (!layer) return null;
+
+  return (
+    <div style={styles.focusedViewContainer}>
+      <div style={styles.focusedViewHeader}>
+        <div style={styles.focusedViewTitle}>
+          <span style={styles.focusedViewIcon}>🎯</span>
+          <span>FOCUSED VIEW</span>
+        </div>
+        <button
+          onClick={onExitFocus}
+          style={styles.exitFocusButton}
+          title="Exit focused view (ESC)"
+          onMouseEnter={(e) => {
+            e.target.style.background = "rgba(139, 92, 246, 0.4)";
+            e.target.style.borderColor = "rgba(139, 92, 246, 0.6)";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = "rgba(139, 92, 246, 0.2)";
+            e.target.style.borderColor = "rgba(139, 92, 246, 0.4)";
+          }}
+        >
+          ✕ EXIT
+        </button>
+      </div>
+      <div style={styles.focusedViewContent}>
+        <div style={styles.focusedLayerInfo}>
+          <span style={styles.focusedLayerLabel}>Elevation:</span>
+          <span style={styles.focusedLayerValue}>{layer.label}M</span>
+        </div>
+        <div style={styles.focusedLayerInfo}>
+          <span style={styles.focusedLayerLabel}>Temperature:</span>
+          <span style={styles.focusedLayerValue}>
+            {layer.temperature.avg?.toFixed(0) || "N/A"}°C
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
 export default function SectionalControls({ model }) {
-  const { state, setMultiClipEnabled, setClipPlane, toggleExplodedView, setExplosionFactor } = useFurnaceStore();
-  if (!model) return null;
+  return model ? <SectionalControlsContent model={model} /> : null;
+}
 
-  const { multiClipEnabled, explodedView, clipPlanes, explosionFactor } = state;
+function SectionalControlsContent({ model }) {
+  const { state, setMultiClipEnabled, setClipPlane, toggleExplodedView, setExplosionFactor, clearFocusedLayer, setCTScanMode } = useFurnaceStore();
+
+  const { multiClipEnabled, explodedView, clipPlanes, explosionFactor, isFocusedView, focusedLayerId, ctScanMode } = state;
 
   // Inject global CSS for custom range sliders
   useEffect(() => {
@@ -300,8 +359,24 @@ export default function SectionalControls({ model }) {
     <div style={S.section}>
       <div style={S.sectionLabel}>ADVANCED SECTIONAL VIEW</div>
 
+      {/* ── Focused View Indicator ── */}
+      {isFocusedView && (
+        <FocusedViewIndicator 
+          layerId={focusedLayerId}
+          model={model}
+          onExitFocus={clearFocusedLayer}
+        />
+      )}
+
       {/* ── Toggle Row ── */}
       <div style={styles.toggleRow}>
+        <PillToggle
+          active={ctScanMode}
+          onClick={() => setCTScanMode(!ctScanMode)}
+          icon={<IconCTScan />}
+          label="CT SCAN"
+          activeColor="#06b6d4"
+        />
         <PillToggle
           active={multiClipEnabled}
           onClick={() => setMultiClipEnabled(!multiClipEnabled)}
@@ -586,5 +661,65 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "6px",
+  },
+
+  // ── Focused View Indicator ──
+  focusedViewContainer: {
+    marginBottom: "16px",
+    padding: "14px",
+    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0.08) 100%)",
+    borderRadius: "10px",
+    border: "1px solid rgba(139, 92, 246, 0.3)",
+    backdropFilter: "blur(8px)"
+  },
+  focusedViewHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "10px"
+  },
+  focusedViewTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "11px",
+    fontWeight: 800,
+    color: "#c4b5fd",
+    letterSpacing: "0.05em"
+  },
+  focusedViewIcon: {
+    fontSize: "14px"
+  },
+  exitFocusButton: {
+    padding: "6px 12px",
+    background: "rgba(139, 92, 246, 0.2)",
+    border: "1px solid rgba(139, 92, 246, 0.4)",
+    borderRadius: "6px",
+    color: "#c4b5fd",
+    fontSize: "10px",
+    fontWeight: 700,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    letterSpacing: "0.05em"
+  },
+  focusedViewContent: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px"
+  },
+  focusedLayerInfo: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    fontSize: "10px"
+  },
+  focusedLayerLabel: {
+    color: "rgba(200, 220, 255, 0.6)",
+    fontWeight: 500
+  },
+  focusedLayerValue: {
+    color: "#c4b5fd",
+    fontWeight: 700,
+    fontFamily: "'DM Mono', monospace"
   },
 };

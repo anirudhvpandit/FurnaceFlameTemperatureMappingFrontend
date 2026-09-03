@@ -19,13 +19,15 @@ import { calculateCombustionEfficiency, calculateEmissions, getCombustionHealthS
 import { useEffect } from "react";
 
 export default function CombustionControls({ model }) {
+  return model ? <CombustionControlsContent model={model} /> : null;
+}
+
+function CombustionControlsContent({ model }) {
   const { 
     state, 
     setCombustionParams, 
     toggleAdvancedCombustion 
   } = useFurnaceStore();
-  
-  if (!model) return null;
   
   // Add custom slider styling
   useEffect(() => {

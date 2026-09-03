@@ -17,12 +17,12 @@ import * as THREE from "three";
  *  • Smooth animations for dynamic industrial feel
  */
 
-export default function IndustrialEnvironment({ dimensions }) {
+export default function IndustrialEnvironment({ dimensions, isFocusedView = false }) {
   const { width, depth, height } = dimensions;
   const controlPanelRefs = useRef([]);
   const indicatorLightRefs = useRef([]);
   const safetyEquipmentRefs = useRef([]);
-
+  
   // Pipe configurations with enhanced properties
   const pipes = useMemo(() => [
     // Main steam pipes
@@ -85,6 +85,9 @@ export default function IndustrialEnvironment({ dimensions }) {
       }
     });
   });
+
+  // Keep hooks unconditional; only the rendered scene changes in Focused View.
+  if (isFocusedView) return null;
 
   return (
     <group>

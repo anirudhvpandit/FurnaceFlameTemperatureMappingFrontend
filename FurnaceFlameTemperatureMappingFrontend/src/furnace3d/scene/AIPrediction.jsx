@@ -226,12 +226,13 @@ function RecommendationOverlay({ rec, model, idx }) {
 // MAIN COMPONENT
 // ============================================================================
 
-export default function AIPrediction({ model }) {
+export default function AIPrediction({ model, isFocusedView = false }) {
   const { state } = useFurnaceStore();
-  if (!state.showAIOverlay || !model) return null;
-
+  
   // Generate AI predictions for temperature hotspots
   const predictions = useMemo(() => {
+    if (!state.showAIOverlay || !model) return [];
+    
     const preds = [];
 
     model.layers.forEach((layer) => {
@@ -330,6 +331,9 @@ export default function AIPrediction({ model }) {
       if (document.head.contains(styleEl)) document.head.removeChild(styleEl);
     };
   }, []);
+
+  // Focused View changes output, never which hooks this component calls.
+  if (isFocusedView) return null;
 
   return (
     <group>

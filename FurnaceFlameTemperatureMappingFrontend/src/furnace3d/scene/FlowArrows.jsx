@@ -3,10 +3,10 @@ import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-export default function FlowArrows({ model }) {
+export default function FlowArrows({ model, isFocusedView = false }) {
   const groupRef = useRef();
   const arrowRefs = useRef([]);
-
+  
   // Enhanced smooth rotation with easing
   useFrame(({ clock }) => {
     if (groupRef.current) {
@@ -55,6 +55,9 @@ export default function FlowArrows({ model }) {
     );
   }, [model]);
 
+  // Keep hook execution stable while switching into and out of Focused View.
+  if (isFocusedView) return null;
+
   return (
     <group ref={groupRef}>
       {arrows.map((arrow, i) => (
@@ -74,7 +77,8 @@ export default function FlowArrows({ model }) {
 // ============================================================================
 
 function EnhancedFlowArrow({ arrow, index, ref }) {
-  const meshRef = ref || useRef();
+  const fallbackMeshRef = useRef();
+  const meshRef = ref || fallbackMeshRef;
   
   // Calculate enhanced visual properties
   const headLength = 0.25 + (arrow.temperature - 1000) / 2000;

@@ -33,6 +33,7 @@ import SuggestionPanel from "./panels/SuggestionPanel";
 import CombustionControls from "./panels/CombustionControls";
 import AIAnalysisPanel from "./panels/AIAnalysisPanel";
 import SectionalControls from "./panels/SectionalControls";
+import ElevationInfoPanel from "./panels/ElevationInfoPanel";
 import { connectWebSocket, disconnectWebSocket } from "./services/websocket";
 import { exportVideo } from "./utils/exportVideo";
 import { exportSimulationCSV, exportFurnaceJSON, exportScenarioJSON, exportTemperatureJSON } from "./utils/exportSimulation";
@@ -380,6 +381,7 @@ function Furnace3DViewInner() {
     undoSimulation, redoSimulation,
     setSuggestion,
     setLightingPreset,
+    clearFocusedLayer,
   } = useFurnaceStore();
   
   const [model, setModel] = useState(null);
@@ -471,6 +473,25 @@ function Furnace3DViewInner() {
     const criticalBurners = model.layers.flatMap(l => l.burners).filter(b => (b.temperature || 0) > 1350);
     if (criticalBurners.length > 0) playAlertSound();
   }, [model]);
+
+  // Keyboard shortcut for ESC to exit focused view
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && state.isFocusedView) {
+        clearFocusedLayer();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.isFocusedView, clearFocusedLayer]);
+
+  // Auto-switch to elevation tab when focused view is activated (mobile)
+  useEffect(() => {
+    if (state.isFocusedView && isCompact) {
+      setMobileTab("elevation");
+    }
+  }, [state.isFocusedView, isCompact]);
 
   const sceneEl = loading ? (
     <EnhancedLoadingState />
@@ -670,6 +691,7 @@ function Furnace3DViewInner() {
               {k:"combustion",l:"COMBUSTION"},
               {k:"ai",l:"AI ANALYSIS"},
               {k:"sectional",l:"SECTIONAL"},
+              {k:"elevation",l:"ELEVATION"},
               {k:"scene",l:"3D VIEW"},
               {k:"inspector",l:"INSPECTOR"},
               {k:"playback",l:"PLAYBACK"},
@@ -693,6 +715,7 @@ function Furnace3DViewInner() {
             {mobileTab === "combustion" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><CombustionControls model={model} /></div>}
             {mobileTab === "ai" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><AIAnalysisPanel model={model} /></div>}
             {mobileTab === "sectional" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><SectionalControls model={model} /></div>}
+            {mobileTab === "elevation" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><ElevationInfoPanel model={model} /></div>}
             {mobileTab === "scene" && sceneEl}
             {mobileTab === "inspector" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><InspectionPanel model={model} /></div>}
             {mobileTab === "playback" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><PlaybackControls /></div>}
@@ -713,6 +736,7 @@ function Furnace3DViewInner() {
           </aside>
           <div style={{ position:"relative" }}>{sceneEl}</div>
           <aside style={{ ...styles.aside, ...styles.asideRight }}>
+            <ElevationInfoPanel model={model} />
             <InspectionPanel model={model} />
             <PlaybackControls />
             <ComparisonControls model={model} />

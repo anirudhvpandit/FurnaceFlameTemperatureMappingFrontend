@@ -59,8 +59,6 @@ export default function PlaybackControls() {
   const { state, setCurrentRunIndex, nextRun, prevRun, setPlaybackState } = useFurnaceStore();
   const { historicalRuns, currentRunIndex, isPlaying } = state;
 
-  if (historicalRuns.length === 0) return null;
-
   const total = historicalRuns.length;
   const current = currentRunIndex;
   const progress = total > 1 ? (current / (total - 1)) * 100 : 0;
@@ -116,6 +114,8 @@ export default function PlaybackControls() {
       if (document.head.contains(styleEl)) document.head.removeChild(styleEl);
     };
   }, []);
+
+  if (historicalRuns.length === 0) return null;
 
   return (
     <div style={S.section}>

@@ -2,7 +2,10 @@
 /**
  * AI Integration Hooks and Utilities
  * Provides programmatic access to AI-powered analysis and predictions
+ * Now integrated with real ML backend for anomaly detection
  */
+
+import { mlApiService } from '../services/mlApi';
 
 export class AIIntegrationHooks {
   constructor() {
@@ -13,6 +16,7 @@ export class AIIntegrationHooks {
       optimization: '/api/ai/optimize',
       anomaly: '/api/ai/detect-anomaly',
     };
+    this.useMLBackend = true; // Flag to enable/disable ML backend integration
   }
 
   /**
@@ -51,8 +55,64 @@ export class AIIntegrationHooks {
 
   /**
    * Predict component failures based on current operating conditions
+   * Now uses ML backend when available, falls back to rule-based prediction
    */
   async predictComponentFailures(model) {
+    if (this.useMLBackend) {
+      try {
+        // Try to use ML backend for failure prediction
+        return await this.predictFailuresWithML(model);
+      } catch (error) {
+        console.warn('ML backend failure prediction failed, falling back to rule-based:', error);
+        // Fall back to rule-based prediction
+        return this.predictFailuresRuleBased(model);
+      }
+    } else {
+      // Use rule-based prediction
+      return this.predictFailuresRuleBased(model);
+    }
+  }
+
+  /**
+   * Predict failures using ML backend
+   */
+  async predictFailuresWithML(model) {
+    try {
+      // Convert furnace model to ML API format
+      const mlFormatData = mlApiService.convertFurnaceModelToMLFormat(model);
+      
+      // Call ML backend for prediction
+      const mlPrediction = await mlApiService.predictAnomaly(mlFormatData);
+      
+      // Convert ML prediction to frontend format
+      const frontendPrediction = mlApiService.convertMLPredictionToFrontendFormat(mlPrediction);
+      
+      // Format as failure predictions for compatibility with existing UI
+      if (frontendPrediction.is_anomaly) {
+        return [{
+          componentId: 'System',
+          componentType: 'Overall Operation',
+          failureMode: frontendPrediction.failure_mode,
+          probability: frontendPrediction.probability,
+          estimatedTimeToFailure: frontendPrediction.estimated_time_to_failure,
+          recommendedActions: frontendPrediction.recommended_actions,
+          confidence: frontendPrediction.anomaly_confidence,
+          contributing_parameters: frontendPrediction.contributing_parameters,
+          ml_prediction: frontendPrediction,
+        }];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('ML failure prediction error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Predict failures using rule-based approach (original implementation)
+   */
+  predictFailuresRuleBased(model) {
     const failures = [];
     
     model.layers.forEach(layer => {
@@ -136,8 +196,64 @@ export class AIIntegrationHooks {
 
   /**
    * Detect anomalies in current operating patterns
+   * Now uses ML backend when available, falls back to rule-based detection
    */
   async detectAnomalies(model, historicalData = []) {
+    if (this.useMLBackend) {
+      try {
+        // Try to use ML backend for anomaly detection
+        return await this.detectAnomaliesWithML(model);
+      } catch (error) {
+        console.warn('ML backend anomaly detection failed, falling back to rule-based:', error);
+        // Fall back to rule-based detection
+        return this.detectAnomaliesRuleBased(model, historicalData);
+      }
+    } else {
+      // Use rule-based detection
+      return this.detectAnomaliesRuleBased(model, historicalData);
+    }
+  }
+
+  /**
+   * Detect anomalies using ML backend
+   */
+  async detectAnomaliesWithML(model) {
+    try {
+      // Convert furnace model to ML API format
+      const mlFormatData = mlApiService.convertFurnaceModelToMLFormat(model);
+      
+      // Call ML backend for prediction
+      const mlPrediction = await mlApiService.predictAnomaly(mlFormatData);
+      
+      // Convert ML prediction to frontend format
+      const frontendPrediction = mlApiService.convertMLPredictionToFrontendFormat(mlPrediction);
+      
+      // Format as anomalies for compatibility with existing UI
+      if (frontendPrediction.is_anomaly) {
+        return [{
+          type: 'ML_DETECTED_ANOMALY',
+          location: 'Overall System',
+          currentValue: frontendPrediction.anomaly_score,
+          expectedRange: [frontendPrediction.anomaly_score - 0.1, frontendPrediction.anomaly_score + 0.1],
+          severity: frontendPrediction.risk_level,
+          timestamp: frontendPrediction.timestamp,
+          confidence: frontendPrediction.anomaly_confidence,
+          contributing_parameters: frontendPrediction.contributing_parameters,
+          ml_prediction: frontendPrediction,
+        }];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('ML anomaly detection error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Detect anomalies using rule-based approach (original implementation)
+   */
+  detectAnomaliesRuleBased(model, historicalData = []) {
     const anomalies = [];
     
     if (historicalData.length < 3) {
@@ -316,6 +432,51 @@ export class AIIntegrationHooks {
    */
   setModelEndpoints(endpoints) {
     this.modelEndpoints = { ...this.modelEndpoints, ...endpoints };
+  }
+
+  /**
+   * Enable or disable ML backend integration
+   */
+  setMLBackendEnabled(enabled) {
+    this.useMLBackend = enabled;
+    console.log(`ML backend integration ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Check ML backend health
+   */
+  async checkMLBackendHealth() {
+    try {
+      const health = await mlApiService.checkHealth();
+      return {
+        healthy: health.status === 'healthy',
+        modelLoaded: health.model_loaded,
+        timestamp: health.timestamp,
+      };
+    } catch (error) {
+      console.error('ML backend health check failed:', error);
+      return {
+        healthy: false,
+        modelLoaded: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Get ML model information
+   */
+  async getMLModelInfo() {
+    try {
+      const modelInfo = await mlApiService.getModelInfo();
+      return modelInfo;
+    } catch (error) {
+      console.error('Get ML model info failed:', error);
+      return {
+        model_loaded: false,
+        error: error.message,
+      };
+    }
   }
 }
 

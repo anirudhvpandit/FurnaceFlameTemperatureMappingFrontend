@@ -13,7 +13,7 @@
 
 import { useState, useEffect } from "react";
 import { useFurnaceStore } from "../state/FurnaceStore";
-import { runAIAnalysis } from "../utils/aiIntegration";
+import { runAIAnalysis, aiHooks } from "../utils/aiIntegration";
 import { panelStyles as S } from "./panelStyles";
 
 export default function AIAnalysisPanel({ model }) {
@@ -25,6 +25,9 @@ export default function AIAnalysisPanel({ model }) {
   } = useFurnaceStore();
   
   const [isRunning, setIsRunning] = useState(false);
+  const [mlBackendEnabled, setMLBackendEnabled] = useState(true);
+  const [mlBackendStatus, setMLBackendStatus] = useState({ healthy: false, modelLoaded: false });
+  const [showMLSettings, setShowMLSettings] = useState(false);
   
   // Add CSS animations for enhanced UI effects
   useEffect(() => {
@@ -48,6 +51,49 @@ export default function AIAnalysisPanel({ model }) {
       };
     }
   }, []);
+
+  // Check ML backend status on mount
+  useEffect(() => {
+    const checkMLStatus = async () => {
+      try {
+        const status = await aiHooks.checkMLBackendHealth();
+        setMLBackendStatus(status);
+        
+        // If ML backend is not healthy, disable it
+        if (!status.healthy) {
+          setMLBackendEnabled(false);
+          aiHooks.setMLBackendEnabled(false);
+        }
+      } catch (error) {
+        console.warn('ML backend status check failed:', error);
+        setMLBackendStatus({ healthy: false, modelLoaded: false, error: error.message });
+        setMLBackendEnabled(false);
+        aiHooks.setMLBackendEnabled(false);
+      }
+    };
+
+    checkMLStatus();
+  }, []);
+
+  // Toggle ML backend usage
+  const toggleMLBackend = async () => {
+    const newEnabled = !mlBackendEnabled;
+    setMLBackendEnabled(newEnabled);
+    aiHooks.setMLBackendEnabled(newEnabled);
+    
+    if (newEnabled) {
+      // Re-check status when enabling
+      try {
+        const status = await aiHooks.checkMLBackendHealth();
+        setMLBackendStatus(status);
+        if (!status.healthy) {
+          console.warn('ML backend is not healthy, but enabling anyway');
+        }
+      } catch (error) {
+        console.warn('ML backend status check failed:', error);
+      }
+    }
+  };
   
   /**
    * Executes comprehensive AI analysis with multiple analysis modules
@@ -81,6 +127,15 @@ export default function AIAnalysisPanel({ model }) {
   return (
     <div style={S.section}>
       <div style={S.sectionLabel}>AI ANALYSIS</div>
+      
+      <MLBackendStatus 
+        status={mlBackendStatus}
+        enabled={mlBackendEnabled}
+        onToggle={toggleMLBackend}
+        onShowSettings={() => setShowMLSettings(!showMLSettings)}
+      />
+      
+      {showMLSettings && <MLBackendSettings />}
       
       <AnalysisButton 
         isRunning={isRunning} 
@@ -411,6 +466,81 @@ function HelperText() {
   );
 }
 
+/**
+ * ML Backend Status Indicator
+ */
+function MLBackendStatus({ status, enabled, onToggle, onShowSettings }) {
+  const getStatusColor = () => {
+    if (!enabled) return '#9ca3af'; // Gray when disabled
+    if (status.healthy && status.modelLoaded) return '#22c55e'; // Green when healthy and loaded
+    if (status.healthy) return '#f59e0b'; // Amber when healthy but no model
+    return '#ef4444'; // Red when unhealthy
+  };
+
+  const getStatusText = () => {
+    if (!enabled) return 'ML Backend: Disabled';
+    if (status.healthy && status.modelLoaded) return 'ML Backend: Active';
+    if (status.healthy) return 'ML Backend: No Model';
+    return 'ML Backend: Offline';
+  };
+
+  return (
+    <div style={{
+      ...styles.mlStatusContainer,
+      borderColor: getStatusColor()
+    }}>
+      <div style={styles.mlStatusHeader}>
+        <span style={{ ...styles.mlStatusText, color: getStatusColor() }}>
+          {getStatusText()}
+        </span>
+        <button 
+          onClick={onToggle}
+          style={styles.mlToggleBtn}
+          title={enabled ? 'Disable ML Backend' : 'Enable ML Backend'}
+        >
+          {enabled ? '🔗' : '🔌'}
+        </button>
+        <button 
+          onClick={onShowSettings}
+          style={styles.mlSettingsBtn}
+          title="ML Settings"
+        >
+          ⚙️
+        </button>
+      </div>
+      {enabled && !status.healthy && status.error && (
+        <div style={styles.mlStatusError}>
+          {status.error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * ML Backend Settings Panel
+ */
+function MLBackendSettings() {
+  return (
+    <div style={styles.mlSettingsPanel}>
+      <div style={styles.settingsTitle}>ML Backend Configuration</div>
+      <div style={styles.settingsItem}>
+        <span style={styles.settingsLabel}>API URL:</span>
+        <span style={styles.settingsValue}>
+          {import.meta.env.VITE_ML_API_URL || 'http://localhost:8000'}
+        </span>
+      </div>
+      <div style={styles.settingsItem}>
+        <span style={styles.settingsLabel}>Model Status:</span>
+        <span style={styles.settingsValue}>Check via health endpoint</span>
+      </div>
+      <div style={styles.settingsNote}>
+        Configure ML backend URL in .env file as VITE_ML_API_URL
+      </div>
+    </div>
+  );
+}
+
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
@@ -729,6 +859,87 @@ const styles = {
     borderRadius: "4px",
     textTransform: "uppercase",
     letterSpacing: "0.5px"
+  },
+  
+  // ML Backend Status
+  mlStatusContainer: {
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid",
+    marginBottom: "12px",
+    background: "rgba(0, 0, 0, 0.2)",
+    backdropFilter: "blur(8px)"
+  },
+  mlStatusHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "8px"
+  },
+  mlStatusText: {
+    fontSize: "11px",
+    fontWeight: 600,
+    letterSpacing: "0.5px"
+  },
+  mlToggleBtn: {
+    background: "rgba(255, 255, 255, 0.1)",
+    border: "none",
+    borderRadius: "4px",
+    padding: "4px 8px",
+    cursor: "pointer",
+    fontSize: "12px",
+    transition: "all 0.2s ease"
+  },
+  mlSettingsBtn: {
+    background: "rgba(255, 255, 255, 0.1)",
+    border: "none",
+    borderRadius: "4px",
+    padding: "4px 8px",
+    cursor: "pointer",
+    fontSize: "12px",
+    transition: "all 0.2s ease"
+  },
+  mlStatusError: {
+    marginTop: "8px",
+    fontSize: "10px",
+    color: "#fca5a5",
+    fontFamily: "Inter",
+    fontWeight: 500
+  },
+  
+  // ML Settings Panel
+  mlSettingsPanel: {
+    padding: "12px",
+    borderRadius: "8px",
+    marginBottom: "12px",
+    background: "rgba(0, 0, 0, 0.3)",
+    border: "1px solid rgba(255, 255, 255, 0.1)"
+  },
+  settingsTitle: {
+    color: "#fff",
+    fontSize: "12px",
+    fontWeight: 700,
+    marginBottom: "8px"
+  },
+  settingsItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "6px",
+    fontSize: "11px"
+  },
+  settingsLabel: {
+    color: "rgba(200, 220, 255, 0.7)",
+    fontWeight: 500
+  },
+  settingsValue: {
+    color: "rgba(200, 220, 255, 0.9)",
+    fontFamily: "monospace"
+  },
+  settingsNote: {
+    marginTop: "8px",
+    fontSize: "10px",
+    color: "rgba(200, 220, 255, 0.5)",
+    fontStyle: "italic"
   },
   severityBadge: {
     fontSize: "10px",

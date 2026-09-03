@@ -354,12 +354,12 @@ function BurnerInspector({ burner }) {
             <MetricCard
               icon={<IconLayers />}
               label="COAL FLOW"
-              value={burner.mill.coalFlowTph != null ? `${burner.mill.coalFlowTph.toFixed(1)} TPH` : "—"}
+              value={burner.mill.coalFlowTph != null ? `${Number(burner.mill.coalFlowTph).toFixed(1)} TPH` : "—"}
             />
             <MetricCard
               icon={<IconWind />}
               label="PA FLOW"
-              value={burner.mill.paFlowTph != null ? `${burner.mill.paFlowTph.toFixed(1)} TPH` : "—"}
+              value={burner.mill.paFlowTph != null ? `${Number(burner.mill.paFlowTph).toFixed(1)} TPH` : "—"}
             />
           </div>
         </div>

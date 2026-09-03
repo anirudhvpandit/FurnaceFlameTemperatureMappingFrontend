@@ -18,11 +18,11 @@ import { useFurnaceStore } from "../state/FurnaceStore";
  *  • Optimized rendering with performance improvements
  */
 
-export default function HeatmapFloor({ model }) {
+export default function HeatmapFloor({ model, isFocusedView = false }) {
   const { state } = useFurnaceStore();
   const pointsRef = useRef();
   const materialRef = useRef();
-
+  
   const { positions, colors, sizes, intensities } = useMemo(() => {
     const { width, depth } = model.dimensions;
     const halfW = width / 2;
@@ -130,6 +130,10 @@ export default function HeatmapFloor({ model }) {
       materialRef.current.size = sizeBase + Math.sin(time * 2) * sizeIntensity;
     }
   });
+
+  // This must be after every hook so changing view modes never changes the
+  // component's hook order.
+  if (isFocusedView) return null;
 
   return (
     <points ref={pointsRef} geometry={geometry}>

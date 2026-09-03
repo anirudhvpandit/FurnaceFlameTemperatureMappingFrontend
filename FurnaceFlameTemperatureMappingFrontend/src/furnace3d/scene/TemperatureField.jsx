@@ -17,10 +17,15 @@ import { temperatureStatusLabel } from "../utils/temperatureScale";
  *  • Professional industrial design aesthetic
  */
 
-export default function TemperatureField({ model }) {
+export default function TemperatureField({ model, isFocusedView = false }) {
   const { state } = useFurnaceStore();
-  if (!state.showTemperatureLabels) return null;
+  // Hide temperature field in focused view (CAT scan mode)
+  const shouldShow = state.showTemperatureLabels && !isFocusedView;
+  return shouldShow ? <TemperatureFieldContent model={model} /> : null;
+}
 
+function TemperatureFieldContent({ model }) {
+  const { state } = useFurnaceStore();
   return (
     <group>
       {model.layers.map((layer) => {

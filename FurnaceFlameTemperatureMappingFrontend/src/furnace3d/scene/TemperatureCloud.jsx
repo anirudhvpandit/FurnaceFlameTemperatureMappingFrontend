@@ -32,11 +32,11 @@ function noise(x, y, z, time) {
   return Math.sin(x * 0.5 + time) * Math.cos(y * 0.3 + time * 0.7) * Math.sin(z * 0.4 + time * 0.5);
 }
 
-export default function TemperatureCloud({ model }) {
+export default function TemperatureCloud({ model, isFocusedView = false }) {
   const cloudRef = useRef();
   const materialRef = useRef();
   const { state } = useFurnaceStore();
-
+  
   const { positions, colors, sizes, velocities, originalPositions } = useMemo(() => {
     const { width, depth, height } = model.dimensions;
     const allTemps = model.layers.flatMap((l) =>
@@ -201,6 +201,9 @@ export default function TemperatureCloud({ model }) {
       materialRef.current.size = sizeBase + Math.sin(time * 1.5) * sizeIntensity;
     }
   });
+
+  // Do not return before hooks: Focused View can be toggled at runtime.
+  if (isFocusedView) return null;
 
   return (
     <points ref={cloudRef} geometry={geometry}>

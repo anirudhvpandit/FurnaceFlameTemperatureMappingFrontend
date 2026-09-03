@@ -83,6 +83,15 @@ const createInitialState = () => ({
   
   // Lighting & materials
   lightingPreset: "warm",
+  
+  // Focused cross-section view (CAT scan mode)
+  focusedLayerId: null,
+  focusedBurnerId: null,
+  focusedObjectType: null, // 'layer' or 'burner'
+  isFocusedView: false,
+  
+  // CT Scan Mode (slice only, hide everything else) - DISABLED temporarily to debug shader issues
+  ctScanMode: false,
 });
 
 const initialState = createInitialState();
@@ -152,6 +161,15 @@ const ACTION_TYPES = {
   
   // Lighting
   SET_LIGHTING_PRESET: 'SET_LIGHTING_PRESET',
+  
+  // Focused cross-section view (CAT scan mode)
+  SET_FOCUSED_LAYER: 'SET_FOCUSED_LAYER',
+  SET_FOCUSED_BURNER: 'SET_FOCUSED_BURNER',
+  CLEAR_FOCUSED_LAYER: 'CLEAR_FOCUSED_LAYER',
+  TOGGLE_FOCUSED_VIEW: 'TOGGLE_FOCUSED_VIEW',
+  
+  // CT Scan Mode
+  SET_CT_SCAN_MODE: 'SET_CT_SCAN_MODE',
 };
 
 // ============================================================================
@@ -401,6 +419,55 @@ function reducer(state, action) {
     case ACTION_TYPES.SET_LIGHTING_PRESET:
       return { ...state, lightingPreset: action.preset };
       
+    // Focused cross-section view (CAT scan mode)
+    case ACTION_TYPES.SET_FOCUSED_LAYER:
+      return { 
+        ...state, 
+        focusedLayerId: action.layerId, 
+        focusedBurnerId: null,
+        focusedObjectType: 'layer',
+        isFocusedView: true,
+        sectionalView: "focused_section"
+      };
+
+    case ACTION_TYPES.SET_FOCUSED_BURNER:
+      return {
+        ...state,
+        focusedBurnerId: action.burnerId,
+        focusedLayerId: null,
+        focusedObjectType: 'burner',
+        isFocusedView: true,
+        sectionalView: "focused_section"
+      };
+      
+    case ACTION_TYPES.CLEAR_FOCUSED_LAYER:
+      return { 
+        ...state, 
+        focusedLayerId: null, 
+        focusedBurnerId: null,
+        focusedObjectType: null,
+        isFocusedView: false,
+        sectionalView: "full"
+      };
+      
+    case ACTION_TYPES.TOGGLE_FOCUSED_VIEW:
+      return { 
+        ...state, 
+        isFocusedView: !state.isFocusedView,
+        sectionalView: !state.isFocusedView ? "focused_section" : "full"
+      };
+      
+    case ACTION_TYPES.SET_CT_SCAN_MODE:
+      return { 
+        ...state, 
+        ctScanMode: action.enabled,
+        multiClipEnabled: action.enabled,
+        sectionalView: action.enabled ? "section" : "full",
+        focusedLayerId: null,
+        isFocusedView: false,
+        focusTarget: null
+      };
+      
     default:
       console.warn(`Unknown action type: ${action.type}`);
       return state;
@@ -482,6 +549,15 @@ export function FurnaceStoreProvider({ children }) {
     
     // Lighting
     setLightingPreset: (preset) => dispatch(createAction(ACTION_TYPES.SET_LIGHTING_PRESET, { preset })),
+    
+    // Focused cross-section view (CAT scan mode)
+    setFocusedLayer: (layerId) => dispatch(createAction(ACTION_TYPES.SET_FOCUSED_LAYER, { layerId })),
+    setFocusedBurner: (burnerId) => dispatch(createAction(ACTION_TYPES.SET_FOCUSED_BURNER, { burnerId })),
+    clearFocusedLayer: () => dispatch(createAction(ACTION_TYPES.CLEAR_FOCUSED_LAYER)),
+    toggleFocusedView: () => dispatch(createAction(ACTION_TYPES.TOGGLE_FOCUSED_VIEW)),
+    
+    // CT Scan Mode
+    setCTScanMode: (enabled) => dispatch(createAction(ACTION_TYPES.SET_CT_SCAN_MODE, { enabled })),
   }), []);
   
   const value = useMemo(() => ({ state, ...actions }), [state, actions]);

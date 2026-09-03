@@ -1,6 +1,6 @@
 // src/furnace3d/scene/FurnaceScene.jsx
-import { Suspense, useRef, useEffect, forwardRef, useImperativeHandle, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useRef, useEffect, forwardRef, useImperativeHandle, useState, useMemo } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import FurnaceShell from "./FurnaceShell";
@@ -34,6 +34,37 @@ function DeselectOnMiss() {
       <boxGeometry args={[0.001, 0.001, 0.001]} />
     </mesh>
   );
+}
+
+/**
+ * Camera animation component for smooth transitions
+ */
+function CameraAnimator({ targetPositionRef, targetLookAtRef, controlsRef }) {
+  useFrame(() => {
+    if (!controlsRef.current) return;
+    
+    const targetPosition = targetPositionRef.current;
+    const targetLookAt = targetLookAtRef.current;
+    
+    if (!targetPosition || !targetLookAt) return;
+    
+    const camera = controlsRef.current.object;
+    const target = controlsRef.current.target;
+    
+    // Smoothly interpolate camera position
+    camera.position.lerp(targetPosition, 0.05);
+    target.lerp(targetLookAt, 0.05);
+    
+    controlsRef.current.update();
+    
+    // Clear targets when close enough to avoid continuous animation
+    if (camera.position.distanceTo(targetPosition) < 0.1) {
+      targetPositionRef.current = null;
+      targetLookAtRef.current = null;
+    }
+  });
+  
+  return null;
 }
 
 /**
@@ -90,6 +121,8 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
   const sceneRef = useRef();
   const [isLoading, setIsLoading] = useState(true);
   const { state, setModel } = useFurnaceStore();
+  const targetPositionRef = useRef(null);
+  const targetLookAtRef = useRef(null);
 
   // Add loading animation styles
   useEffect(() => {
@@ -164,22 +197,67 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
 
   // Enhanced focus target with smooth transitions
   useEffect(() => {
-    if (!controlsRef.current || !state.focusTarget) return;
-    
-    const target = state.focusTarget;
-    let pos = [0, 0, 0];
-    
-    if (target.type === "layer") {
-      const layer = model?.layers.find(l => l.id === target.id);
-      if (layer) pos = [0, layer.z, 0];
-    } else if (target.type === "burner") {
-      const burner = model?.layers.flatMap(l => l.burners).find(b => b.id === target.id);
-      if (burner) pos = [burner.position.x, burner.position.z, burner.position.y];
+    if (controlsRef.current && state.focusTarget && model) {
+      const target = state.focusTarget;
+      let pos = [0, 0, 0];
+      
+      if (target.type === "layer") {
+        const layer = model.layers.find(l => l.id === target.id);
+        if (layer) pos = [0, layer.z, 0];
+      } else if (target.type === "burner") {
+        const burner = model.layers.flatMap(l => l.burners).find(b => b.id === target.id);
+        if (burner) pos = [burner.position.x, burner.position.z, burner.position.y];
+      }
+      
+      controlsRef.current.target.set(pos[0], pos[1], pos[2]);
+      controlsRef.current.update();
     }
-    
-    controlsRef.current.target.set(pos[0], pos[1], pos[2]);
-    controlsRef.current.update();
   }, [state.focusTarget, model]);
+
+  // Camera positioning for CT scan view and focused cross-section view
+  useEffect(() => {
+    if (controlsRef.current && model) {
+      if (state.ctScanMode) {
+        const controls = controlsRef.current;
+        const currentDistance = controls.object.position.distanceTo(controls.target);
+        const centerY = model.dimensions.height / 2;
+        const activeAxis = state.clipPlanes?.x?.enabled
+          ? "x"
+          : state.clipPlanes?.y?.enabled
+            ? "y"
+            : "z";
+        const camPos = activeAxis === "x"
+          ? new THREE.Vector3(currentDistance, centerY, 0)
+          : activeAxis === "y"
+            ? new THREE.Vector3(0, currentDistance, 0)
+            : new THREE.Vector3(0, centerY, currentDistance);
+        targetPositionRef.current = camPos;
+        targetLookAtRef.current = new THREE.Vector3(0, centerY, 0);
+        return;
+      }
+
+      const { width, depth, height } = model.dimensions;
+      let camPos = null;
+      let lookAt = null;
+
+      if (state.isFocusedView && state.focusedLayerId) {
+        // Focusing is a visibility operation only. Preserve the user's current
+        // camera position instead of zooming or rotating toward the layer.
+        return;
+      }
+      // Default view
+      else {
+        const camDist = Math.max(width, depth, height) * 1.6;
+        camPos = new THREE.Vector3(camDist, camDist * 0.7, camDist);
+        lookAt = new THREE.Vector3(0, height / 2, 0);
+      }
+
+      if (camPos && lookAt) {
+        targetPositionRef.current = camPos;
+        targetLookAtRef.current = lookAt;
+      }
+    }
+  }, [state.ctScanMode, state.clipPlanes, state.isFocusedView, state.focusedLayerId, model]);
 
   // Loading state management
   useEffect(() => {
@@ -189,15 +267,20 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
     }
   }, [model]);
 
-  if (!model) return null;
+  // Use useMemo to prevent recalculating dimensions unnecessarily
+  const dimensions = useMemo(() => {
+    if (!model) return null;
+    return model.dimensions;
+  }, [model]);
   
-  const { width, depth, height } = model.dimensions;
+  const { width, depth, height } = dimensions || { width: 1, depth: 1, height: 1 };
   const camDist = Math.max(width, depth, height) * 1.6;
   const comparisonModel = state.comparisonModel;
 
   return (
     <>
       {isLoading && <SceneLoadingOverlay />}
+      {model ? (
       <Canvas
         ref={sceneRef}
         dpr={[1, 2]}
@@ -210,7 +293,7 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
         }}
         onCreated={(three) => {
           const gl = three.gl;
-          gl.localClippingEnabled = true;
+          gl.localClippingEnabled = false;
           gl.shadowMap.enabled = true;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
           gl.outputColorSpace = THREE.SRGBColorSpace;
@@ -225,48 +308,68 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
         }}
       >
         {/* Enhanced environment for realistic reflections */}
-        <Environment preset="warehouse" />
+        {!state.ctScanMode && <Environment preset="warehouse" />}
         
         <SceneLighting />
         
         <Suspense fallback={null}>
-          <FurnaceShell dimensions={model.dimensions} receiveShadow castShadow />
-          <FurnaceLayers model={model} receiveShadow castShadow />
-          <BurnerSystem model={model} />
-          <TemperatureField model={model} />
-          <TemperatureCloud model={model} />
-          <FlowArrows model={model} />
-          <HeatmapFloor model={model} />
-          <IndustrialEnvironment dimensions={model.dimensions} receiveShadow castShadow />
-          {state.showAIOverlay && <AIPrediction model={model} />}
+          {state.ctScanMode ? (
+            <FurnaceLayers model={model} receiveShadow castShadow />
+          ) : state.isFocusedView ? (
+            <>
+              <FurnaceLayers model={model} receiveShadow castShadow />
+              {state.focusedObjectType === 'burner' && <BurnerSystem model={model} />}
+            </>
+          ) : (
+            <>
+              <FurnaceLayers model={model} receiveShadow castShadow />
+              <FurnaceShell dimensions={model.dimensions} receiveShadow castShadow isFocusedView={state.isFocusedView} />
+              <BurnerSystem model={model} />
+              <TemperatureField model={model} isFocusedView={state.isFocusedView} />
+              <TemperatureCloud model={model} isFocusedView={state.isFocusedView} />
+              <FlowArrows model={model} isFocusedView={state.isFocusedView} />
+              <HeatmapFloor model={model} isFocusedView={state.isFocusedView} />
+              <IndustrialEnvironment dimensions={model.dimensions} receiveShadow castShadow isFocusedView={state.isFocusedView} />
+              {state.showAIOverlay && <AIPrediction model={model} isFocusedView={state.isFocusedView} />}
+            </>
+          )}
           
           {/* Enhanced comparison mode */}
-          {comparisonModel && (
+          {comparisonModel && !state.ctScanMode && (
             <group position={[model.dimensions.width + 4, 0, 0]}>
               <ComparisonSeparator position={[-2, 0, 0]} />
-              <FurnaceShell dimensions={comparisonModel.dimensions} receiveShadow castShadow />
+              <FurnaceShell dimensions={comparisonModel.dimensions} receiveShadow castShadow isFocusedView={state.isFocusedView} />
               <FurnaceLayers model={comparisonModel} receiveShadow castShadow />
               <BurnerSystem model={comparisonModel} />
-              <TemperatureField model={comparisonModel} />
-              <TemperatureCloud model={comparisonModel} />
-              <FlowArrows model={comparisonModel} />
-              <HeatmapFloor model={comparisonModel} />
+              <TemperatureField model={comparisonModel} isFocusedView={state.isFocusedView} />
+              <TemperatureCloud model={comparisonModel} isFocusedView={state.isFocusedView} />
+              <FlowArrows model={comparisonModel} isFocusedView={state.isFocusedView} />
+              <HeatmapFloor model={comparisonModel} isFocusedView={state.isFocusedView} />
             </group>
           )}
         </Suspense>
         
         {/* Enhanced contact shadows */}
-        <ContactShadows 
-          position={[0, -0.5, 0]} 
-          opacity={0.6} 
-          scale={50} 
-          blur={4} 
-          far={25} 
-          resolution={1024} 
-          color="#1a202c" 
-        />
+        {!state.ctScanMode && (
+          <ContactShadows 
+            position={[0, -0.5, 0]} 
+            opacity={0.6} 
+            scale={50} 
+            blur={4} 
+            far={25} 
+            resolution={1024} 
+            color="#1a202c" 
+          />
+        )}
         
         <DeselectOnMiss />
+        
+        {/* Camera animator for smooth transitions */}
+        <CameraAnimator 
+          targetPositionRef={targetPositionRef}
+          targetLookAtRef={targetLookAtRef}
+          controlsRef={controlsRef}
+        />
         
         {/* Enhanced orbit controls with smooth damping */}
         <OrbitControls 
@@ -277,14 +380,15 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
           maxDistance={camDist * 3.5} 
           enableDamping 
           dampingFactor={0.05}
-          enablePan={true}
-          enableZoom={true}
+          enablePan={!state.ctScanMode}
+          enableZoom={!state.ctScanMode}
           minPolarAngle={Math.PI / 6}
           maxPolarAngle={Math.PI / 2}
           rotateSpeed={0.5}
           zoomSpeed={0.8}
         />
       </Canvas>
+      ) : null}
     </>
   );
 });

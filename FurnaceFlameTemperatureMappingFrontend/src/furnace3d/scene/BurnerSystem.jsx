@@ -64,6 +64,7 @@ function FocusHalo({ color, selected, hovered }) {
           opacity={selected ? 0.9 : 0.45}
           side={THREE.DoubleSide}
           depthWrite={false}
+              // clippingPlanes={[]}
         />
       </mesh>
       <mesh ref={outerRef} rotation={[Math.PI / 2, 0, 0]}>
@@ -74,6 +75,7 @@ function FocusHalo({ color, selected, hovered }) {
           opacity={0.2}
           side={THREE.DoubleSide}
           depthWrite={false}
+              // clippingPlanes={[]}
         />
       </mesh>
     </group>
@@ -129,9 +131,13 @@ function BurnerTooltip({ burner, effective, condition, statusColor, tempColor, s
   );
 }
 
-function Burner({ burner, layerVisible }) {
+function Burner({ burner, layerVisible, isFocused }) {
+  return layerVisible && isFocused ? <BurnerContent burner={burner} /> : null;
+}
+
+function BurnerContent({ burner }) {
   const effective = useEffectiveBurner(burner);
-  const { state, selectBurner, setHover, setFocus } = useFurnaceStore();
+  const { state, selectBurner, setHover, setFocus, setFocusedLayer, clearFocusedLayer } = useFurnaceStore();
   const ledRef = useRef();
 
   const isSelected = state.selection.type === "burner" && state.selection.id === burner.id;
@@ -175,14 +181,19 @@ function Burner({ burner, layerVisible }) {
     ledRef.current.material.emissiveIntensity = pulse;
   });
 
-  if (!layerVisible) return null;
-
   return (
     <group
       position={[burner.position.x, burner.position.z, burner.position.y]}
       rotation={[0, (-burner.angleDeg * Math.PI) / 180, (burner.tiltDeg * Math.PI) / 180]}
       onClick={(e) => { e.stopPropagation(); selectBurner(burner.id); }}
-      onDoubleClick={() => setFocus({ type: "burner", id: burner.id })}
+      onDoubleClick={(e) => { 
+        e.stopPropagation(); 
+        if (state.isFocusedView && state.focusedBurnerId === burner.id) {
+          clearFocusedLayer();
+        } else {
+          setFocusedBurner(burner.id);
+        }
+      }}
       onPointerOver={() => { document.body.style.cursor = "pointer"; setHover({ type: "burner", id: burner.id }); }}
       onPointerOut={() => { document.body.style.cursor = "auto"; setHover(null); }}
     >
@@ -300,6 +311,14 @@ function Burner({ burner, layerVisible }) {
         />
       )}
 
+      {isHovered && !alarmVisible && (
+        <Html position={[0, 2.2, 0]} style={{ pointerEvents: "none" }} occlude={false}>
+          <div style={styles.catScanHint}>
+            Double-click for CAT scan view
+          </div>
+        </Html>
+      )}
+
       <FocusHalo color={haloColor} selected={isSelected} hovered={isHovered} />
 
       {isHovered && !alarmVisible && (
@@ -319,12 +338,19 @@ function Burner({ burner, layerVisible }) {
   );
 }
 
-export default function BurnerSystem({ model }) {
+export default function BurnerSystem({ model, visible = true }) {
+  return visible ? <BurnerSystemContent model={model} /> : null;
+}
+
+function BurnerSystemContent({ model }) {
   const { state } = useFurnaceStore();
 
   useEffect(() => {
     ensureHudStyles();
   }, []);
+
+  // In focused view, only show the focused burner
+  const isFocusedView = state.isFocusedView && state.focusedObjectType === 'burner';
 
   const burnerPositions = useMemo(() => {
     if (!state.explodedView) return {};
@@ -356,11 +382,17 @@ export default function BurnerSystem({ model }) {
         return layer.burners.map((burner) => {
           const position = state.explodedView ? burnerPositions[burner.id] : burner.position;
           const adjustedBurner = position ? { ...burner, position } : burner;
+          
+          // In focused burner view, only show the focused burner
+          const isFocusedBurner = isFocusedView && state.focusedBurnerId === burner.id;
+          const shouldShow = isFocusedView ? isFocusedBurner : (layerVisible && !isolatedOut);
+          
           return (
             <Burner
               key={burner.id}
               burner={adjustedBurner}
-              layerVisible={layerVisible && !isolatedOut}
+              layerVisible={shouldShow}
+              isFocused={isFocusedBurner}
             />
           );
         });
@@ -473,5 +505,16 @@ const styles = {
     fontWeight: 600,
     letterSpacing: "0.04em",
     color: "rgba(180,210,255,0.5)",
+  },
+  catScanHint: {
+    fontSize: "9px",
+    color: "rgba(200,220,255,0.6)",
+    fontStyle: "italic",
+    textAlign: "center",
+    background: "rgba(15,23,42,0.8)",
+    padding: "4px 8px",
+    borderRadius: "6px",
+    border: "1px solid rgba(59,130,246,0.2)",
+    backdropFilter: "blur(8px)",
   },
 };

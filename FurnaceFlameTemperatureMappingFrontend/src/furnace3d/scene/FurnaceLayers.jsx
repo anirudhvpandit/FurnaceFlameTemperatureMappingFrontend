@@ -22,7 +22,7 @@ const LAYER_THICKNESS = 1.4;
  *  • Improved visual feedback for all interaction states.
  */
 export default function FurnaceLayers({ model }) {
-  const { state, selectLayer, setHover, setFocus } = useFurnaceStore();
+  const { state, selectLayer, setHover, setFocus, setFocusedLayer, clearFocusedLayer } = useFurnaceStore();
   const opacity = state.layerOpacity;
   const layerRefs = useRef({});
 
@@ -83,40 +83,99 @@ export default function FurnaceLayers({ model }) {
       {model.layers.map((layer) => {
         const visible = state.layerVisibility[layer.id] ?? true;
         if (!visible) return null;
+
+        const activeCtAxis = state.clipPlanes?.z?.enabled
+          ? "z"
+          : state.clipPlanes?.x?.enabled
+            ? "x"
+            : state.clipPlanes?.y?.enabled
+              ? "y"
+              : "z";
+        const ctOffset = state.clipPlanes?.[activeCtAxis]?.offset ?? 0.5;
+        const isCtSliceLayer = activeCtAxis !== "y" ||
+          Math.abs(layer.z - (model.dimensions.height / 2 - ctOffset * model.dimensions.height)) <= LAYER_THICKNESS;
+        if (state.ctScanMode && !isCtSliceLayer) return null;
         
         const isSelected = state.selection.type === "layer" && state.selection.id === layer.id;
         const isHovered = state.hoveredObject?.type === "layer" && state.hoveredObject?.id === layer.id;
         const isIsolatedOut = state.sectionalView === "isolated" && !isSelected;
+        const isFocused = state.focusedLayerId === layer.id && state.isFocusedView;
+
+        // A focused layer must be the only rendered elevation. Hiding only its
+        // fill material leaves child overlays (alarm cards and outlines) behind.
+        if (state.isFocusedView && state.focusedObjectType === "layer" && !isFocused) {
+          return null;
+        }
+        
+        // In burner-focused view, only show the layer containing the focused burner
+        if (state.isFocusedView && state.focusedObjectType === 'burner') {
+          const layerContainsFocusedBurner = layer.burners.some(b => b.id === state.focusedBurnerId);
+          if (!layerContainsFocusedBurner) return null;
+        }
+        
         const color = temperatureToColor(layer.temperature.avg, state.thresholds.alert, state.thresholds.warn);
 
         // Enhanced temperature-driven emissive intensity
         const tempNorm = layer.temperature.avg != null
           ? Math.min(1, Math.max(0, (layer.temperature.avg - 900) / 800))
           : 0;
-        const baseEmissiveIntensity = 0.15 + tempNorm * 0.35;
-        const emissiveIntensity = isSelected ? 0.6 : baseEmissiveIntensity;
+        // Keep the temperature field readable against the dark scene at all
+        // times. The previous values made a live layer look almost black until
+        // it was selected.
+        const baseEmissiveIntensity = 0.35 + tempNorm * 0.45;
+        const emissiveIntensity = isSelected ? 0.9 : baseEmissiveIntensity;
 
         // Enhanced opacity with smooth transitions
-        const targetOpacity = isIsolatedOut ? 0.03 : isSelected ? 0.7 : 0.25 * opacity;
+        let targetOpacity;
+        if (state.ctScanMode) {
+          targetOpacity = 0.95;
+        } else if (state.isFocusedView) {
+          targetOpacity = isFocused ? 1 : 0; // Focused View isolates the selected elevation
+        } else {
+          targetOpacity = isIsolatedOut ? 0.55 : isSelected ? 1 : Math.max(0.8, 0.9 * opacity);
+        }
 
         // Use exploded position if enabled, otherwise use original position
         const position = state.explodedView ? layerPositions[layer.id] : { x: 0, y: layer.z, z: 0 };
+        const ctPosition = state.ctScanMode
+          ? {
+              x: activeCtAxis === "x" ? model.dimensions.width / 2 - ctOffset * model.dimensions.width : 0,
+              y: activeCtAxis === "y" ? model.dimensions.height / 2 - ctOffset * model.dimensions.height : position.y,
+              z: activeCtAxis === "z" ? model.dimensions.depth / 2 - ctOffset * model.dimensions.depth : 0,
+            }
+          : position;
+        const sliceDimensions = state.ctScanMode
+          ? {
+              ...model.dimensions,
+              width: activeCtAxis === "x" ? 0.08 : model.dimensions.width,
+              depth: activeCtAxis === "z" ? 0.08 : model.dimensions.depth,
+            }
+          : model.dimensions;
 
         return (
           <EnhancedLayerMesh
             key={layer.id}
             ref={el => layerRefs.current[layer.id] = el}
             layer={layer}
-            position={position}
-            dimensions={model.dimensions}
+            position={ctPosition}
+            dimensions={sliceDimensions}
             color={color}
             opacity={targetOpacity}
             emissiveIntensity={emissiveIntensity}
             isSelected={isSelected}
             isHovered={isHovered}
+            isFocused={isFocused}
+            isCtScan={state.ctScanMode}
             onSelectLayer={selectLayer}
             onFocus={setFocus}
             onHover={setHover}
+            onDoubleClick={(layerId) => {
+              if (state.isFocusedView && state.focusedLayerId === layerId) {
+                clearFocusedLayer();
+              } else {
+                setFocusedLayer(layerId);
+              }
+            }}
           />
         );
       })}
@@ -128,32 +187,25 @@ export default function FurnaceLayers({ model }) {
 // ENHANCED LAYER MESH COMPONENT
 // ============================================================================
 
-function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissiveIntensity, isSelected, isHovered, onSelectLayer, onFocus, onHover, ref }) {
-  const meshRef = ref || useRef();
+function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissiveIntensity, isSelected, isHovered, isFocused, isCtScan, onSelectLayer, onFocus, onHover, onDoubleClick, ref }) {
+  const fallbackMeshRef = useRef();
+  const meshRef = ref || fallbackMeshRef;
   const materialRef = useRef();
 
   // Smooth material transitions
   useFrame(() => {
     if (materialRef.current) {
       // Smooth opacity transition
-      materialRef.current.opacity = THREE.MathUtils.lerp(
-        materialRef.current.opacity,
-        opacity,
-        0.1
-      );
+      materialRef.current.opacity = opacity;
       
       // Smooth emissive intensity transition
-      materialRef.current.emissiveIntensity = THREE.MathUtils.lerp(
-        materialRef.current.emissiveIntensity,
-        emissiveIntensity,
-        0.1
-      );
+      materialRef.current.emissiveIntensity = emissiveIntensity;
     }
   });
 
-  // Enhanced border glow for selected/hovered states
-  const borderColor = isSelected ? "#3b82f6" : isHovered ? "#22d3ee" : "transparent";
-  const borderWidth = isSelected ? 2 : isHovered ? 1 : 0;
+  // Enhanced border glow for selected/hovered/focused states
+  const borderColor = isFocused ? "#8b5cf6" : isSelected ? "#3b82f6" : isHovered ? "#22d3ee" : "transparent";
+  const borderWidth = isFocused ? 3 : isSelected ? 2 : isHovered ? 1 : 0;
 
   return (
     <mesh
@@ -162,7 +214,7 @@ function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissi
       castShadow
       receiveShadow
       onClick={(e) => { e.stopPropagation(); onSelectLayer(layer.id); }}
-      onDoubleClick={() => onFocus({ type: "layer", id: layer.id })}
+      onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(layer.id); }}
       onPointerOver={() => { 
         document.body.style.cursor = "pointer"; 
         onHover({ type: "layer", id: layer.id }); 
@@ -173,18 +225,33 @@ function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissi
       }}
     >
       <boxGeometry args={[dimensions.width * 1.04, LAYER_THICKNESS, dimensions.depth * 1.04]} />
-      <meshStandardMaterial
+      <meshBasicMaterial
         ref={materialRef}
         color={color}
-        transparent
+        transparent={opacity < 1}
         opacity={opacity}
-        emissive={color}
-        emissiveIntensity={emissiveIntensity}
-        envMapIntensity={1.2}
-        roughness={0.6}
-        metalness={0.3}
         side={THREE.DoubleSide}
+        depthWrite
+        toneMapped={false}
       />
+
+      {/* Persistent outline makes every elevation legible in the dark canvas,
+          even when it is not selected or hovered. */}
+      <lineSegments>
+        <edgesGeometry
+          args={[new THREE.BoxGeometry(
+            dimensions.width * 1.04,
+            LAYER_THICKNESS,
+            dimensions.depth * 1.04
+          )]}
+        />
+        <lineBasicMaterial
+          color={color}
+          transparent
+          opacity={isFocused ? 1 : 0.82}
+          depthTest={false}
+        />
+      </lineSegments>
       
       {/* Enhanced border effect for selection/hover */}
       {(isSelected || isHovered) && (
@@ -208,7 +275,7 @@ function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissi
       {/* Enhanced tooltip with beautiful styling */}
       {isHovered && !isSelected && layer.temperature.avg != null && (
         <Html position={[0, 0.8, 0]} style={{ pointerEvents: "none" }} occlude={false}>
-          <EnhancedLayerTooltip layer={layer} color={color} />
+          <EnhancedLayerTooltip layer={layer} color={color} isFocused={isFocused} />
         </Html>
       )}
       
@@ -221,7 +288,7 @@ function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissi
 // ENHANCED LAYER TOOLTIP COMPONENT
 // ============================================================================
 
-function EnhancedLayerTooltip({ layer, color }) {
+function EnhancedLayerTooltip({ layer, color, isFocused }) {
   const tempColor = getTemperatureColor(layer.temperature.avg);
   const statusIcon = getTemperatureStatusIcon(layer.temperature.avg);
   
@@ -244,6 +311,11 @@ function EnhancedLayerTooltip({ layer, color }) {
             {getTemperatureStatus(layer.temperature.avg)}
           </span>
         </div>
+        {!isFocused && (
+          <div style={styles.hintRow}>
+            <span style={styles.hintText}>Double-click for CAT scan view</span>
+          </div>
+        )}
       </div>
       <div style={{ ...styles.tooltipAccent, background: color }} />
     </div>
@@ -363,6 +435,17 @@ const styles = {
     padding: "2px 6px",
     borderRadius: "4px",
     background: "rgba(255, 255, 255, 0.1)"
+  },
+  hintRow: {
+    marginTop: "4px",
+    paddingTop: "4px",
+    borderTop: "1px solid rgba(255, 255, 255, 0.1)"
+  },
+  hintText: {
+    fontSize: "9px",
+    color: "rgba(200, 220, 255, 0.5)",
+    fontStyle: "italic",
+    textAlign: "center"
   },
   tooltipAccent: {
     position: "absolute",

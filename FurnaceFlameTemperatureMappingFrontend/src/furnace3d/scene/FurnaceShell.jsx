@@ -16,44 +16,17 @@ import { useFurnaceStore } from "../state/FurnaceStore";
  *  • Optimized rendering with progressive enhancement
  */
 
-export default function FurnaceShell({ dimensions }) {
+export default function FurnaceShell({ dimensions, visible = true, isFocusedView = false }) {
+  // Hide shell in focused view (CAT scan mode)
+  const shouldShow = visible && !isFocusedView;
+  return shouldShow ? <FurnaceShellContent dimensions={dimensions} /> : null;
+}
+
+function FurnaceShellContent({ dimensions }) {
   const { state } = useFurnaceStore();
   const { width, depth, height } = dimensions;
   const shellRef = useRef();
   const clippingIndicatorsRef = useRef([]);
-
-  const clippingPlanes = useMemo(() => {
-    const planes = [];
-
-    // Original single clipping plane for backward compatibility
-    if (state.sectionalView === "section" && !state.multiClipEnabled) {
-      const offset = (state.clipOffset || 0.5) * depth;
-      planes.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), depth / 2 - offset));
-    }
-
-    // Multi-clip planes for advanced sectional views
-    if (state.multiClipEnabled) {
-      // X-axis clipping plane
-      if (state.clipPlanes.x.enabled) {
-        const xOffset = (state.clipPlanes.x.offset || 0.5) * width;
-        planes.push(new THREE.Plane(new THREE.Vector3(-1, 0, 0), width / 2 - xOffset));
-      }
-
-      // Y-axis clipping plane (vertical)
-      if (state.clipPlanes.y.enabled) {
-        const yOffset = (state.clipPlanes.y.offset || 0.5) * height;
-        planes.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), height / 2 - yOffset));
-      }
-
-      // Z-axis clipping plane
-      if (state.clipPlanes.z.enabled) {
-        const zOffset = (state.clipPlanes.z.offset || 0.5) * depth;
-        planes.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), depth / 2 - zOffset));
-      }
-    }
-
-    return planes;
-  }, [state.sectionalView, state.multiClipEnabled, state.clipPlanes, width, depth, height, state.clipOffset]);
 
   // Calculate exploded view offset with smooth animation
   const explosionOffset = useMemo(() => {
@@ -105,7 +78,6 @@ export default function FurnaceShell({ dimensions }) {
           transparent
           opacity={shellOpacity}
           side={THREE.DoubleSide}
-          clippingPlanes={clippingPlanes}
           depthWrite={false}
           envMapIntensity={1.5}
         />
@@ -127,7 +99,6 @@ export default function FurnaceShell({ dimensions }) {
           transparent
           opacity={liningOpacity}
           side={THREE.DoubleSide}
-          clippingPlanes={clippingPlanes}
           depthWrite={false}
           envMapIntensity={0.8}
         />

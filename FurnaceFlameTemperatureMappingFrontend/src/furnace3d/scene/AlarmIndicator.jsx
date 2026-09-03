@@ -117,7 +117,17 @@ function sourceLabel(object, type) {
   return `Layer · ${elevation}`;
 }
 
-export default function AlarmIndicator({ object, type, temperature }) {
+export default function AlarmIndicator(props) {
+  const { state } = useFurnaceStore();
+  const alert = state.thresholds.alert;
+  const warn = state.thresholds.warn;
+  const severity = temperatureStatusLabel(props.temperature, alert, warn);
+
+  if (severity !== "CRITICAL" && severity !== "ELEVATED") return null;
+  return <AlarmIndicatorContent {...props} />;
+}
+
+function AlarmIndicatorContent({ object, type, temperature }) {
   const { state } = useFurnaceStore();
   const alert = state.thresholds.alert;
   const warn = state.thresholds.warn;
@@ -153,8 +163,6 @@ export default function AlarmIndicator({ object, type, temperature }) {
     if (label === "CRITICAL" || label === "ELEVATED") return label;
     return null;
   }, [temperature, alert, warn]);
-
-  if (severity == null || temperature == null) return null;
 
   const palette = SEVERITY[severity];
   const threshold = severity === "CRITICAL" ? alert : warn;

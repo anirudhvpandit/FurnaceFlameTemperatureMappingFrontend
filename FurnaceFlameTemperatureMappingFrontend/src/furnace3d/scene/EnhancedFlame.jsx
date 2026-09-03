@@ -350,6 +350,7 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
           depthWrite={false}
           blending={THREE.AdditiveBlending}
           toneMapped={false}
+          clippingPlanes={[]}
         />
       </mesh>
 
@@ -364,6 +365,7 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
           depthWrite={false}
           blending={THREE.AdditiveBlending}
           toneMapped={false}
+          clippingPlanes={[]}
         />
       </mesh>
 
@@ -378,6 +380,7 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
           depthWrite={false}
           toneMapped={false}
           side={THREE.DoubleSide}
+          clippingPlanes={[]}
         />
       </mesh>
 
@@ -392,6 +395,7 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
           depthWrite={false}
           toneMapped={false}
           side={THREE.DoubleSide}
+          clippingPlanes={[]}
         />
       </mesh>
       <mesh position={[0, -0.7, 0]}>
@@ -403,6 +407,7 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           toneMapped={false}
+          clippingPlanes={[]}
         />
       </mesh>
 
@@ -420,6 +425,7 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
           depthWrite={false}
           toneMapped={false}
           side={THREE.DoubleSide}
+          clippingPlanes={[]}
         />
       </mesh>
 
@@ -434,6 +440,7 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             toneMapped={false}
+            clippingPlanes={[]}
           />
         </mesh>
         <mesh>
@@ -445,6 +452,7 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             toneMapped={false}
+            clippingPlanes={[]}
           />
         </mesh>
       </group>
