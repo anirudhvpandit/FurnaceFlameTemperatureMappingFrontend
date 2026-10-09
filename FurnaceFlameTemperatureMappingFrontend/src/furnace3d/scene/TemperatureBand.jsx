@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
 import { temperatureToColor } from "../utils/temperatureScale";
 
 function layerTemperatureAt(layer, x, z) {
@@ -50,6 +51,7 @@ function getBuzzneckInset(y, height, width) {
 /** Smooth temperature volume between the elevation tiles, colored from the
  * measured corner values at each elevation. */
 export default function TemperatureBand({ model, thresholds }) {
+  const materialRef = useRef();
   const layers = useMemo(() => [...(model?.layers || [])]
     .filter((layer) => layer.temperature?.avg != null)
     .sort((a, b) => a.z - b.z), [model]);
@@ -140,16 +142,54 @@ export default function TemperatureBand({ model, thresholds }) {
     return { geometry, centerY: (extendedBottom + extendedTop) / 2 };
   }, [layers, model, thresholds]);
 
+  useFrame(({ clock }) => {
+    const shader = materialRef.current?.userData.flowShader;
+    if (shader) shader.uniforms.uFlowTime.value = clock.getElapsedTime();
+  });
+
   if (!band) return null;
   return (
     <mesh geometry={band.geometry} position={[0, band.centerY, 0]} renderOrder={0}>
       <meshBasicMaterial
+        ref={materialRef}
         vertexColors
         transparent={false}
         opacity={1}
         depthWrite
         side={THREE.DoubleSide}
         toneMapped={false}
+        onBeforeCompile={(shader) => {
+          shader.uniforms.uFlowTime = { value: 0 };
+          shader.uniforms.uFurnaceHeight = { value: model.dimensions.height };
+          shader.uniforms.uBandCenterY = { value: band.centerY };
+          shader.vertexShader = `
+            varying vec3 vFurnaceFlowPosition;
+            uniform float uBandCenterY;
+            ${shader.vertexShader}
+          `.replace(
+            "#include <begin_vertex>",
+            `#include <begin_vertex>
+             vFurnaceFlowPosition = transformed + vec3(0.0, uBandCenterY, 0.0);`
+          );
+          shader.fragmentShader = `
+            varying vec3 vFurnaceFlowPosition;
+            uniform float uFlowTime;
+            uniform float uFurnaceHeight;
+            ${shader.fragmentShader}
+          `.replace(
+            "#include <color_fragment>",
+            `#include <color_fragment>
+             float altitude = clamp(vFurnaceFlowPosition.y / uFurnaceHeight, 0.0, 1.0);
+             float weave = sin(vFurnaceFlowPosition.x * 0.28 + vFurnaceFlowPosition.z * 0.24
+                               + sin(altitude * 5.0 - uFlowTime * 0.9) * 0.8);
+             float currentA = 0.5 + 0.5 * sin(altitude * 16.0 - uFlowTime * 1.9 + weave * 1.1);
+             float currentB = 0.5 + 0.5 * sin(altitude * 14.0 - uFlowTime * 1.7 - weave * 1.1 + 2.1);
+             float gentleFlow = max(currentA, currentB);
+             diffuseColor.rgb *= 0.82 + gentleFlow * 0.32;`
+          );
+          if (materialRef.current) materialRef.current.userData.flowShader = shader;
+        }}
+        customProgramCacheKey={() => "temperature-gradient-gentle-flow-v1"}
       />
     </mesh>
   );
