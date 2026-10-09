@@ -33,12 +33,12 @@ import SuggestionPanel from "./panels/SuggestionPanel";
 import CombustionControls from "./panels/CombustionControls";
 import AIAnalysisPanel from "./panels/AIAnalysisPanel";
 import SectionalControls from "./panels/SectionalControls";
-import ElevationInfoPanel from "./panels/ElevationInfoPanel";
 import { connectWebSocket, disconnectWebSocket } from "./services/websocket";
 import { exportVideo } from "./utils/exportVideo";
 import { exportSimulationCSV, exportFurnaceJSON, exportScenarioJSON, exportTemperatureJSON } from "./utils/exportSimulation";
 import { exportSimplified3D, exportLayoutCAD } from "./utils/export3D";
 import { playAlertSound } from "./utils/soundAlerts";
+import { useCameraSync } from "./CameraSync";
 
 const BASE_URL = "https://abhiftm.com/api";
 
@@ -371,8 +371,12 @@ const EnhancedLoadingState = () => (
 // MAIN COMPONENT
 // ============================================================================
 
-function Furnace3DViewInner() {
+function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, enableCameraSync = true }) {
   const navigate = useNavigate();
+  const cameraSync = useCameraSync();
+  useEffect(() => {
+    cameraSync?.setSyncEnabled(enableCameraSync);
+  }, [cameraSync, enableCameraSync]);
   const {
     state,
     setSectionalView, setClipOffset, toggleAIOverlay,
@@ -432,7 +436,7 @@ function Furnace3DViewInner() {
   }, [setStoreModel]);
 
   useEffect(() => {
-    const runId = getLastSelectedRunId();
+    const runId = requestedRunId || getLastSelectedRunId();
     if (runId) loadRun(runId);
     else {
       const demo = buildDemoFurnaceModel();
@@ -442,7 +446,7 @@ function Furnace3DViewInner() {
       setLoading(false);
     }
     return () => disconnectWebSocket();
-  }, [loadRun, setStoreModel]);
+  }, [loadRun, requestedRunId, setStoreModel]);
 
   // Load historical runs (playback)
   useEffect(() => {
@@ -486,17 +490,22 @@ function Furnace3DViewInner() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state.isFocusedView, clearFocusedLayer]);
 
-  // Auto-switch to elevation tab when focused view is activated (mobile)
+  // Auto-switch to scene tab when focused view is activated (mobile)
   useEffect(() => {
     if (state.isFocusedView && isCompact) {
-      setMobileTab("elevation");
+      setMobileTab("scene");
     }
   }, [state.isFocusedView, isCompact]);
 
   const sceneEl = loading ? (
     <EnhancedLoadingState />
   ) : (
-    <FurnaceScene model={model} onResetCameraRef={resetCameraRef} />
+    <FurnaceScene
+      model={model}
+      onResetCameraRef={resetCameraRef}
+      onControlsReady={cameraSync?.registerControls}
+      onControlsRemoved={cameraSync?.unregisterControls}
+    />
   );
 
   const captureScreenshot = () => {
@@ -574,6 +583,16 @@ function Furnace3DViewInner() {
       };
     }
   }, []);
+
+  // When embedded in an FTM card, render only the interactive boiler canvas.
+  // The surrounding dashboard already supplies navigation and run controls.
+  if (embedded) {
+    return (
+      <div style={{ height: "760px", background: "#030814", borderRadius: "12px", overflow: "hidden" }}>
+        {sceneEl}
+      </div>
+    );
+  }
 
   return (
     <div style={styles.mainContainer}>
@@ -697,7 +716,7 @@ function Furnace3DViewInner() {
               {k:"playback",l:"PLAYBACK"},
               {k:"compare",l:"COMPARE"},
               {k:"suggest",l:"SUGGEST"}
-            ].map((t) => (
+            ].filter(t => t.k !== "elevation").map((t) => (
               <button 
                 key={t.k} 
                 onClick={() => setMobileTab(t.k)} 
@@ -715,7 +734,6 @@ function Furnace3DViewInner() {
             {mobileTab === "combustion" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><CombustionControls model={model} /></div>}
             {mobileTab === "ai" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><AIAnalysisPanel model={model} /></div>}
             {mobileTab === "sectional" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><SectionalControls model={model} /></div>}
-            {mobileTab === "elevation" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><ElevationInfoPanel model={model} /></div>}
             {mobileTab === "scene" && sceneEl}
             {mobileTab === "inspector" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><InspectionPanel model={model} /></div>}
             {mobileTab === "playback" && <div style={{ overflowY:"auto", maxHeight:"70vh" }}><PlaybackControls /></div>}
@@ -736,7 +754,6 @@ function Furnace3DViewInner() {
           </aside>
           <div style={{ position:"relative" }}>{sceneEl}</div>
           <aside style={{ ...styles.aside, ...styles.asideRight }}>
-            <ElevationInfoPanel model={model} />
             <InspectionPanel model={model} />
             <PlaybackControls />
             <ComparisonControls model={model} />
@@ -766,10 +783,10 @@ function Furnace3DViewInner() {
   );
 }
 
-export default function Furnace3DView() {
+export default function Furnace3DView({ embedded = false, runId = null, enableCameraSync = true }) {
   return (
     <FurnaceStoreProvider>
-      <Furnace3DViewInner />
+      <Furnace3DViewInner embedded={embedded} runId={runId} enableCameraSync={enableCameraSync} />
     </FurnaceStoreProvider>
   );
 }

@@ -204,3 +204,131 @@ export const SIMULATION_SCENARIOS = [
     overrides: null
   }
 ];
+
+// ============================================================================
+// PLANT-SPECIFIC BURNER CONFIGURATIONS
+// ============================================================================
+
+/**
+ * Plant-specific burner configurations.
+ * Each plant can have different burner positioning, geometry, and flame characteristics.
+ * These configurations allow the system to adapt to different industrial boiler designs.
+ */
+export const PLANT_BURNER_CONFIGS = {
+  default: {
+    id: "default",
+    name: "Standard Configuration",
+    description: "Default rectangular burner configuration for most plants",
+    sideBurners: {
+      enabled: true,
+      geometry: {
+        type: "rectangular",
+        width: 0.15,
+        height: 0.45, // Swapped: taller than wide for vertical orientation
+        depth: 0.35
+      },
+      position: {
+        verticalRatio: 0.4, // 40% up the furnace height
+        horizontalOffset: 0.02
+      },
+      flame: {
+        type: "rectangular",
+        width: 0.4,
+        height: 0.25,
+        depth: 2.5,
+        layers: 3,
+        animationIntensity: 1.0
+      },
+      temperature: 1200 // Default temperature in Celsius
+    }
+  },
+  plant_a: {
+    id: "plant_a",
+    name: "Plant A Configuration",
+    description: "Custom burner configuration for Plant A with larger burners",
+    sideBurners: {
+      enabled: true,
+      geometry: {
+        type: "rectangular",
+        width: 0.2,
+        height: 0.5, // Swapped: taller than wide for vertical orientation
+        depth: 0.4
+      },
+      position: {
+        verticalRatio: 0.35, // 35% up the furnace height
+        horizontalOffset: 0.03
+      },
+      flame: {
+        type: "rectangular",
+        width: 0.5,
+        height: 0.3,
+        depth: 3.0,
+        layers: 4,
+        animationIntensity: 1.2
+      },
+      temperature: 1250
+    }
+  },
+  plant_b: {
+    id: "plant_b",
+    name: "Plant B Configuration",
+    description: "Custom burner configuration for Plant B with compact burners",
+    sideBurners: {
+      enabled: true,
+      geometry: {
+        type: "rectangular",
+        width: 0.12,
+        height: 0.4, // Swapped: taller than wide for vertical orientation
+        depth: 0.3
+      },
+      position: {
+        verticalRatio: 0.45, // 45% up the furnace height
+        horizontalOffset: 0.015
+      },
+      flame: {
+        type: "rectangular",
+        width: 0.35,
+        height: 0.2,
+        depth: 2.2,
+        layers: 2,
+        animationIntensity: 0.9
+      },
+      temperature: 1150
+    }
+  },
+  plant_c: {
+    id: "plant_c",
+    name: "Plant C Configuration",
+    description: "Custom burner configuration for Plant C with high-temperature operation",
+    sideBurners: {
+      enabled: true,
+      geometry: {
+        type: "rectangular",
+        width: 0.18,
+        height: 0.48, // Swapped: taller than wide for vertical orientation
+        depth: 0.38
+      },
+      position: {
+        verticalRatio: 0.38,
+        horizontalOffset: 0.025
+      },
+      flame: {
+        type: "rectangular",
+        width: 0.45,
+        height: 0.28,
+        depth: 2.8,
+        layers: 3,
+        animationIntensity: 1.3
+      },
+      temperature: 1350
+    }
+  }
+};
+
+/**
+ * Get burner configuration for a specific plant.
+ * Falls back to default configuration if plant ID is not found.
+ */
+export function getBurnerConfig(plantId = "default") {
+  return PLANT_BURNER_CONFIGS[plantId] || PLANT_BURNER_CONFIGS.default;
+}

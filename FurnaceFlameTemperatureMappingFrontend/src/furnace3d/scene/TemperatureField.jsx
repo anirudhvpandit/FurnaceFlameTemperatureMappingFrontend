@@ -52,34 +52,7 @@ function TemperatureFieldContent({ model }) {
 // ============================================================================
 
 function EnhancedTemperatureLabel({ layer, position, thresholds }) {
-  const status = temperatureStatusLabel(layer.temperature.avg, thresholds.alert, thresholds.warn);
-  const { color, icon, background } = getTemperatureStyle(layer.temperature.avg, thresholds);
-
-  return (
-    <Html position={position} style={{ pointerEvents: "none" }} occlude={false}>
-      <div style={styles.labelContainer}>
-        <div style={{ ...styles.labelHeader, background }}>
-          <span style={styles.labelIcon}>{icon}</span>
-          <span style={styles.layerLabel}>{layer.label}M</span>
-        </div>
-        <div style={styles.labelContent}>
-          <div style={styles.temperatureRow}>
-            <span style={styles.temperatureLabel}>Temperature</span>
-            <span style={{ ...styles.temperatureValue, color }}>
-              {layer.temperature.avg.toFixed(0)}°C
-            </span>
-          </div>
-          <div style={styles.statusRow}>
-            <span style={styles.statusLabel}>Status</span>
-            <span style={{ ...styles.statusBadge, color, background }}>
-              {status}
-            </span>
-          </div>
-        </div>
-        <div style={{ ...styles.labelAccent, background: color }} />
-      </div>
-    </Html>
-  );
+  return null;
 }
 
 // ============================================================================

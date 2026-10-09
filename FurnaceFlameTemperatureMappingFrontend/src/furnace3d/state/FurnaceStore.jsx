@@ -14,7 +14,7 @@
  */
 
 import { createContext, useContext, useMemo, useReducer } from "react";
-import { DATA_MODES, SIMULATION_SCENARIOS, COMBUSTION_DEFAULTS } from "../config/furnaceConfig";
+import { DATA_MODES, SIMULATION_SCENARIOS, COMBUSTION_DEFAULTS, DEFAULT_TEMPERATURE_ALERT_C, DEFAULT_TEMPERATURE_WARN_C } from "../config/furnaceConfig";
 
 // ============================================================================
 // CONTEXT & PROVIDER SETUP
@@ -74,7 +74,7 @@ const createInitialState = () => ({
   historyIndex: -1,
   
   // User preferences
-  thresholds: { alert: 1350, warn: 1300 },
+  thresholds: { alert: DEFAULT_TEMPERATURE_ALERT_C, warn: DEFAULT_TEMPERATURE_WARN_C },
   suggestion: null,
   
   // Advanced combustion modeling
@@ -92,6 +92,9 @@ const createInitialState = () => ({
   
   // CT Scan Mode (slice only, hide everything else) - DISABLED temporarily to debug shader issues
   ctScanMode: false,
+  
+  // Plant-specific configuration
+  plantId: "default",
 });
 
 const initialState = createInitialState();
@@ -170,6 +173,9 @@ const ACTION_TYPES = {
   
   // CT Scan Mode
   SET_CT_SCAN_MODE: 'SET_CT_SCAN_MODE',
+  
+  // Plant configuration
+  SET_PLANT_ID: 'SET_PLANT_ID',
 };
 
 // ============================================================================
@@ -468,6 +474,9 @@ function reducer(state, action) {
         focusTarget: null
       };
       
+    case ACTION_TYPES.SET_PLANT_ID:
+      return { ...state, plantId: action.plantId };
+      
     default:
       console.warn(`Unknown action type: ${action.type}`);
       return state;
@@ -558,6 +567,9 @@ export function FurnaceStoreProvider({ children }) {
     
     // CT Scan Mode
     setCTScanMode: (enabled) => dispatch(createAction(ACTION_TYPES.SET_CT_SCAN_MODE, { enabled })),
+    
+    // Plant configuration
+    setPlantId: (plantId) => dispatch(createAction(ACTION_TYPES.SET_PLANT_ID, { plantId })),
   }), []);
   
   const value = useMemo(() => ({ state, ...actions }), [state, actions]);

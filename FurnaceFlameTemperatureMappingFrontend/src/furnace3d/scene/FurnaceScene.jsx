@@ -1,5 +1,5 @@
 // src/furnace3d/scene/FurnaceScene.jsx
-import { Suspense, useRef, useEffect, forwardRef, useImperativeHandle, useState, useMemo } from "react";
+import { Suspense, useRef, useEffect, forwardRef, useImperativeHandle, useState, useMemo, useCallback } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
 import * as THREE from "three";
@@ -7,13 +7,10 @@ import FurnaceShell from "./FurnaceShell";
 import FurnaceLayers from "./FurnaceLayers";
 import BurnerSystem from "./BurnerSystem";
 import TemperatureField from "./TemperatureField";
-import TemperatureCloud from "./TemperatureCloud";
-import FlowArrows from "./FlowArrows";
-import HeatmapFloor from "./HeatmapFloor";
 import AIPrediction from "./AIPrediction";
-import IndustrialEnvironment from "./IndustrialEnvironment";
 import { useFurnaceStore } from "../state/FurnaceStore";
 import SceneLighting from "./SceneLightening";
+import TemperatureColorLegend from "./TemperatureColorLegend";
 
 /**
  * Enhanced FurnaceScene with beautiful UI/UX improvements.
@@ -116,13 +113,24 @@ function ComparisonSeparator({ position }) {
   );
 }
 
-const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
+const FurnaceScene = forwardRef(({ model, onResetCameraRef, onControlsReady, onControlsRemoved, furnaceOffsets = [[0, 0], [0, 0]] }, ref) => {
   const controlsRef = useRef();
   const sceneRef = useRef();
   const [isLoading, setIsLoading] = useState(true);
   const { state, setModel } = useFurnaceStore();
   const targetPositionRef = useRef(null);
   const targetLookAtRef = useRef(null);
+  const registeredControlsRef = useRef(null);
+
+  // Register as soon as Drei creates the controls. A callback ref is important
+  // here because the controls live inside the Canvas renderer tree.
+  const setControlsRef = useCallback((controls) => {
+    const previous = registeredControlsRef.current;
+    if (previous && previous !== controls) onControlsRemoved?.(previous);
+    controlsRef.current = controls;
+    registeredControlsRef.current = controls;
+    if (controls) onControlsReady?.(controls);
+  }, [onControlsReady, onControlsRemoved]);
 
   // Add loading animation styles
   useEffect(() => {
@@ -247,8 +255,8 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
       }
       // Default view
       else {
-        const camDist = Math.max(width, depth, height) * 1.6;
-        camPos = new THREE.Vector3(camDist, camDist * 0.7, camDist);
+        const cameraDistance = Math.max(width * 1.3, depth * 1.3, height * 1.28);
+        camPos = new THREE.Vector3(width * 0.65, height / 2 + height * 0.12, cameraDistance);
         lookAt = new THREE.Vector3(0, height / 2, 0);
       }
 
@@ -284,7 +292,7 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
       <Canvas
         ref={sceneRef}
         dpr={[1, 2]}
-        camera={{ position: [camDist, camDist * 0.7, camDist], fov: 50 }}
+        camera={{ position: [width * 0.65, height / 2 + height * 0.12, Math.max(width * 1.3, depth * 1.3, height * 1.28)], fov: 50 }}
         gl={{ 
           antialias: true, 
           powerPreference: "high-performance", 
@@ -322,29 +330,27 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
             </>
           ) : (
             <>
+              <group position={[furnaceOffsets[0]?.[0] || 0, 0, furnaceOffsets[0]?.[1] || 0]}>
               <FurnaceLayers model={model} receiveShadow castShadow />
-              <FurnaceShell dimensions={model.dimensions} receiveShadow castShadow isFocusedView={state.isFocusedView} />
+              <FurnaceShell dimensions={model.dimensions} model={model} receiveShadow castShadow isFocusedView={state.isFocusedView} plantId={state.plantId || "default"} />
               <BurnerSystem model={model} />
-              <TemperatureField model={model} isFocusedView={state.isFocusedView} />
-              <TemperatureCloud model={model} isFocusedView={state.isFocusedView} />
-              <FlowArrows model={model} isFocusedView={state.isFocusedView} />
-              <HeatmapFloor model={model} isFocusedView={state.isFocusedView} />
-              <IndustrialEnvironment dimensions={model.dimensions} receiveShadow castShadow isFocusedView={state.isFocusedView} />
+              {(state.explodedView || state.sectionalView === "isolated" ||
+                model.layers.some((layer) => state.layerVisibility[layer.id] === false)) && (
+                <TemperatureField model={model} isFocusedView={state.isFocusedView} />
+              )}
               {state.showAIOverlay && <AIPrediction model={model} isFocusedView={state.isFocusedView} />}
+              </group>
             </>
           )}
           
           {/* Enhanced comparison mode */}
           {comparisonModel && !state.ctScanMode && (
-            <group position={[model.dimensions.width + 4, 0, 0]}>
+            <group position={[comparisonModel.dimensions.width + 4 + (furnaceOffsets[1]?.[0] || 0), 0, furnaceOffsets[1]?.[1] || 0]}>
               <ComparisonSeparator position={[-2, 0, 0]} />
-              <FurnaceShell dimensions={comparisonModel.dimensions} receiveShadow castShadow isFocusedView={state.isFocusedView} />
+              <FurnaceShell dimensions={comparisonModel.dimensions} model={comparisonModel} receiveShadow castShadow isFocusedView={state.isFocusedView} />
               <FurnaceLayers model={comparisonModel} receiveShadow castShadow />
               <BurnerSystem model={comparisonModel} />
               <TemperatureField model={comparisonModel} isFocusedView={state.isFocusedView} />
-              <TemperatureCloud model={comparisonModel} isFocusedView={state.isFocusedView} />
-              <FlowArrows model={comparisonModel} isFocusedView={state.isFocusedView} />
-              <HeatmapFloor model={comparisonModel} isFocusedView={state.isFocusedView} />
             </group>
           )}
         </Suspense>
@@ -363,6 +369,13 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
         )}
         
         <DeselectOnMiss />
+
+        {/* 3D temperature colour scale legend */}
+        {!state.ctScanMode && !state.isFocusedView && (
+          <TemperatureColorLegend />
+        )}
+
+
         
         {/* Camera animator for smooth transitions */}
         <CameraAnimator 
@@ -373,7 +386,7 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef }, ref) => {
         
         {/* Enhanced orbit controls with smooth damping */}
         <OrbitControls 
-          ref={controlsRef} 
+          ref={setControlsRef} 
           makeDefault 
           target={[0, height / 2, 0]} 
           minDistance={Math.max(width, depth) * 0.6} 

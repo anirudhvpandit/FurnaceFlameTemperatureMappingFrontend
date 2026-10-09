@@ -13,10 +13,10 @@ const STYLE_ID = "furnace-burner-hud-keyframes";
 const PORT_ANGLES = [0, 60, 120, 180, 240, 300];
 const BOLT_ANGLES = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5];
 
-const STEEL = "#5b6778";
-const STEEL_DARK = "#2a3340";
-const STEEL_DEEP = "#1a202c";
-const BRACKET = "#4a5568";
+const STEEL = "#ffffff"; // White for burners
+const STEEL_DARK = "#e0e0e0"; // Light gray for burner details
+const STEEL_DEEP = "#cccccc"; // Medium gray for burner ports
+const BRACKET = "#d0d0d0"; // Light gray for bracket
 
 function ensureHudStyles() {
   if (typeof document === "undefined" || document.getElementById(STYLE_ID)) return;
@@ -131,39 +131,40 @@ function BurnerTooltip({ burner, effective, condition, statusColor, tempColor, s
   );
 }
 
-function Burner({ burner, layerVisible, isFocused }) {
-  return layerVisible && isFocused ? <BurnerContent burner={burner} /> : null;
+function Burner({ burner, layerVisible, isFocused, model }) {
+  return layerVisible && isFocused ? <BurnerContent burner={burner} model={model} /> : null;
 }
 
-function BurnerContent({ burner }) {
+function BurnerContent({ burner, model }) {
   const effective = useEffectiveBurner(burner);
-  const { state, selectBurner, setHover, setFocus, setFocusedLayer, clearFocusedLayer } = useFurnaceStore();
+  const { state, selectBurner, setHover, setFocusedBurner, setFocusedLayer, clearFocusedLayer } = useFurnaceStore();
   const ledRef = useRef();
 
   const isSelected = state.selection.type === "burner" && state.selection.id === burner.id;
   const isHovered = state.hoveredObject?.type === "burner" && state.hoveredObject?.id === burner.id;
-  const isHot = (effective.temperature ?? 0) >= state.thresholds.alert;
-  const isElevated = (effective.temperature ?? 0) >= state.thresholds.warn;
+  const tempValue = effective.temperature ?? 1000; // Default to 1000°C for permanent flame
+  const isHot = tempValue >= state.thresholds.alert;
+  const isElevated = tempValue >= state.thresholds.warn;
   const disabled = !!effective.override?.disabled;
   const simulated = !!effective.simulated;
 
   const statusColor = BURNER_STATUS_COLOR[effective.status] || "#6b7280";
   const condition = temperatureStatusLabel(
-    effective.temperature,
+    tempValue,
     state.thresholds.alert,
     state.thresholds.warn
   );
   const tempColor = temperatureToColor(
-    effective.temperature,
+    tempValue,
     state.thresholds.alert,
     state.thresholds.warn
   );
 
   const nozzleEmissive = useMemo(() => {
-    if (disabled || effective.temperature == null) return 0.12;
-    const t = Math.min(1, Math.max(0, (effective.temperature - 900) / 800));
+    if (disabled) return 0.12;
+    const t = Math.min(1, Math.max(0, (tempValue - 900) / 800));
     return THREE.MathUtils.lerp(0.28, 1.05, t);
-  }, [effective.temperature, disabled]);
+  }, [tempValue, disabled]);
 
   const nozzleColorObj = useMemo(
     () => new THREE.Color(disabled ? STEEL_DARK : tempColor),
@@ -172,7 +173,7 @@ function BurnerContent({ burner }) {
   const statusColorObj = useMemo(() => new THREE.Color(statusColor), [statusColor]);
   const haloColor = isSelected ? "#22d3ee" : simulated ? "#a78bfa" : "#93c5fd";
 
-  const alarmVisible = effective.temperature != null && effective.temperature >= state.thresholds.warn;
+  const alarmVisible = tempValue >= state.thresholds.warn;
 
   useFrame(({ clock }) => {
     if (!ledRef.current) return;
@@ -181,10 +182,14 @@ function BurnerContent({ burner }) {
     ledRef.current.material.emissiveIntensity = pulse;
   });
 
+  // Calculate full elevation height based on layer index
+  const layerHeight = (model?.dimensions?.height || 42) / (model?.layers?.length || 1);
+  const burnerHeight = layerHeight * 1.0; // Cover 100% of the elevation section
+
   return (
     <group
       position={[burner.position.x, burner.position.z, burner.position.y]}
-      rotation={[0, (-burner.angleDeg * Math.PI) / 180, (burner.tiltDeg * Math.PI) / 180]}
+      rotation={[0, 0, 0]}
       onClick={(e) => { e.stopPropagation(); selectBurner(burner.id); }}
       onDoubleClick={(e) => { 
         e.stopPropagation(); 
@@ -197,92 +202,95 @@ function BurnerContent({ burner }) {
       onPointerOver={() => { document.body.style.cursor = "pointer"; setHover({ type: "burner", id: burner.id }); }}
       onPointerOut={() => { document.body.style.cursor = "auto"; setHover(null); }}
     >
-      {/* Rear mounting flange */}
-      <mesh position={[0, 0, -0.74]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.5, 0.5, 0.08, 32]} />
-        <meshStandardMaterial color={STEEL} metalness={0.88} roughness={0.28} envMapIntensity={1} />
-      </mesh>
-      {BOLT_ANGLES.map((angle) => (
-        <mesh
-          key={`bolt-${angle}`}
-          position={[Math.cos((angle * Math.PI) / 180) * 0.42, Math.sin((angle * Math.PI) / 180) * 0.42, -0.74]}
-          rotation={[Math.PI / 2, 0, 0]}
-          castShadow
-        >
-          <cylinderGeometry args={[0.035, 0.035, 0.1, 8]} />
-          <meshStandardMaterial color="#94a3b8" metalness={0.92} roughness={0.18} />
-        </mesh>
-      ))}
-
-      {/* Main housing */}
-      <mesh position={[0, 0, -0.32]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.33, 0.4, 0.76, 28]} />
-        <meshStandardMaterial color={STEEL} metalness={0.82} roughness={0.32} envMapIntensity={0.9} />
+      {/* Simple white opaque burner - main vertical box */}
+      <mesh position={[0, 0, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.8, burnerHeight, 0.8]} />
+        <meshStandardMaterial color="#ffffff" metalness={0.1} roughness={0.9} />
       </mesh>
 
-      {/* Housing collar */}
-      <mesh position={[0, 0, 0.08]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.36, 0.36, 0.1, 28]} />
-        <meshStandardMaterial color="#64748b" metalness={0.86} roughness={0.24} envMapIntensity={1.1} />
-      </mesh>
-
-      {/* Air intake ports */}
-      {PORT_ANGLES.map((angle) => (
-        <mesh
-          key={`port-${angle}`}
-          position={[Math.cos((angle * Math.PI) / 180) * 0.36, Math.sin((angle * Math.PI) / 180) * 0.36, -0.18]}
-          rotation={[Math.PI / 2, 0, 0]}
-          castShadow
-        >
-          <cylinderGeometry args={[0.055, 0.062, 0.18, 12]} />
-          <meshStandardMaterial color={STEEL_DEEP} metalness={0.9} roughness={0.2} envMapIntensity={0.95} />
-        </mesh>
-      ))}
-
-      {/* Heat-tinted nozzle */}
-      <mesh position={[0, 0, 0.28]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.18, 0.26, 0.38, 20]} />
+      {/* Status LED */}
+      <mesh ref={ledRef} position={[0, burnerHeight * 0.5, 0.5]}>
+        <boxGeometry args={[0.15, 0.15, 0.15]} />
         <meshStandardMaterial
-          color={nozzleColorObj}
-          emissive={nozzleColorObj}
-          emissiveIntensity={isSelected ? Math.max(nozzleEmissive, 0.85) : nozzleEmissive}
-          metalness={0.72}
-          roughness={0.38}
-          envMapIntensity={1.15}
+          color={statusColorObj}
+          emissive={statusColorObj}
+          emissiveIntensity={0.8}
+          metalness={0.1}
+          roughness={0.9}
         />
       </mesh>
 
-      {/* Throat / inner cone */}
-      <mesh position={[0, 0, 0.18]} rotation={[Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.14, 0.28, 16]} />
-        <meshStandardMaterial color={STEEL_DARK} metalness={0.55} roughness={0.55} />
+      {/* Yellow translucent flame on top */}
+      <EnhancedFlame
+        burner={burner}
+        temperature={tempValue}
+        isHot={isHot}
+        isSelected={isSelected}
+        rectangular={true}
+        flamePosition={[0, burnerHeight * 0.5, 0]}
+      />
+      {/* Static vertical rectangular burner housing covering full elevation */}
+      <mesh position={[0, 0, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.5, burnerHeight, 0.5]} />
+        <meshStandardMaterial color={STEEL} metalness={0.3} roughness={0.7} envMapIntensity={0.5} />
+      </mesh>
+
+      {/* Static vertical housing collar */}
+      <mesh position={[0, 0, 0.2]} castShadow>
+        <boxGeometry args={[0.55, burnerHeight * 0.9, 0.55]} />
+        <meshStandardMaterial color="#e8e8e8" metalness={0.3} roughness={0.7} envMapIntensity={0.5} />
+      </mesh>
+
+      {/* Static vertical air intake ports */}
+      {PORT_ANGLES.map((angle) => (
+        <mesh
+          key={`port-${angle}`}
+          position={[Math.cos((angle * Math.PI) / 180) * 0.35, Math.sin((angle * Math.PI) / 180) * (burnerHeight * 0.4), -0.1]}
+          castShadow
+        >
+          <boxGeometry args={[0.12, burnerHeight * 0.15, 0.12]} />
+          <meshStandardMaterial color={STEEL_DEEP} metalness={0.3} roughness={0.7} envMapIntensity={0.5} />
+        </mesh>
+      ))}
+
+      {/* Static vertical nozzle at top */}
+      <mesh position={[0, burnerHeight * 0.45, 0.15]} castShadow receiveShadow>
+        <boxGeometry args={[0.35, burnerHeight * 0.12, 0.35]} />
+        <meshStandardMaterial
+          color={STEEL_DARK}
+          metalness={0.3}
+          roughness={0.7}
+          envMapIntensity={0.5}
+        />
+      </mesh>
+
+      {/* Static vertical throat */}
+      <mesh position={[0, burnerHeight * 0.35, 0.12]}>
+        <boxGeometry args={[0.25, burnerHeight * 0.08, 0.25]} />
+        <meshStandardMaterial color={STEEL_DARK} metalness={0.3} roughness={0.7} />
       </mesh>
 
       {/* Closed iris when the burner is disabled */}
       {disabled && (
-        <mesh position={[0, 0, 0.42]} rotation={[Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.16, 20]} />
-          <meshStandardMaterial color="#0f172a" metalness={0.4} roughness={0.6} />
+        <mesh position={[0, burnerHeight * 0.5, 0.18]}>
+          <boxGeometry args={[0.08, burnerHeight * 0.06, 0.08]} />
+          <meshStandardMaterial color="#cccccc" metalness={0.3} roughness={0.7} />
         </mesh>
       )}
 
-      {/* Support bracket + feed pipe */}
-      <mesh position={[0, 0, -0.62]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.62, 0.1, 0.38]} />
-        <meshStandardMaterial color={BRACKET} metalness={0.8} roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 0.28, -0.55]} rotation={[0, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.045, 0.045, 0.28, 10]} />
-        <meshStandardMaterial color="#64748b" metalness={0.85} roughness={0.25} />
+      {/* Static vertical support bracket */}
+      <mesh position={[0, 0, -0.25]} castShadow receiveShadow>
+        <boxGeometry args={[0.5, burnerHeight * 0.95, 0.5]} />
+        <meshStandardMaterial color={BRACKET} metalness={0.3} roughness={0.7} />
       </mesh>
 
       {/* Control valve + status LED */}
-      <mesh position={[0, 0.46, -0.55]} castShadow>
-        <sphereGeometry args={[0.11, 16, 16]} />
-        <meshStandardMaterial color="#b91c1c" metalness={0.65} roughness={0.35} />
+      <mesh position={[0, burnerHeight * 0.1, -0.2]} castShadow>
+        <boxGeometry args={[0.2, 0.2, 0.2]} />
+        <meshStandardMaterial color="#ffffff" metalness={0.3} roughness={0.7} />
       </mesh>
-      <mesh ref={ledRef} position={[0, 0.58, -0.48]}>
-        <sphereGeometry args={[0.035, 12, 12]} />
+      <mesh ref={ledRef} position={[0, burnerHeight * 0.15, -0.15]}>
+        <boxGeometry args={[0.1, 0.1, 0.1]} />
         <meshStandardMaterial
           color={statusColorObj}
           emissive={statusColorObj}
@@ -292,24 +300,22 @@ function BurnerContent({ burner }) {
         />
       </mesh>
 
-      {!disabled && effective.temperature != null && (
-        <EnhancedFlame
-          burner={burner}
-          temperature={effective.temperature}
-          isHot={isHot}
-          isSelected={isSelected}
-        />
-      )}
+      <EnhancedFlame
+        burner={burner}
+        temperature={tempValue}
+        isHot={isHot}
+        isSelected={isSelected}
+        rectangular={true}
+        flamePosition={[0, burnerHeight * 0.6, 0]}
+      />
 
-      {(isHot || isElevated) && !disabled && (
-        <pointLight
-          position={[0, 0, 0.7]}
-          color={tempColor}
-          intensity={isHot ? 1.4 : 0.7}
-          distance={4.5}
-          decay={2}
-        />
-      )}
+      <pointLight
+        position={[0, 0, 0.7]}
+        color={tempColor}
+        intensity={disabled ? 0.3 : (isHot ? 1.4 : 0.7)}
+        distance={4.5}
+        decay={2}
+      />
 
       {isHovered && !alarmVisible && (
         <Html position={[0, 2.2, 0]} style={{ pointerEvents: "none" }} occlude={false}>
@@ -320,20 +326,7 @@ function BurnerContent({ burner }) {
       )}
 
       <FocusHalo color={haloColor} selected={isSelected} hovered={isHovered} />
-
-      {isHovered && !alarmVisible && (
-        <BurnerTooltip
-          burner={burner}
-          effective={effective}
-          condition={condition}
-          statusColor={statusColor}
-          tempColor={tempColor}
-          simulated={simulated}
-          disabled={disabled}
-        />
-      )}
-
-      <AlarmIndicator object={burner} type="burner" temperature={effective.temperature} />
+            <AlarmIndicator object={burner} type="burner" temperature={tempValue} />
     </group>
   );
 }
@@ -349,11 +342,13 @@ function BurnerSystemContent({ model }) {
     ensureHudStyles();
   }, []);
 
+  if (!model) return null;
+
   // In focused view, only show the focused burner
   const isFocusedView = state.isFocusedView && state.focusedObjectType === 'burner';
 
   const burnerPositions = useMemo(() => {
-    if (!state.explodedView) return {};
+    if (!state.explodedView || !model) return {};
 
     const factor = state.explosionFactor || 0.3;
     const positions = {};
@@ -372,14 +367,16 @@ function BurnerSystemContent({ model }) {
     });
 
     return positions;
-  }, [state.explodedView, state.explosionFactor, model.layers, model.dimensions.height]);
+  }, [state.explodedView, state.explosionFactor, model?.layers, model?.dimensions.height]);
 
   return (
     <group>
       {model.layers.map((layer) => {
         const layerVisible = state.layerVisibility[layer.id] ?? true;
         const isolatedOut = state.sectionalView === "isolated" && !(state.selection.type === "layer" && state.selection.id === layer.id);
-        return layer.burners.map((burner) => {
+        // The burner assembly belongs to the front face only. Burner data is
+        // stored with its horizontal depth in position.y (mapped to world z).
+        return layer.burners.filter((burner) => burner.position.y >= 0).map((burner) => {
           const position = state.explodedView ? burnerPositions[burner.id] : burner.position;
           const adjustedBurner = position ? { ...burner, position } : burner;
           
@@ -393,6 +390,7 @@ function BurnerSystemContent({ model }) {
               burner={adjustedBurner}
               layerVisible={shouldShow}
               isFocused={isFocusedBurner}
+              model={model}
             />
           );
         });

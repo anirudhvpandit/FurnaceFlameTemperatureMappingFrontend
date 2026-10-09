@@ -22,7 +22,9 @@ export default function HeatmapFloor({ model, isFocusedView = false }) {
   const { state } = useFurnaceStore();
   const pointsRef = useRef();
   const materialRef = useRef();
-  
+
+  if (!model) return null;
+
   const { positions, colors, sizes, intensities } = useMemo(() => {
     const { width, depth } = model.dimensions;
     const halfW = width / 2;

@@ -161,6 +161,10 @@ export function exportTemperatureJSON(model) {
       min: layer.temperature.min,
       max: layer.temperature.max,
       avg: layer.temperature.avg,
+      c1: layer.temperature.c1,
+      c2: layer.temperature.c2,
+      c3: layer.temperature.c3,
+      c4: layer.temperature.c4,
       burners: layer.burners?.map(burner => ({
         id: burner.id,
         corner: burner.corner,

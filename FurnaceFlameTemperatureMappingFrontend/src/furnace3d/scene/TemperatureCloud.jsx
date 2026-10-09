@@ -38,6 +38,17 @@ export default function TemperatureCloud({ model, isFocusedView = false }) {
   const { state } = useFurnaceStore();
   
   const { positions, colors, sizes, velocities, originalPositions } = useMemo(() => {
+    if (!model) {
+      // Return empty arrays if model is not available
+      return {
+        positions: new Float32Array(PARTICLE_COUNT * 3),
+        colors: new Float32Array(PARTICLE_COUNT * 3),
+        sizes: new Float32Array(PARTICLE_COUNT),
+        velocities: new Float32Array(PARTICLE_COUNT * 3),
+        originalPositions: new Float32Array(PARTICLE_COUNT * 3)
+      };
+    }
+
     const { width, depth, height } = model.dimensions;
     const allTemps = model.layers.flatMap((l) =>
       l.burners.map((b) => b.temperature).filter((t) => t != null)
@@ -173,6 +184,7 @@ export default function TemperatureCloud({ model, isFocusedView = false }) {
         positions[idx + 2] += velocities[idx + 2] + n * 0.002;
         
         // Boundary checking with soft reset
+        if (!model) return; // Skip if model is not available
         const { width, depth, height } = model.dimensions;
         const halfW = width / 2;
         const halfD = depth / 2;

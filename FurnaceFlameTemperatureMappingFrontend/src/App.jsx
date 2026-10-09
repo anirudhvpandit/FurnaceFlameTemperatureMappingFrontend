@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import axios from "axios";
 import {
   LineChart,
@@ -14,6 +14,9 @@ import {
 } from "recharts";
 import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
+import Furnace3DView from "./furnace3d/Furnace3DView";
+import { CameraSyncProvider } from "./furnace3d/CameraSync";
+
 
 const BASE_URL = "https://abhiftm.com/api";
 
@@ -1362,7 +1365,13 @@ export default function App() {
 
   const [graph1Date, setGraph1Date] = useState(() => localStorage.getItem("ftm_graph1Date") || "");
   const [graph2Date, setGraph2Date] = useState(() => localStorage.getItem("ftm_graph2Date") || "");
+  const [sharedCameraState, setSharedCameraState] = useState(null);
+  const [activeCameraView, setActiveCameraView] = useState(null);
   const [dateError, setDateError] = useState("");
+  const [viewMode, setViewMode] = useState({ 0: "graph", 1: "graph" });
+  const [moveFurnacesTogether, setMoveFurnacesTogether] = useState(true);
+  const [moveFurnaceTarget, setMoveFurnaceTarget] = useState("first");
+  const [furnaceOffsetsByRun, setFurnaceOffsetsByRun] = useState({});
 
   const [reportFromDate, setReportFromDate] = useState("");
   const [reportToDate, setReportToDate] = useState("");
@@ -2250,7 +2259,8 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
   const GAP = 12;
   const sidebarEffectiveOpen = sidebarOpen && !showIngestModal;
   return (
-    <div style={{ background: "linear-gradient(180deg, #f0eff8 0%, #e0e7ff 100%)", minHeight: "100vh" }}>
+    <CameraSyncProvider>
+      <div style={{ background: "linear-gradient(180deg, #f0eff8 0%, #e0e7ff 100%)", minHeight: "100vh" }}>
       <header
         ref={headerRef}
         style={{
@@ -2556,12 +2566,6 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
           </div>
           <div style={S.sideSection}>
             <div style={S.secLabel}>DOWNLOAD REPORT</div>
-            <div style={S.sideSection}>
-  <div style={S.secLabel}>3D VISUALIZATION</div>
-  <button onClick={() => navigation("/furnace-3d")} style={S.downloadBtn}>
-    OPEN 3D FURNACE VIEW
-  </button>
-</div>
             <button
               onClick={() => { setShowReportModal(true); setReportError(""); }}
               style={S.downloadBtn}
@@ -2730,6 +2734,18 @@ const activeMillLabel =
 </div>
                       </div>
                       <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                        <button
+                          onClick={() => setViewMode(prev => ({ ...prev, [slotIdx]: viewMode[slotIdx] === "graph" ? "3d" : "graph" }))}
+                          style={{
+                            ...S.downloadRunBtn,
+                            background: viewMode[slotIdx] === "3d" ? "#dbeafe" : "#f0f0f0",
+                            border: viewMode[slotIdx] === "3d" ? "1px solid #93c5fd" : "1px solid #d1d5db",
+                            color: viewMode[slotIdx] === "3d" ? "#1d4ed8" : "#374151",
+                          }}
+                          title={viewMode[slotIdx] === "graph" ? "Switch to 3D View" : "Switch to Graph View"}
+                        >
+                          {viewMode[slotIdx] === "graph" ? "3D" : "GRAPH"}
+                        </button>
                         <button
                           onClick={() => handleDownloadSingleRun(id)}
                           disabled={isDownloadingThisRun}
@@ -3021,6 +3037,7 @@ const activeMillLabel =
   </div>
 </div>
                   </div>
+                  {viewMode[slotIdx] === "graph" && (
                   <div style={S.tabBar}>
                     {[
                       { k: "graph", l: "GRAPH" },
@@ -3028,10 +3045,27 @@ const activeMillLabel =
                       { k: "raw", l: "RAW DATA" },
                       { k: "boiler", l: "BOILER PARAMS" },
                       { k: "coal", l: "COAL MILLS" },
+                      { k: "3d", l: "3D VIEW" },
                     ].map(({ k, l }) => (
                       <button key={k} onClick={() => setTab(id, k)} style={{ ...S.tabBtn, ...(getTab(id) === k ? S.tabActive : {}) }}>{l}</button>
                     ))}
                   </div>
+                  )}
+
+                  {viewMode[slotIdx] === "3d" ? (
+                    <div style={{ minHeight: "760px", borderRadius: "12px", overflow: "hidden", background: "#030814" }}>
+                      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "10px 12px", background: "#071428", borderBottom: "1px solid rgba(77,141,232,.3)", color: "#dbeafe", fontSize: 12 }}>
+                        <strong style={{ fontSize: 11, letterSpacing: ".06em" }}>CAMERA SYNC</strong>
+                        <button type="button" onClick={() => setMoveFurnacesTogether(true)} style={{ ...S.tabBtn, ...(moveFurnacesTogether ? S.tabActive : {}) }}>TOGETHER</button>
+                        <button type="button" onClick={() => setMoveFurnacesTogether(false)} style={{ ...S.tabBtn, ...(!moveFurnacesTogether ? S.tabActive : {}) }}>ALONE</button>
+                        <span style={{ fontSize: 10, color: "rgba(180,210,255,0.5)", marginLeft: "auto" }}>
+                          {moveFurnacesTogether ? "Mouse/touchpad movements sync both furnaces" : "Mouse/touchpad movements affect selected furnace only"}
+                        </span>
+                      </div>
+                      <Furnace3DView embedded runId={id} furnaceOffsets={furnaceOffsetsByRun[id] || [[0, 0], [0, 0]]} enableCameraSync={moveFurnacesTogether} />
+                    </div>
+                  ) : (
+                    <>
                   {getTab(id) === "graph" && (
                     <div style={S.chartPanel}>
                       <div
@@ -3167,6 +3201,7 @@ const activeMillLabel =
     Applies to ALL graphs
   </div>
 </div>
+
                       <div ref={el => { chartRefs.current[id] = el; }} style={{ width: "100%", height: CHART_HEIGHT, position: "relative" }}>
                         <ResponsiveContainer width="100%" height="100%">
                            {lockedPoint[id] && (
@@ -3425,13 +3460,13 @@ const activeMillLabel =
       )
     })}
   </div>
-)}   
+)}
                           </LineChart>
-                          
+
                         </ResponsiveContainer>
-                       
+
                       </div>
-                      
+
                       <div style={S.filterBar}>
                         {Object.keys(dynamicColors).map(k => (
                           <button
@@ -3448,6 +3483,11 @@ const activeMillLabel =
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  {getTab(id) === "3d" && (
+                    <div style={{ minHeight: "760px", borderRadius: "12px", overflow: "hidden" }}>
+                      <Furnace3DView embedded runId={id} />
                     </div>
                   )}
 
@@ -3586,6 +3626,8 @@ const activeMillLabel =
                       <CoalMillTable data={coalData[id]} />
                       <AirFlowStatsCard data={statsData[id]} />
                     </div>
+                  )}
+                  </>
                   )}
                 </section>
               );
@@ -4067,7 +4109,8 @@ const activeMillLabel =
         </div>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+      </div>
+    </CameraSyncProvider>
   );
 }
 

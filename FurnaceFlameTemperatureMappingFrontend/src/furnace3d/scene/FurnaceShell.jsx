@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useFurnaceStore } from "../state/FurnaceStore";
+import { getBurnerConfig } from "../config/furnaceConfig";
 
 /**
  * Enhanced FurnaceShell with beautiful UI/UX improvements.
@@ -16,17 +17,36 @@ import { useFurnaceStore } from "../state/FurnaceStore";
  *  • Optimized rendering with progressive enhancement
  */
 
-export default function FurnaceShell({ dimensions, visible = true, isFocusedView = false }) {
+export default function FurnaceShell({ dimensions, visible = true, isFocusedView = false, model = null }) {
   // Hide shell in focused view (CAT scan mode)
   const shouldShow = visible && !isFocusedView;
-  return shouldShow ? <FurnaceShellContent dimensions={dimensions} /> : null;
+  return shouldShow ? <FurnaceShellContent dimensions={dimensions} model={model} /> : null;
 }
 
-function FurnaceShellContent({ dimensions }) {
+function FurnaceShellContent({ dimensions, model }) {
   const { state } = useFurnaceStore();
   const { width, depth, height } = dimensions;
   const shellRef = useRef();
   const clippingIndicatorsRef = useRef([]);
+  
+  // Calculate the vertical span between the top and bottom layers for corner supports
+  const cornerSupportData = useMemo(() => {
+    if (model && model.layers && model.layers.length > 0) {
+      // Find the minimum and maximum layer positions
+      const layerPositions = model.layers.map(layer => layer.z);
+      const minLayerZ = Math.min(...layerPositions);
+      const maxLayerZ = Math.max(...layerPositions);
+      // Calculate the span and add padding on both sides
+      const bottom = minLayerZ - 1.0;
+      const top = maxLayerZ + 1.0;
+      const totalHeight = top - bottom;
+      const center = (bottom + top) / 2;
+      
+      return { height: totalHeight, center, bottom, top };
+    }
+    // Default to full height if no layer data available
+    return { height, center: height / 2, bottom: 0, top: height }; 
+  }, [model, height]);
 
   // Calculate exploded view offset with smooth animation
   const explosionOffset = useMemo(() => {
@@ -39,15 +59,8 @@ function FurnaceShellContent({ dimensions }) {
     };
   }, [state.explodedView, state.explosionFactor, width, height, depth]);
 
-  // Animate shell properties
+  // Animate shell properties — shell is static and stationary (no breathing animation)
   useFrame(({ clock }) => {
-    if (shellRef.current) {
-      // Subtle breathing animation for the shell
-      const time = clock.getElapsedTime();
-      const breathScale = 1 + Math.sin(time * 0.5) * 0.002;
-      shellRef.current.scale.setScalar(breathScale);
-    }
-
     // Animate clipping indicators with pulsing effect
     clippingIndicatorsRef.current.forEach((indicator, index) => {
       if (indicator?.material) {
@@ -58,139 +71,24 @@ function FurnaceShellContent({ dimensions }) {
     });
   });
 
-  // Enhanced material properties based on view state
-  const shellOpacity = state.sectionalView === "section" || state.multiClipEnabled ? 0.18 : 0.15;
-  const liningOpacity = state.sectionalView === "section" || state.multiClipEnabled ? 0.35 : 0.4;
-
   return (
     <group ref={shellRef}>
-      {/* Main furnace shell — outer steel casing with enhanced materials */}
-      <mesh
-        position={[explosionOffset.x, height / 2 + explosionOffset.y, explosionOffset.z]}
-        castShadow
-        receiveShadow
-      >
-        <boxGeometry args={[width, height, depth]} />
-        <meshStandardMaterial
-          color="#2d3748"
-          metalness={0.8}
-          roughness={0.25}
-          transparent
-          opacity={shellOpacity}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          envMapIntensity={1.5}
-        />
-      </mesh>
-
-      {/* Inner refractory lining with enhanced thermal properties */}
-      <mesh
-        position={[explosionOffset.x, height / 2 + explosionOffset.y, explosionOffset.z]}
-        castShadow
-        receiveShadow
-      >
-        <boxGeometry args={[width * 0.95, height * 0.98, depth * 0.95]} />
-        <meshStandardMaterial
-          color="#8b4513"
-          metalness={0.15}
-          roughness={0.85}
-          emissive={new THREE.Color(0x8b4513).multiplyScalar(0.15)}
-          emissiveIntensity={0.4}
-          transparent
-          opacity={liningOpacity}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          envMapIntensity={0.8}
-        />
-      </mesh>
-
-      {/* Enhanced steel frame edges with glow effect */}
-      <lineSegments position={[explosionOffset.x, height / 2 + explosionOffset.y, explosionOffset.z]}>
-        <edgesGeometry args={[new THREE.BoxGeometry(width, height, depth)]} />
-        <lineBasicMaterial color="#718096" linewidth={3} transparent opacity={0.8} />
-      </lineSegments>
-
-      {/* Corner structural supports with enhanced materials */}
-      {[
-        [-width / 2, 0, -depth / 2], [width / 2, 0, -depth / 2],
-        [-width / 2, 0, depth / 2], [width / 2, 0, depth / 2]
-      ].map((position, i) => (
-        <EnhancedCornerSupport
-          key={`corner-${i}`}
-          position={position}
-          explosionOffset={explosionOffset}
-          height={height}
-          index={i}
-        />
-      ))}
-
-      {/* Horizontal support beams with industrial styling */}
-      {[0.25, 0.5, 0.75].map((ratio, i) => (
-        <EnhancedSupportBeams
-          key={`beam-${i}`}
-          ratio={ratio}
-          width={width}
-          height={height}
-          depth={depth}
-          explosionOffset={explosionOffset}
-          index={i}
-        />
-      ))}
-
-      {/* Vertical pipes on sides with realistic materials */}
-      {[0.2, 0.8].map((ratio, i) => (
-        <EnhancedVerticalPipes
-          key={`pipe-${i}`}
-          ratio={ratio}
-          width={width}
-          height={height}
-          depth={depth}
-          explosionOffset={explosionOffset}
-          index={i}
-        />
-      ))}
-
-      {/* Enhanced access doors with industrial details */}
-      {[0.3, 0.7].map((ratio, i) => (
-        <EnhancedAccessDoors
-          key={`door-${i}`}
-          ratio={ratio}
-          height={height}
-          depth={depth}
-          explosionOffset={explosionOffset}
-          index={i}
-        />
-      ))}
-
-      {/* Top platform with enhanced materials */}
-      <EnhancedTopPlatform
+      {/* Open furnace frame with a long shaft, lower grate, and tapered hopper. */}
+      <FurnaceFrame
         width={width}
         height={height}
         depth={depth}
         explosionOffset={explosionOffset}
       />
 
-      {/* Enhanced safety railing with animated features */}
-      <EnhancedSafetyRailing
+      {/* Static side burner ports aligned with the temperature elevations. */}
+      <SideBurners
         width={width}
         height={height}
         depth={depth}
         explosionOffset={explosionOffset}
-      />
-
-      {/* Foundation base with realistic concrete texture */}
-      <EnhancedFoundation
-        width={width}
-        height={height}
-        depth={depth}
-        explosionOffset={explosionOffset}
-      />
-
-      {/* Enhanced industrial floor grid */}
-      <EnhancedFloorGrid
-        width={width}
-        depth={depth}
-        explosionOffset={explosionOffset}
+        plantId={state.plantId || "default"}
+        model={model}
       />
 
       {/* Enhanced clipping plane indicators with beautiful effects */}
@@ -207,11 +105,85 @@ function FurnaceShellContent({ dimensions }) {
   );
 }
 
+function FurnaceFrame({ width, height, depth, explosionOffset }) {
+  const geometry = useMemo(() => {
+    const vertices = [];
+    const addLine = (a, b) => vertices.push(...a, ...b);
+    const x = width / 2;
+    const z = depth / 2;
+    const topY = height;
+    const hopperY = height * 0.16;
+    const outletY = -height * 0.04;
+    const cutTopY = height * 0.81;
+    const cutBottomY = height * 0.69;
+    const cutInset = width * 0.28;
+    const notchProfile = [
+      { y: cutBottomY, inset: 0 },
+      { y: height * 0.705, inset: cutInset * 0.35 },
+      { y: height * 0.73, inset: cutInset * 0.9 },
+      { y: height * 0.755, inset: cutInset },
+      { y: cutTopY, inset: 0 },
+    ];
+    const outletX = x * 0.28;
+    const outletZ = z * 0.28;
+    const corners = [[-x, -z], [x, -z], [x, z], [-x, z]];
+
+    // Main open shaft. One side has a short inward notch across its full depth.
+    corners.forEach(([cx, cz]) => {
+      if (cx > 0) {
+        addLine([cx, hopperY, cz], [cx, cutBottomY, cz]);
+        for (let i = 0; i < notchProfile.length - 1; i += 1) {
+          const current = notchProfile[i];
+          const next = notchProfile[i + 1];
+          addLine([cx - current.inset, current.y, cz], [cx - next.inset, next.y, cz]);
+        }
+        addLine([cx, cutTopY, cz], [cx, topY, cz]);
+      } else {
+        addLine([cx, hopperY, cz], [cx, topY, cz]);
+      }
+    });
+
+    // Join the uneven notch profile front-to-back across this single side panel.
+    notchProfile.forEach(({ y, inset }) => {
+      addLine([x - inset, y, -z], [x - inset, y, z]);
+    });
+
+    // Top rim.
+    corners.forEach(([cx, cz], index) => {
+      const [nx, nz] = corners[(index + 1) % corners.length];
+      addLine([cx, topY, cz], [nx, topY, nz]);
+      addLine([cx, hopperY, cz], [nx, hopperY, nz]);
+    });
+
+    // Tapered lower hopper and its small outlet frame.
+    corners.forEach(([cx, cz], index) => {
+      const lower = [[-outletX, -outletZ], [outletX, -outletZ], [outletX, outletZ], [-outletX, outletZ]][index];
+      addLine([cx, hopperY, cz], [lower[0], outletY, lower[1]]);
+      const next = [[-outletX, -outletZ], [outletX, -outletZ], [outletX, outletZ], [-outletX, outletZ]][(index + 1) % 4];
+      addLine([lower[0], outletY, lower[1]], [next[0], outletY, next[1]]);
+    });
+
+    return new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  }, [width, height, depth]);
+
+  return (
+    <group position={[explosionOffset.x, explosionOffset.y, explosionOffset.z]}>
+      <lineSegments geometry={geometry} renderOrder={5}>
+        <lineBasicMaterial color="#d6d9e0" transparent opacity={0.86} />
+      </lineSegments>
+      <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]} renderOrder={0}>
+        <torusGeometry args={[width * 1.08, 0.58, 8, 72]} />
+        <meshBasicMaterial color="#34372f" />
+      </mesh>
+    </group>
+  );
+}
+
 // ============================================================================
 // ENHANCED SUB-COMPONENTS
 // ============================================================================
 
-function EnhancedCornerSupport({ position, explosionOffset, height, index }) {
+function EnhancedCornerSupport({ position, explosionOffset, supportData, model, index }) {
   const meshRef = useRef();
   
   useFrame(({ clock }) => {
@@ -225,17 +197,17 @@ function EnhancedCornerSupport({ position, explosionOffset, height, index }) {
   return (
     <mesh
       ref={meshRef}
-      position={[position[0] + explosionOffset.x, position[1] + explosionOffset.y, position[2] + explosionOffset.z]}
+      position={[position[0] + explosionOffset.x, supportData.center + explosionOffset.y, position[2] + explosionOffset.z]}
       castShadow
       receiveShadow
     >
-      <boxGeometry args={[0.8, height, 0.8]} />
+      <boxGeometry args={[0.8, supportData.height, 0.8]} />
       <meshStandardMaterial 
-        color="#4a5568" 
-        metalness={0.85} 
-        roughness={0.3}
-        emissive="#4a5568"
-        emissiveIntensity={0.1}
+        color="#ffffff" 
+        metalness={0.9} 
+        roughness={0.1}
+        emissive="#ffffff"
+        emissiveIntensity={0.3}
       />
     </mesh>
   );
@@ -520,7 +492,44 @@ function EnhancedClippingIndicators({ state, width, height, depth, clippingIndic
             blending={THREE.AdditiveBlending}
           />
         </mesh>
-      )}
+            )}
+    </group>
+  );
+}
+
+// ============================================================================
+// SIDE BURNERS
+// ============================================================================
+
+/**
+ * SideBurners — fixed rectangular ports along both side walls, aligned to
+ * measured temperature elevations. They stay static so the furnace structure
+ * remains easy to read while the temperature layers move or update.
+ */
+function SideBurners({ width, height, depth, explosionOffset, plantId = "default", model }) {
+  const { state } = useFurnaceStore();
+  
+  // Get plant-specific burner configuration
+  const burnerConfig = getBurnerConfig(plantId);
+  const sideBurnerConfig = burnerConfig.sideBurners;
+
+  const layerElevations = model?.layers?.length
+    ? model.layers.map((layer) => layer.z)
+    : [height * sideBurnerConfig.position.verticalRatio];
+  const sides = [-1, 1];
+
+  return (
+    <group>
+      {layerElevations.flatMap((y, layerIndex) => sides.map((side) => (
+        <mesh
+          key={`static-side-burner-${layerIndex}-${side}`}
+          position={[side * (width * 0.52 + 0.08) + explosionOffset.x, y + explosionOffset.y, explosionOffset.z]}
+          renderOrder={8}
+        >
+          <boxGeometry args={[0.12, Math.max(0.24, height * 0.008), Math.max(0.48, depth * 0.045)]} />
+          <meshBasicMaterial color="#bf7b28" toneMapped={false} />
+        </mesh>
+      )))}
     </group>
   );
 }

@@ -6,14 +6,16 @@ import * as THREE from "three";
 export default function FlowArrows({ model, isFocusedView = false }) {
   const groupRef = useRef();
   const arrowRefs = useRef([]);
-  
+
+  if (!model) return null;
+
   // Enhanced smooth rotation with easing
   useFrame(({ clock }) => {
     if (groupRef.current) {
       const time = clock.getElapsedTime();
       groupRef.current.rotation.y = Math.sin(time * 0.1) * 0.05;
     }
-    
+
     // Animate individual arrows with pulsing effect
     arrowRefs.current.forEach((arrowMesh, index) => {
       if (arrowMesh) {
@@ -27,6 +29,7 @@ export default function FlowArrows({ model, isFocusedView = false }) {
 
   // Enhanced arrow data with temperature-based coloring
   const arrows = useMemo(() => {
+    if (!model) return [];
     return model.layers.flatMap(layer =>
       layer.burners.map((burner, burnerIndex) => {
         if (burner.temperature == null) return null;
@@ -53,7 +56,7 @@ export default function FlowArrows({ model, isFocusedView = false }) {
         };
       }).filter(Boolean)
     );
-  }, [model]);
+  }, [model?.layers]);
 
   // Keep hook execution stable while switching into and out of Focused View.
   if (isFocusedView) return null;

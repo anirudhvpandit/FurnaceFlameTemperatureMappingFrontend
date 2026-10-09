@@ -14,7 +14,7 @@
 
 import { useFurnaceStore } from "../state/FurnaceStore";
 import { DATA_MODES, BURNER_STATUS, BURNER_STATUS_COLOR } from "../config/furnaceConfig";
-import { TEMPERATURE_SCALE_STOPS } from "../utils/temperatureScale";
+import { TEMPERATURE_SCALE_STOPS, temperatureToColor } from "../utils/temperatureScale";
 import { panelStyles as S } from "./panelStyles";
 
 // ============================================================================
@@ -53,10 +53,10 @@ const IconSparkles = () => (
 // SUB-COMPONENT: TemperatureGradientBar
 // ============================================================================
 
-function TemperatureGradientBar() {
+function TemperatureGradientBar({ thresholds }) {
   // FIX: TEMPERATURE_SCALE_STOPS is a function, not a plain array.
   // Call it with default thresholds to get the actual stop data.
-  const stops = TEMPERATURE_SCALE_STOPS();
+  const stops = TEMPERATURE_SCALE_STOPS(thresholds?.alert, thresholds?.warn);
   const min = stops[0]?.t ?? 0;
   const max = stops[stops.length - 1]?.t ?? 1;
 
@@ -74,6 +74,10 @@ function TemperatureGradientBar() {
     return { temp: s.t, pct: pct.toFixed(1), color: `rgb(${s.color.join(",")})` };
   });
 
+  // Threshold marker lines (warn / alert) on the gradient
+  const warnPct = ((thresholds?.warn ?? 1300) - min) / (max - min) * 100;
+  const alertPct = ((thresholds?.alert ?? 1350) - min) / (max - min) * 100;
+
   return (
     <div style={styles.tempScaleGroup}>
       <div style={styles.tempScaleHeader}>
@@ -88,9 +92,9 @@ function TemperatureGradientBar() {
         </span>
       </div>
 
-      <div style={styles.gradientContainer}>
+      <div style={styles.gradientContainerTall}>
         {/* Tick marks */}
-        {tickData.map((tick, i) => (
+        {tickData.map((tick) => (
           <div
             key={tick.temp}
             style={{ ...styles.gradientTick, left: `${tick.pct}%` }}
@@ -102,16 +106,48 @@ function TemperatureGradientBar() {
           </div>
         ))}
 
+        {/* Threshold marker lines */}
+        <div style={{ ...styles.thresholdLine, left: `${warnPct}%`, borderColor: "rgba(245, 158, 11, 0.6)" }} />
+        <div style={{ ...styles.thresholdLine, left: `${alertPct}%`, borderColor: "rgba(239, 68, 68, 0.7)" }} />
+        <span style={{ ...styles.thresholdLabel, left: `${warnPct}%` }}>WARN {thresholds?.warn ?? 1300}°C</span>
+        <span style={{ ...styles.thresholdLabel, left: `${alertPct}%` }}>ALERT {thresholds?.alert ?? 1350}°C</span>
+
         {/* The gradient bar itself */}
         <div
           style={{
-            ...styles.legendGradient,
+            ...styles.legendGradientTall,
             background: `linear-gradient(90deg, ${gradientStops})`,
           }}
         />
       </div>
+
+      {/* Status legend beneath the gradient */}
+      <div style={styles.statusLegendRow}>
+        {STATUS_BANDS(thresholds).map((band) => (
+          <span key={band.label} style={styles.statusLegendItem}>
+            <span style={{ ...styles.statusLegendDot, background: band.color }} />
+            {band.label}
+          </span>
+        ))}
+      </div>
     </div>
   );
+}
+
+/**
+ * Temperature status bands that match the colour scale stops.
+ * Provides a human-readable label for each point on the gradient.
+ */
+function STATUS_BANDS(thresholds) {
+  return [
+    { label: "Cool",     temp: 800,  color: temperatureToColor(800, thresholds?.alert, thresholds?.warn) },
+    { label: "Normal",   temp: 1000, color: temperatureToColor(1000, thresholds?.alert, thresholds?.warn) },
+    { label: "Warm",     temp: 1100, color: temperatureToColor(1100, thresholds?.alert, thresholds?.warn) },
+    { label: "WARN",     temp: thresholds?.warn ?? 1300,  color: temperatureToColor(thresholds?.warn ?? 1300, thresholds?.alert, thresholds?.warn) },
+    { label: "ALERT",    temp: thresholds?.alert ?? 1350, color: temperatureToColor(thresholds?.alert ?? 1350, thresholds?.alert, thresholds?.warn) },
+    { label: "Critical", temp: 1400, color: temperatureToColor(1400, thresholds?.alert, thresholds?.warn) },
+    { label: "Hot",      temp: 1500, color: temperatureToColor(1500, thresholds?.alert, thresholds?.warn) },
+  ];
 }
 
 // ============================================================================
@@ -155,6 +191,51 @@ function ModeBadge() {
 }
 
 // ============================================================================
+// SUB-COMPONENT: CornerTemperatureScale
+// ============================================================================
+
+function CornerTemperatureScale({ thresholds }) {
+    const stops = [
+    { temp: 800, color: temperatureToColor(800, thresholds.alert, thresholds.warn), label: "Cool" },
+    { temp: 1000, color: temperatureToColor(1000, thresholds.alert, thresholds.warn), label: "Normal" },
+    { temp: 1100, color: temperatureToColor(1100, thresholds.alert, thresholds.warn), label: "Warm" },
+    { temp: thresholds.warn, color: temperatureToColor(thresholds.warn, thresholds.alert, thresholds.warn), label: "WARN" },
+    { temp: thresholds.alert, color: temperatureToColor(thresholds.alert, thresholds.alert, thresholds.warn), label: "ALERT" },
+    { temp: 1400, color: temperatureToColor(1400, thresholds.alert, thresholds.warn), label: "Critical" },
+  ];
+
+  return (
+    <div style={styles.cornerScaleGroup}>
+      <span style={styles.legendCaption}>
+        <span style={styles.legendCaptionIcon}><IconFlame /></span>
+        COLOR SCALE
+      </span>
+      <div style={styles.cornerScaleContainer}>
+        {stops.map((stop) => (
+          <div key={stop.temp} style={styles.cornerScaleItem}>
+            <div
+              style={{
+                ...styles.cornerScaleColor,
+                backgroundColor: stop.color,
+                width: "18px",
+                height: "18px",
+                borderRadius: "4px",
+                border: "1px solid rgba(255,255,255,0.3)",
+                boxShadow: `0 0 6px ${stop.color}`,
+              }}
+            />
+            <span style={{ ...styles.cornerScaleLabel, color: stop.color, fontWeight: 700 }}>
+              {stop.temp}°C
+            </span>
+            <span style={styles.cornerScaleStatus}>{stop.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // SUB-COMPONENT: SelectedDisplay
 // ============================================================================
 
@@ -193,7 +274,10 @@ export default function Legend() {
   return (
     <div style={S.legendBar}>
       {/* Temperature Scale */}
-      <TemperatureGradientBar />
+      <TemperatureGradientBar thresholds={state.thresholds} />
+
+      {/* Corner Temperature Scale */}
+      <CornerTemperatureScale thresholds={state.thresholds} />
 
       {/* Burner Status */}
       <div style={styles.legendGroup}>
@@ -229,6 +313,51 @@ const styles = {
     flexDirection: "column",
     gap: "4px",
     alignItems: "flex-start",
+  },
+
+  // ── Temperature Scale Group ──
+  tempScaleGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+    alignItems: "flex-start",
+    minWidth: "220px",
+  },
+
+  // ── Corner Temperature Scale ──
+  cornerScaleGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    alignItems: "flex-start",
+  },
+  cornerScaleContainer: {
+    display: "flex",
+    gap: "6px",
+    alignItems: "center",
+  },
+  cornerScaleItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+  },
+  cornerScaleColor: {
+    width: "12px",
+    height: "12px",
+    borderRadius: "2px",
+    border: "1px solid rgba(255,255,255,0.2)",
+  },
+  cornerScaleLabel: {
+    fontSize: "9px",
+    fontFamily: "'DM Mono', monospace",
+    color: "rgba(200, 220, 255, 0.7)",
+    fontWeight: 600,
+  },
+  cornerScaleStatus: {
+    fontSize: "9px",
+    fontFamily: "'Inter', sans-serif",
+    color: "rgba(200, 220, 255, 0.5)",
+    fontWeight: 500,
   },
 
   // ── Section Caption ──
@@ -292,6 +421,67 @@ const styles = {
     boxShadow: "0 0 10px rgba(59, 130, 246, 0.3)",
     border: "1px solid rgba(255, 255, 255, 0.08)",
     transition: "box-shadow 0.2s ease",
+  },
+
+  // ── Tall Gradient Container & Bar (enhanced temp scale) ──
+  gradientContainerTall: {
+    position: "relative",
+    width: "220px",
+    height: "22px",
+    marginTop: "4px",
+    marginBottom: "2px",
+  },
+  legendGradientTall: {
+    width: "100%",
+    height: "100%",
+    borderRadius: "5px",
+    boxShadow: "0 0 14px rgba(59, 130, 246, 0.4)",
+    border: "1px solid rgba(255, 255, 255, 0.12)",
+  },
+
+  // ── Threshold Marker Lines ──
+  thresholdLine: {
+    position: "absolute",
+    top: 0,
+    width: "0px",
+    height: "22px",
+    borderLeft: "2px dashed",
+    zIndex: 2,
+  },
+  thresholdLabel: {
+    position: "absolute",
+    top: "26px",
+    transform: "translateX(-50%)",
+    fontSize: "8px",
+    fontFamily: "'DM Mono', monospace",
+    fontWeight: 700,
+    color: "rgba(200, 220, 255, 0.8)",
+    whiteSpace: "nowrap",
+    pointerEvents: "none",
+  },
+
+  // ── Status Legend (below gradient) ──
+  statusLegendRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "6px",
+    marginTop: "4px",
+  },
+  statusLegendItem: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "3px",
+    fontSize: "8px",
+    fontFamily: "'DM Mono', monospace",
+    fontWeight: 700,
+    color: "rgba(200, 220, 255, 0.75)",
+    whiteSpace: "nowrap",
+  },
+  statusLegendDot: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "2px",
+    boxShadow: "0 0 4px currentColor",
   },
 
   // ── Gradient Tick Mark ──

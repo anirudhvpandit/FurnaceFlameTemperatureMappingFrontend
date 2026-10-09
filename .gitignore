@@ -20,3 +20,5 @@ yarn-error.log*
 
 # Mobile folder
 mobile/
+
+ml-backend/venv

@@ -106,33 +106,6 @@ function PredictionMarker({ pred }) {
           depthWrite={false}
         />
       </mesh>
-
-      {/* Prediction label */}
-      <Html position={[0, 1.5, 0]} style={{ pointerEvents: "none" }} occlude={false}>
-        <div style={{ ...styles.predictionCard, borderColor: riskColor }}>
-          <div style={{ ...styles.predictionHeader, color: riskColor }}>
-            <span style={styles.predictionHeaderIcon}><IconPrediction /></span>
-            <span>AI PREDICTION</span>
-          </div>
-          <div style={styles.predictionRow}>
-            <span style={styles.predictionRowLabel}>Current:</span>
-            <span style={styles.predictionRowValue}>{pred.currentTemp.toFixed(0)}°C</span>
-          </div>
-          <div style={styles.predictionRow}>
-            <span style={styles.predictionRowLabel}>Predicted:</span>
-            <span style={{ ...styles.predictionRowValue, color: riskColor }}>{pred.predictedTemp.toFixed(0)}°C</span>
-          </div>
-          <div style={styles.predictionRow}>
-            <span style={styles.predictionRowLabel}>Risk:</span>
-            <span style={{ ...styles.predictionRowValue, color: riskColor }}>{pred.riskLevel} ({Math.round(pred.confidence * 100)}%)</span>
-          </div>
-          {/* Confidence bar */}
-          <div style={styles.confidenceBarContainer}>
-            <div style={{ ...styles.confidenceBarFill, width: `${pred.confidence * 100}%`, background: `linear-gradient(90deg, ${riskColor} 0%, ${riskColor}80 100%)` }} />
-          </div>
-          <div style={styles.confidenceLabel}>Confidence: {Math.round(pred.confidence * 100)}%</div>
-        </div>
-      </Html>
     </group>
   );
 }
@@ -171,21 +144,6 @@ function FailureMarker({ failure, model }) {
           depthWrite={false}
         />
       </mesh>
-
-      {/* Failure label */}
-      <Html position={[0, 2.2, 0]} style={{ pointerEvents: "none" }} occlude={false}>
-        <div style={{ ...styles.failureCard, borderColor: failColor }}>
-          <div style={{ ...styles.failureHeader, color: failColor }}>
-            <span style={styles.failureHeaderIcon}><IconWarning /></span>
-            <span>FAILURE RISK</span>
-          </div>
-          <div style={styles.failureBody}>
-            <div style={styles.failureComponent}>Burner Nozzle</div>
-            <div style={{ ...styles.failureProbability, color: failColor }}>{pct}%</div>
-            <div style={styles.failureTime}>{failure.estimatedTimeToFailure}</div>
-          </div>
-        </div>
-      </Html>
     </group>
   );
 }
@@ -195,31 +153,7 @@ function FailureMarker({ failure, model }) {
 // =========================================================================
 
 function RecommendationOverlay({ rec, model, idx }) {
-  const layer = model.layers.find((l) => l.id === rec.layer);
-  if (!layer) return null;
-
-  const recColor = getRecColor(rec.priority);
-
-  return (
-    <Html
-      key={`rec-${idx}`}
-      position={[model.dimensions.width / 2 + 2, layer.z, 0]}
-      style={{ pointerEvents: "none" }}
-      occlude={false}
-    >
-      <div style={{ ...styles.recommendationCard, borderColor: recColor }}>
-        <div style={{ ...styles.recommendationHeader, background: recColor, color: "#ffffff" }}>
-          <span style={styles.recommendationHeaderIcon}><IconRecommendation /></span>
-          <span>AI RECOMMENDATION</span>
-          <span style={styles.recommendationPriority}>{rec.priority} PRIORITY</span>
-        </div>
-        <div style={styles.recommendationMessage}>{rec.message}</div>
-        <div style={styles.recommendationFooter}>
-          <span style={{ ...styles.recommendationType, color: recColor }}>{rec.type}</span>
-        </div>
-      </div>
-    </Html>
-  );
+  return null;
 }
 
 // ============================================================================

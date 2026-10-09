@@ -1,13 +1,13 @@
 // src/furnace3d/scene/FurnaceLayers.jsx
 import { useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
 import { useFurnaceStore } from "../state/FurnaceStore";
 import { temperatureToColor } from "../utils/temperatureScale";
-import { Html } from "@react-three/drei";
+import { Html, Text } from "@react-three/drei";
 import * as THREE from "three";
-import AlarmIndicator from "./AlarmIndicator";
+import CornerTemperatureField from "./CornerTemperatureField";
+import TemperatureBand from "./TemperatureBand";
 
-const LAYER_THICKNESS = 1.4;
+const LAYER_THICKNESS = 0.85;
 
 /**
  * FurnaceLayers — temperature-mapped refractory layers with enhanced UI/UX.
@@ -25,6 +25,12 @@ export default function FurnaceLayers({ model }) {
   const { state, selectLayer, setHover, setFocus, setFocusedLayer, clearFocusedLayer } = useFurnaceStore();
   const opacity = state.layerOpacity;
   const layerRefs = useRef({});
+  const showContinuousBand = !state.explodedView && !state.ctScanMode &&
+    state.sectionalView !== "isolated" && !state.isFocusedView &&
+    model.layers.every((layer) => state.layerVisibility[layer.id] ?? true);
+  const layerElevations = model.layers.map((layer) => layer.z);
+  const lowestElevation = Math.min(...layerElevations);
+  const highestElevation = Math.max(...layerElevations);
 
   // Calculate exploded view positions for layers with smooth animation
   const layerPositions = useMemo(() => {
@@ -52,34 +58,11 @@ export default function FurnaceLayers({ model }) {
     return positions;
   }, [state.explodedView, state.explosionFactor, model.layers, model.dimensions.height]);
 
-  // Animate layer properties for smooth transitions
-  useFrame(({ clock }) => {
-    Object.entries(layerRefs.current).forEach(([layerId, meshRef]) => {
-      if (meshRef?.current) {
-        const layer = model.layers.find(l => l.id === layerId);
-        if (!layer) return;
-
-        const isSelected = state.selection.type === "layer" && state.selection.id === layerId;
-        const isHovered = state.hoveredObject?.type === "layer" && state.hoveredObject?.id === layerId;
-        
-        // Pulse effect for high-temperature layers
-        if (layer.temperature.avg > 1200 && !isSelected) {
-          const time = clock.getElapsedTime();
-          const pulseIntensity = Math.sin(time * 2 + layerId.charCodeAt(0)) * 0.1 + 0.9;
-          meshRef.current.material.emissiveIntensity = pulseIntensity * 0.4;
-        }
-
-        // Selection glow animation
-        if (isSelected) {
-          const time = clock.getElapsedTime();
-          meshRef.current.material.emissiveIntensity = 0.5 + Math.sin(time * 3) * 0.15;
-        }
-      }
-    });
-  });
+  // Removed animations to keep furnace static and stable
 
   return (
     <group>
+      {showContinuousBand && <TemperatureBand model={model} thresholds={state.thresholds} />}
       {model.layers.map((layer) => {
         const visible = state.layerVisibility[layer.id] ?? true;
         if (!visible) return null;
@@ -103,17 +86,23 @@ export default function FurnaceLayers({ model }) {
 
         // A focused layer must be the only rendered elevation. Hiding only its
         // fill material leaves child overlays (alarm cards and outlines) behind.
+        // However, corner temperature markers should always be visible on all layers
         if (state.isFocusedView && state.focusedObjectType === "layer" && !isFocused) {
           return null;
         }
-        
+
         // In burner-focused view, only show the layer containing the focused burner
+        // However, corner temperature markers should always be visible on all layers
         if (state.isFocusedView && state.focusedObjectType === 'burner') {
           const layerContainsFocusedBurner = layer.burners.some(b => b.id === state.focusedBurnerId);
           if (!layerContainsFocusedBurner) return null;
         }
         
-        const color = temperatureToColor(layer.temperature.avg, state.thresholds.alert, state.thresholds.warn);
+        // Outline colour follows the layer average-temperature colour so the
+        // tile edge reinforces the gradient shown on the surface.
+        const color = layer.temperature?.avg != null
+          ? temperatureToColor(layer.temperature.avg, state.thresholds.alert, state.thresholds.warn)
+          : "#64748b";
 
         // Enhanced temperature-driven emissive intensity
         const tempNorm = layer.temperature.avg != null
@@ -153,30 +142,40 @@ export default function FurnaceLayers({ model }) {
           : model.dimensions;
 
         return (
-          <EnhancedLayerMesh
-            key={layer.id}
-            ref={el => layerRefs.current[layer.id] = el}
-            layer={layer}
-            position={ctPosition}
-            dimensions={sliceDimensions}
-            color={color}
-            opacity={targetOpacity}
-            emissiveIntensity={emissiveIntensity}
-            isSelected={isSelected}
-            isHovered={isHovered}
-            isFocused={isFocused}
-            isCtScan={state.ctScanMode}
-            onSelectLayer={selectLayer}
-            onFocus={setFocus}
-            onHover={setHover}
-            onDoubleClick={(layerId) => {
-              if (state.isFocusedView && state.focusedLayerId === layerId) {
-                clearFocusedLayer();
-              } else {
-                setFocusedLayer(layerId);
-              }
-            }}
-          />
+          <group key={layer.id}>
+            <EnhancedLayerMesh
+              ref={el => layerRefs.current[layer.id] = el}
+              layer={layer}
+              showContinuousBand={showContinuousBand}
+              position={ctPosition}
+              dimensions={sliceDimensions}
+              color={color}
+              opacity={targetOpacity}
+              emissiveIntensity={emissiveIntensity}
+              isSelected={isSelected}
+              isHovered={isHovered}
+              isFocused={isFocused}
+              onSelectLayer={selectLayer}
+              onFocus={setFocus}
+              onHover={setHover}
+              onDoubleClick={(layerId) => {
+                if (state.isFocusedView && state.focusedLayerId === layerId) {
+                  clearFocusedLayer();
+                } else {
+                  setFocusedLayer(layerId);
+                }
+              }}
+            />
+            {/* Corner temperature markers - always visible on all layers */}
+            <CornerTemperatureField
+              layer={layer}
+              dimensions={sliceDimensions}
+              position={ctPosition}
+              isTopLayer={layer.z === highestElevation}
+              isBottomLayer={layer.z === lowestElevation}
+              opacity={1}
+            />
+          </group>
         );
       })}
     </group>
@@ -187,21 +186,69 @@ export default function FurnaceLayers({ model }) {
 // ENHANCED LAYER MESH COMPONENT
 // ============================================================================
 
-function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissiveIntensity, isSelected, isHovered, isFocused, isCtScan, onSelectLayer, onFocus, onHover, onDoubleClick, ref }) {
+function EnhancedLayerMesh({ layer, showContinuousBand, position, dimensions, color, opacity, isSelected, isHovered, isFocused, onSelectLayer, onHover, onDoubleClick, ref }) {
   const fallbackMeshRef = useRef();
   const meshRef = ref || fallbackMeshRef;
   const materialRef = useRef();
+  const { state } = useFurnaceStore();
 
-  // Smooth material transitions
-  useFrame(() => {
-    if (materialRef.current) {
-      // Smooth opacity transition
-      materialRef.current.opacity = opacity;
-      
-      // Smooth emissive intensity transition
-      materialRef.current.emissiveIntensity = emissiveIntensity;
+  // Create custom geometry with vertex colors for corners
+  const geometry = useMemo(() => {
+    const width = dimensions.width * 1.04;
+    const height = LAYER_THICKNESS;
+    const depth = dimensions.depth * 1.04;
+
+    const boxGeometry = new THREE.BoxGeometry(width, height, depth);
+
+    // Get corner temperatures
+    const cornerTemps = {
+      c1: layer.temperature?.c1,
+      c2: layer.temperature?.c2,
+      c3: layer.temperature?.c3,
+      c4: layer.temperature?.c4,
+    };
+
+    // Get colors for each corner
+    const cornerColors = {
+      c1: new THREE.Color(temperatureToColor(cornerTemps.c1, state.thresholds.alert, state.thresholds.warn)),
+      c2: new THREE.Color(temperatureToColor(cornerTemps.c2, state.thresholds.alert, state.thresholds.warn)),
+      c3: new THREE.Color(temperatureToColor(cornerTemps.c3, state.thresholds.alert, state.thresholds.warn)),
+      c4: new THREE.Color(temperatureToColor(cornerTemps.c4, state.thresholds.alert, state.thresholds.warn)),
+    };
+
+    // BoxGeometry has 24 vertices (4 per face)
+    // We need to assign colors to vertices based on their corner positions
+    const colors = new Float32Array(boxGeometry.attributes.position.count * 3);
+    const positions = boxGeometry.attributes.position.array;
+
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const z = positions[i + 2];
+
+      // Determine which corner this vertex belongs to based on x and z coordinates
+      let cornerColor;
+
+      // C1/C4 face the front (z+); C2/C3 are on the opposite face (z-).
+      if (x > 0 && z > 0) {
+        cornerColor = cornerColors.c4; // front-right
+      } else if (x < 0 && z > 0) {
+        cornerColor = cornerColors.c1; // front-left
+      } else if (x < 0 && z < 0) {
+        cornerColor = cornerColors.c2; // back-left
+      } else {
+        cornerColor = cornerColors.c3; // back-right (x > 0, z < 0)
+      }
+
+      colors[i] = cornerColor.r;
+      colors[i + 1] = cornerColor.g;
+      colors[i + 2] = cornerColor.b;
     }
-  });
+
+    boxGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    return boxGeometry;
+  }, [layer.temperature, dimensions, state.thresholds]);
+
+  // Removed smooth material transitions to keep furnace static
 
   // Enhanced border glow for selected/hovered/focused states
   const borderColor = isFocused ? "#8b5cf6" : isSelected ? "#3b82f6" : isHovered ? "#22d3ee" : "transparent";
@@ -211,33 +258,35 @@ function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissi
     <mesh
       ref={meshRef}
       position={[position.x, position.y, position.z]}
-      castShadow
-      receiveShadow
+      renderOrder={3}
+      castShadow={!showContinuousBand}
+      receiveShadow={!showContinuousBand}
       onClick={(e) => { e.stopPropagation(); onSelectLayer(layer.id); }}
       onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(layer.id); }}
-      onPointerOver={() => { 
-        document.body.style.cursor = "pointer"; 
-        onHover({ type: "layer", id: layer.id }); 
+      onPointerOver={() => {
+        document.body.style.cursor = "pointer";
+        onHover({ type: "layer", id: layer.id });
       }}
-      onPointerOut={() => { 
-        document.body.style.cursor = "auto"; 
-        onHover(null); 
+      onPointerOut={() => {
+        document.body.style.cursor = "auto";
+        onHover(null);
       }}
     >
-      <boxGeometry args={[dimensions.width * 1.04, LAYER_THICKNESS, dimensions.depth * 1.04]} />
+      <primitive object={geometry} />
       <meshBasicMaterial
         ref={materialRef}
-        color={color}
-        transparent={opacity < 1}
-        opacity={opacity}
+        vertexColors
+        colorWrite={!showContinuousBand}
+        depthWrite={!showContinuousBand}
+        transparent={showContinuousBand || opacity < 1}
+        opacity={showContinuousBand ? 0 : opacity}
         side={THREE.DoubleSide}
-        depthWrite
         toneMapped={false}
       />
 
       {/* Persistent outline makes every elevation legible in the dark canvas,
           even when it is not selected or hovered. */}
-      <lineSegments>
+      {!showContinuousBand && <lineSegments>
         <edgesGeometry
           args={[new THREE.BoxGeometry(
             dimensions.width * 1.04,
@@ -245,13 +294,8 @@ function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissi
             dimensions.depth * 1.04
           )]}
         />
-        <lineBasicMaterial
-          color={color}
-          transparent
-          opacity={isFocused ? 1 : 0.82}
-          depthTest={false}
-        />
-      </lineSegments>
+        <lineBasicMaterial color="#dce2eb" transparent opacity={isFocused ? 0.95 : 0.72} depthTest={false} />
+      </lineSegments>}
       
       {/* Enhanced border effect for selection/hover */}
       {(isSelected || isHovered) && (
@@ -272,15 +316,49 @@ function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissi
         </lineSegments>
       )}
       
-      {/* Enhanced tooltip with beautiful styling */}
-      {isHovered && !isSelected && layer.temperature.avg != null && (
-        <Html position={[0, 0.8, 0]} style={{ pointerEvents: "none" }} occlude={false}>
-          <EnhancedLayerTooltip layer={layer} color={color} isFocused={isFocused} />
-        </Html>
-      )}
-      
-      <AlarmIndicator object={layer} type="layer" temperature={layer.temperature.avg} />
+      <ElevationNumber
+        label={layer.label}
+        width={dimensions.width * 1.04}
+        depth={dimensions.depth * 1.04}
+        opacity={opacity}
+      />
     </mesh>
+  );
+}
+
+function ElevationNumber({ label, width, depth, opacity = 1 }) {
+  const text = `${label} m`;
+  const fontSize = Math.min(0.7, Math.max(0.36, Math.min(width, depth) * 0.05));
+  const textOpacity = 1;
+  const faces = [
+    { position: [0, 0, depth / 2 + 0.035], rotation: [0, 0, 0] },
+    { position: [0, 0, -depth / 2 - 0.035], rotation: [0, Math.PI, 0] },
+    { position: [width / 2 + 0.035, 0, 0], rotation: [0, Math.PI / 2, 0] },
+    { position: [-width / 2 - 0.035, 0, 0], rotation: [0, -Math.PI / 2, 0] },
+  ];
+
+  return (
+    <group>
+      {faces.map((face, index) => (
+        <Text
+          key={index}
+          position={face.position}
+          rotation={face.rotation}
+          fontSize={fontSize}
+          color="#172033"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.035}
+          outlineColor="#fff3c4"
+          depthOffset={-2}
+          opacity={textOpacity}
+          fontWeight={900}
+          material-depthTest={false}
+          material-depthWrite={false}
+          renderOrder={7}
+        >{text}</Text>
+      ))}
+    </group>
   );
 }
 
@@ -288,34 +366,15 @@ function EnhancedLayerMesh({ layer, position, dimensions, color, opacity, emissi
 // ENHANCED LAYER TOOLTIP COMPONENT
 // ============================================================================
 
-function EnhancedLayerTooltip({ layer, color, isFocused }) {
+function EnhancedLayerTooltip({ layer, color }) {
   const tempColor = getTemperatureColor(layer.temperature.avg);
-  const statusIcon = getTemperatureStatusIcon(layer.temperature.avg);
   
   return (
     <div style={styles.tooltipContainer}>
-      <div style={styles.tooltipHeader}>
-        <span style={styles.tooltipIcon}>{statusIcon}</span>
-        <span style={styles.tooltipLabel}>{layer.label}M</span>
-      </div>
       <div style={styles.tooltipContent}>
-        <div style={styles.temperatureRow}>
-          <span style={styles.temperatureLabel}>Temperature</span>
-          <span style={{ ...styles.temperatureValue, color: tempColor }}>
-            {layer.temperature.avg.toFixed(0)}°C
-          </span>
-        </div>
-        <div style={styles.statusRow}>
-          <span style={styles.statusLabel}>Status</span>
-          <span style={{ ...styles.statusValue, color: tempColor }}>
-            {getTemperatureStatus(layer.temperature.avg)}
-          </span>
-        </div>
-        {!isFocused && (
-          <div style={styles.hintRow}>
-            <span style={styles.hintText}>Double-click for CAT scan view</span>
-          </div>
-        )}
+        <span style={{ ...styles.temperatureValue, color: tempColor }}>
+          {layer.temperature.avg.toFixed(0)}°C
+        </span>
       </div>
       <div style={{ ...styles.tooltipAccent, background: color }} />
     </div>
@@ -327,39 +386,13 @@ function EnhancedLayerTooltip({ layer, color, isFocused }) {
 // ============================================================================
 
 /**
- * Returns color based on temperature for UI elements
+ * Returns color based on temperature for UI elements.
+ * Uses the shared temperatureToColor scale so the UI never
+ * diverges from the 3D geometry colours.
  */
 function getTemperatureColor(temperature) {
   if (temperature == null) return "#9ca3af";
-  if (temperature > 1400) return "#ef4444";    // Red - Critical
-  if (temperature > 1200) return "#f97316";    // Orange - High
-  if (temperature > 1000) return "#fbbf24";    // Yellow - Medium
-  if (temperature > 800) return "#22d3ee";     // Cyan - Normal
-  return "#3b82f6";                            // Blue - Cool
-}
-
-/**
- * Returns status icon based on temperature
- */
-function getTemperatureStatusIcon(temperature) {
-  if (temperature == null) return "❓";
-  if (temperature > 1400) return "🔥";
-  if (temperature > 1200) return "⚠️";
-  if (temperature > 1000) return "🌡️";
-  if (temperature > 800) return "✅";
-  return "❄️";
-}
-
-/**
- * Returns status text based on temperature
- */
-function getTemperatureStatus(temperature) {
-  if (temperature == null) return "Unknown";
-  if (temperature > 1400) return "CRITICAL";
-  if (temperature > 1200) return "HIGH";
-  if (temperature > 1000) return "MEDIUM";
-  if (temperature > 800) return "NORMAL";
-  return "COOL";
+  return temperatureToColor(temperature);
 }
 
 // ============================================================================
@@ -367,6 +400,20 @@ function getTemperatureStatus(temperature) {
 // ============================================================================
 
 const styles = {
+  elevationBadge: {
+    background: "rgba(15, 23, 42, 0.88)",
+    border: "1px solid rgba(226, 232, 240, 0.35)",
+    borderRadius: "6px",
+    padding: "4px 10px",
+    fontFamily: "'DM Mono', 'SF Mono', ui-monospace, monospace",
+    fontSize: "13px",
+    fontWeight: 700,
+    color: "#f8fafc",
+    letterSpacing: "0.04em",
+    whiteSpace: "nowrap",
+    boxShadow: "0 4px 14px rgba(0, 0, 0, 0.45)",
+    userSelect: "none",
+  },
   tooltipContainer: {
     background: "linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%)",
     border: "1px solid rgba(59, 130, 246, 0.3)",

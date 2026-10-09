@@ -60,9 +60,9 @@ const FlameShaderMaterial = {
     uTime: { value: 0 },
     uColor: { value: new THREE.Color() },
     uIntensity: { value: 1.0 },
-    uCoreColor: { value: new THREE.Color(1.0, 0.95, 0.72) },
-    uOuterColor: { value: new THREE.Color(1.0, 0.38, 0.08) },
-    uTipColor: { value: new THREE.Color(0.55, 0.22, 0.04) },
+    uCoreColor: { value: new THREE.Color(1.0, 0.92, 0.23) }, // Yellow core
+    uOuterColor: { value: new THREE.Color(1.0, 0.6, 0.0) }, // Orange outer
+    uTipColor: { value: new THREE.Color(1.0, 0.34, 0.13) }, // Red-orange tip
     uTempNorm: { value: 0.5 },
     uSeed: { value: 0 },
     uHeight: { value: 1.85 },
@@ -84,22 +84,22 @@ const FlameShaderMaterial = {
       vUv = uv;
       vPosition = position;
 
-      float t = uTime * (1.65 + uTempNorm * 1.4) + uSeed;
+      float t = uTime * (1.5 + uTempNorm * 1.0) + uSeed; // Reduced animation speed for stability
       float h = clamp(uv.y, 0.0, 1.0);
-      vec3 p = vec3(position.x * 2.4, position.y * 1.15 - t * 1.55, position.z * 2.4);
+      vec3 p = vec3(position.x * 2.0, position.y * 1.5 - t * 1.5, position.z * 2.0); // Moderate vertical movement
       float n = fbm(p + uSeed);
-      float n2 = fbm(p * 1.7 + vec3(19.1, t * 0.4, -8.4));
+      float n2 = fbm(p * 1.5 + vec3(20.1, t * 0.4, -8.4)); // Moderate noise for vertical flow
       vNoise = n;
 
       vec2 radial = position.xz;
       float radialLen = length(radial);
       vec2 dir = radialLen > 0.0001 ? radial / radialLen : vec2(0.0);
-      float sway = (n - 0.5) * (0.16 + uSheath * 0.08) * (0.35 + h) * (0.45 + uTempNorm);
+      float sway = (n - 0.5) * (0.12 + uSheath * 0.06) * (0.3 + h) * (0.4 + uTempNorm); // Reduced sway for stability
       vec3 displaced = position;
       displaced.xz += dir * sway;
-      displaced.x += sin(t * 1.8 + position.y * 3.0 + uSeed) * 0.045 * h;
-      displaced.z += cos(t * 1.5 + position.y * 2.4 + uSeed) * 0.045 * h;
-      displaced.y += (n2 - 0.5) * 0.08 * uTempNorm;
+      displaced.x += sin(t * 1.5 + position.y * 2.0 + uSeed) * 0.04 * h; // Reduced horizontal movement
+      displaced.z += cos(t * 1.2 + position.y * 1.5 + uSeed) * 0.04 * h; // Reduced horizontal movement
+      displaced.y += (n2 - 0.5) * 0.08 * uTempNorm * h; // Moderate vertical displacement
 
       gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
     }
@@ -115,6 +115,7 @@ const FlameShaderMaterial = {
     uniform float uSeed;
     uniform float uHeight;
     uniform float uSheath;
+    uniform float uSheath;
 
     varying vec2 vUv;
     varying vec3 vPosition;
@@ -127,10 +128,10 @@ const FlameShaderMaterial = {
       float radiusAtH = mix(0.38 + uSheath * 0.12, 0.02, pow(h, 0.72));
       float r = length(vPosition.xz) / max(radiusAtH, 0.012);
 
-      vec3 p = vec3(vUv * vec2(5.5, 3.2), uTime * (4.2 + uTempNorm * 2.4) + uSeed);
+      vec3 p = vec3(vUv * vec2(5.5, 3.2), uTime * (3.0 + uTempNorm * 1.5) + uSeed); // Reduced noise animation for stability
       vec2 warp = vec2(fbm(p), fbm(p + 23.17));
       float n = fbm(p + vec3(warp * 1.15, 0.0));
-      float flicker = 0.78 + n * 0.38 + sin(uTime * 11.0 + uSeed) * 0.04;
+      float flicker = 0.82 + n * 0.28 + sin(uTime * 8.0 + uSeed) * 0.03; // Reduced flicker for stability
 
       vec3 baseCol = mix(uOuterColor, uColor, 0.4);
       vec3 midCol = mix(uCoreColor, uColor, 0.22);
@@ -167,8 +168,8 @@ function seededRandom(seed) {
 function FlameParticles({ count, color, intensity, seed, mode = "spark" }) {
   const particlesRef = useRef();
   const isEmber = mode === "ember";
-  const riseMax = isEmber ? 1.25 : 1.7;
-  const spread = isEmber ? 0.18 : 0.28;
+  const spread = isEmber ? 0.25 : 0.3; // Increased spread for thicker flame
+  const riseMax = isEmber ? 2.5 : 3.5; // Vertical rise for animated particles
 
   const { positions, velocities, sizes } = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -176,22 +177,23 @@ function FlameParticles({ count, color, intensity, seed, mode = "spark" }) {
     const sz = new Float32Array(count);
     for (let i = 0; i < count; i++) {
       const s = seed + i * 19.17 + (isEmber ? 100 : 0);
-      pos[i * 3] = (seededRandom(s) - 0.5) * spread;
-      pos[i * 3 + 1] = seededRandom(s + 1.3) * riseMax;
-      pos[i * 3 + 2] = (seededRandom(s + 2.1) - 0.5) * spread;
-      vel[i * 3] = (seededRandom(s + 3.7) - 0.5) * (isEmber ? 0.004 : 0.01);
-      vel[i * 3 + 1] = (isEmber ? 0.01 : 0.022) + seededRandom(s + 4.2) * (isEmber ? 0.014 : 0.032);
-      vel[i * 3 + 2] = (seededRandom(s + 5.9) - 0.5) * (isEmber ? 0.004 : 0.01);
-      sz[i] = (isEmber ? 0.055 : 0.03) + seededRandom(s + 8.4) * (isEmber ? 0.04 : 0.028);
+      // Initial positions distributed vertically in the flame area
+      pos[i * 3] = (seededRandom(s) - 0.5) * spread; // Horizontal spread
+      pos[i * 3 + 1] = 0.0 + seededRandom(s + 1.3) * 2.0; // Vertical distribution
+      pos[i * 3 + 2] = (seededRandom(s + 2.1) - 0.5) * spread; // Depth spread
+      vel[i * 3] = (seededRandom(s + 3.7) - 0.5) * (isEmber ? 0.004 : 0.008); // Horizontal movement
+      vel[i * 3 + 1] = (isEmber ? 0.02 : 0.04) + seededRandom(s + 4.2) * (isEmber ? 0.02 : 0.04); // Vertical rise
+      vel[i * 3 + 2] = (seededRandom(s + 5.9) - 0.5) * (isEmber ? 0.004 : 0.008); // Depth movement
+      sz[i] = (isEmber ? 0.18 : 0.12) + seededRandom(s + 8.4) * (isEmber ? 0.12 : 0.1); // Particle sizes
     }
     return { positions: pos, velocities: vel, sizes: sz };
-  }, [count, seed, isEmber, riseMax, spread]);
+  }, [count, seed, isEmber, spread, riseMax]);
 
   const particleMaterial = useMemo(() => {
     const mat = createFlameParticleMaterial(color, intensity);
-    mat.size = isEmber ? 0.07 : 0.045;
+    mat.size = isEmber ? 0.18 : 0.12; // Larger particles for thicker flame
     mat.toneMapped = false;
-    mat.opacity = isEmber ? 0.35 * intensity : 0.7 * intensity;
+    mat.opacity = isEmber ? 0.65 * intensity : 0.95 * intensity; // Higher opacity
     mat.sizeAttenuation = true;
     return mat;
   }, [color, intensity, isEmber]);
@@ -199,26 +201,27 @@ function FlameParticles({ count, color, intensity, seed, mode = "spark" }) {
   useEffect(() => {
     if (!particleMaterial) return;
     particleMaterial.color.set(color);
-    particleMaterial.opacity = (isEmber ? 0.35 : 0.7) * intensity;
+    particleMaterial.opacity = (isEmber ? 0.65 : 0.95) * intensity;
   }, [particleMaterial, color, intensity, isEmber]);
 
   useFrame(({ clock }) => {
     if (!particlesRef.current) return;
     const arr = particlesRef.current.geometry.attributes.position.array;
     const t = clock.getElapsedTime();
-    const swirl = isEmber ? 1.1 : 2.4;
+    const swirl = isEmber ? 0.8 : 1.2; // Swirl speed for animation
 
     for (let i = 0; i < count; i++) {
-      const wobble = Math.sin(t * swirl + i * 0.7 + seed) * (isEmber ? 0.0012 : 0.0024);
-      arr[i * 3] += velocities[i * 3] + wobble;
-      arr[i * 3 + 1] += velocities[i * 3 + 1];
-      arr[i * 3 + 2] += velocities[i * 3 + 2] + Math.cos(t * swirl + i + seed) * (isEmber ? 0.0012 : 0.0024);
+      const wobble = Math.sin(t * swirl + i * 0.5 + seed) * (isEmber ? 0.0008 : 0.0012); // Wobble animation
+      arr[i * 3] += velocities[i * 3] + wobble; // Horizontal movement
+      arr[i * 3 + 1] += velocities[i * 3 + 1]; // Vertical rise
+      arr[i * 3 + 2] += velocities[i * 3 + 2] + Math.cos(t * swirl + i + seed) * (isEmber ? 0.0008 : 0.0012); // Depth movement
 
+      // Reset particles when they reach the top
       if (arr[i * 3 + 1] > riseMax) {
         const s = seed + i * 13.7 + t;
-        arr[i * 3 + 1] = 0.02;
-        arr[i * 3] = (seededRandom(s) - 0.5) * spread * 0.7;
-        arr[i * 3 + 2] = (seededRandom(s + 4.1) - 0.5) * spread * 0.7;
+        arr[i * 3 + 1] = 0.0; // Reset to bottom
+        arr[i * 3] = (seededRandom(s) - 0.5) * spread * 0.6; // Reset horizontal position
+        arr[i * 3 + 2] = (seededRandom(s + 4.1) - 0.5) * spread * 0.6; // Reset depth position
       }
     }
 
@@ -242,12 +245,12 @@ function makeFlameShader(sheath) {
       uTime: { value: 0 },
       uColor: { value: new THREE.Color() },
       uIntensity: { value: 1 },
-      uCoreColor: { value: new THREE.Color(1.0, 0.95, 0.72) },
-      uOuterColor: { value: new THREE.Color(1.0, 0.38, 0.08) },
-      uTipColor: { value: new THREE.Color(0.72, 0.18, 0.04) },
+      uCoreColor: { value: new THREE.Color(1.0, 0.92, 0.23) }, // Yellow core
+      uOuterColor: { value: new THREE.Color(1.0, 0.6, 0.0) }, // Orange outer
+      uTipColor: { value: new THREE.Color(1.0, 0.34, 0.13) }, // Red-orange tip
       uTempNorm: { value: 0.5 },
       uSeed: { value: 0 },
-      uHeight: { value: sheath ? 2.05 : 1.85 },
+      uHeight: { value: sheath ? 5.0 : 4.0 },
       uSheath: { value: sheath ? 1 : 0 },
     },
     vertexShader: FlameShaderMaterial.vertexShader,
@@ -255,7 +258,7 @@ function makeFlameShader(sheath) {
   };
 }
 
-export default function EnhancedFlame({ burner, temperature, isHot, isSelected }) {
+export default function EnhancedFlame({ burner, temperature, isHot, isSelected, rectangular = false, flamePosition = [0, 0.5, 0] }) {
   const groupRef = useRef();
   const bodyRef = useRef();
   const sheathRef = useRef();
@@ -266,22 +269,23 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
   const hazeRef = useRef();
   const { state } = useFurnaceStore();
 
-  const flameColor = temperatureToColor(temperature, state.thresholds.alert, state.thresholds.warn);
-  const tempNorm = Math.min(1, Math.max(0, (temperature - 900) / 800));
+  const safeTemperature = temperature ?? 1000; // Default to 1000°C for permanent flame
+  const flameColor = temperatureToColor(safeTemperature, state.thresholds.alert, state.thresholds.warn);
+  const tempNorm = Math.min(1, Math.max(0, (safeTemperature - 900) / 800));
   const intensity = (isHot ? 1.25 : 0.82) + (isSelected ? 0.22 : 0);
   const seed = (burner.position?.x ?? 0) * 12.7 + (burner.position?.y ?? 0) * 4.3;
 
-  const coreColor = useMemo(() => new THREE.Color().setHSL(0.09, 0.35 + tempNorm * 0.15, 0.78 + tempNorm * 0.16), [tempNorm]);
-  const outerColor = useMemo(() => new THREE.Color(flameColor).lerp(new THREE.Color("#ff4d1a"), 0.35), [flameColor]);
-  const tipColor = useMemo(() => new THREE.Color("#c2410c").lerp(new THREE.Color("#93c5fd"), tempNorm * 0.28), [tempNorm]);
-  const rootBlue = useMemo(() => new THREE.Color("#7dd3fc"), []);
+  const coreColor = useMemo(() => new THREE.Color("#ffeb3b"), []); // Yellow core
+  const outerColor = useMemo(() => new THREE.Color("#ff9800"), []); // Orange outer
+  const tipColor = useMemo(() => new THREE.Color("#ff5722"), []); // Red-orange tip
+  const rootYellow = useMemo(() => new THREE.Color("#ffeb3b"), []); // Yellow root
 
   const bodyShader = useMemo(() => makeFlameShader(false), []);
   const sheathShader = useMemo(() => makeFlameShader(true), []);
 
   const syncMaterial = (mat) => {
     if (!mat?.uniforms) return;
-    mat.uniforms.uColor.value.set(flameColor);
+    mat.uniforms.uColor.value.set(coreColor); // Use yellow core color for entire flame
     mat.uniforms.uCoreColor.value.copy(coreColor);
     mat.uniforms.uOuterColor.value.copy(outerColor);
     mat.uniforms.uTipColor.value.copy(tipColor);
@@ -297,165 +301,104 @@ export default function EnhancedFlame({ burner, temperature, isHot, isSelected }
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
-    const breath = 1 + Math.sin(t * (3.1 + tempNorm * 2.2) + seed) * (0.045 + tempNorm * 0.04);
-    const lean = Math.sin(t * 1.7 + seed) * 0.035 * (0.6 + tempNorm);
+    
+    // Animated flame - shader animation for flickering effect
+    // Burner remains static, only flame animates
 
     if (bodyMatRef.current) {
-      bodyMatRef.current.uniforms.uTime.value = t;
+      bodyMatRef.current.uniforms.uTime.value = t * 2.0; // Normal shader animation speed
       syncMaterial(bodyMatRef.current);
     }
     if (sheathMatRef.current) {
-      sheathMatRef.current.uniforms.uTime.value = t * 0.86;
+      sheathMatRef.current.uniforms.uTime.value = t * 1.5; // Normal shader animation speed
       syncMaterial(sheathMatRef.current);
       sheathMatRef.current.uniforms.uIntensity.value = intensity * 0.55;
     }
 
+    // Subtle flame animation (breathing, core pulsing, glow)
     if (groupRef.current) {
-      groupRef.current.scale.set(breath, 0.92 + tempNorm * 0.28, breath);
+      if (rectangular) {
+        groupRef.current.scale.set(1.0, 1.0, 1.0);
+      } else {
+        groupRef.current.scale.set(1.0, 1.0, 1.0);
+      }
     }
     if (bodyRef.current) {
-      bodyRef.current.rotation.y = lean;
-      bodyRef.current.scale.y = 1 + Math.sin(t * 4.2 + seed) * 0.06 * (0.5 + tempNorm);
+      bodyRef.current.rotation.y = 0; // No rotation
+      bodyRef.current.scale.y = 1 + Math.sin(t * 3.0 + seed) * 0.05 * (0.5 + tempNorm); // Breathing animation
     }
     if (sheathRef.current) {
-      sheathRef.current.rotation.y = -lean * 0.7;
+      sheathRef.current.rotation.y = 0; // No rotation
     }
     if (coreRef.current) {
-      const c = 0.92 + Math.sin(t * 8.5 + seed) * 0.08;
-      coreRef.current.scale.set(c, 1 + Math.sin(t * 6.2 + seed) * 0.1, c);
+      const c = 0.92 + Math.sin(t * 4.0 + seed) * 0.04; // Core pulsing animation
+      if (rectangular) {
+        coreRef.current.scale.set(c * 0.9, 1 + Math.sin(t * 3.0 + seed) * 0.05, c * 0.8);
+      } else {
+        coreRef.current.scale.set(c, 1 + Math.sin(t * 3.0 + seed) * 0.05, c);
+      }
     }
     if (glowRef.current) {
-      const g = 1 + Math.sin(t * 5.4 + seed) * 0.12;
+      const g = 1 + Math.sin(t * 2.5 + seed) * 0.06; // Glow pulsing animation
       glowRef.current.scale.setScalar(g);
     }
     if (hazeRef.current) {
-      hazeRef.current.material.opacity = (0.04 + tempNorm * 0.05) * intensity * (0.7 + Math.sin(t * 3.6 + seed) * 0.3);
-      hazeRef.current.position.y = 0.55 + Math.sin(t * 1.4 + seed) * 0.08;
+      hazeRef.current.material.opacity = (0.04 + tempNorm * 0.05) * intensity * (0.7 + Math.sin(t * 1.8 + seed) * 0.15); // Haze flickering
+      hazeRef.current.position.y = 0.55 + Math.sin(t * 0.7 + seed) * 0.04; // Haze movement
     }
   });
 
-  const sparkCount = isHot ? 28 : 16;
-  const emberCount = isHot ? 12 : 7;
+  const sparkCount = 48; // Increased spark count for larger flames
+  const emberCount = 20; // Increased ember count for larger flames
+
+  // Simple flame geometry - thick and tall yellow box
+  const rectWidth = 0.9; // Thick
+  const rectHeight = 5.0; // Very tall
+  const rectDepth = 0.9; // Thick
 
   return (
-    <group ref={groupRef} position={[0, 0, 1.05]} rotation={[Math.PI / 2, 0, 0]}>
-      {/* Outer sheath — larger, softer, slower */}
-      <mesh ref={sheathRef} position={[0, 0.08, 0]}>
-        <cylinderGeometry args={[0.02, 0.46, 2.05, 36, 12, true]} />
-        <shaderMaterial
-          ref={sheathMatRef}
-          args={[sheathShader]}
-          transparent
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-          clippingPlanes={[]}
-        />
-      </mesh>
+    <group ref={groupRef} position={flamePosition} rotation={[0, 0, 0]}>
+      {rectangular ? (
+        <>
+          {/* Simple yellow translucent flame box */}
+          <mesh ref={bodyRef}>
+            <boxGeometry args={[rectWidth, rectHeight, rectDepth]} />
+            <meshBasicMaterial
+              color={coreColor}
+              transparent
+              opacity={0.6}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              toneMapped={false}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
 
-      {/* Main flame body */}
-      <mesh ref={bodyRef}>
-        <cylinderGeometry args={[0.012, 0.34, 1.85, 40, 14, true]} />
-        <shaderMaterial
-          ref={bodyMatRef}
-          args={[bodyShader]}
-          transparent
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-          clippingPlanes={[]}
-        />
-      </mesh>
+          {/* Animated particles */}
+          <FlameParticles count={sparkCount} color={coreColor} intensity={intensity} seed={seed} mode="spark" />
+          <FlameParticles count={emberCount} color={coreColor} intensity={intensity * 0.7} seed={seed + 9.1} mode="ember" />
+        </>
+      ) : (
+        <>
+          {/* Cylindrical flame for non-rectangular */}
+          <mesh ref={bodyRef}>
+            <cylinderGeometry args={[0.3, 0.4, rectHeight, 32, 1, true]} />
+            <meshBasicMaterial
+              color={coreColor}
+              transparent
+              opacity={0.6}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              toneMapped={false}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
 
-      {/* White-hot core — along flame height (local Y) */}
-      <mesh ref={coreRef} position={[0, 0.18, 0]}>
-        <cylinderGeometry args={[0.008, 0.13, 0.95, 20, 1, true]} />
-        <meshBasicMaterial
-          color={coreColor}
-          transparent
-          opacity={0.55 + tempNorm * 0.3}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-          side={THREE.DoubleSide}
-          clippingPlanes={[]}
-        />
-      </mesh>
-
-      {/* Stoichiometric blue root at the nozzle */}
-      <mesh position={[0, -0.72, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.04, 0.16, 24]} />
-        <meshBasicMaterial
-          color={rootBlue}
-          transparent
-          opacity={0.18 + tempNorm * 0.22}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-          side={THREE.DoubleSide}
-          clippingPlanes={[]}
-        />
-      </mesh>
-      <mesh position={[0, -0.7, 0]}>
-        <sphereGeometry args={[0.11, 16, 16]} />
-        <meshBasicMaterial
-          color={rootBlue}
-          transparent
-          opacity={0.16 + tempNorm * 0.12}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-          clippingPlanes={[]}
-        />
-      </mesh>
-
-      <FlameParticles count={sparkCount} color={flameColor} intensity={intensity} seed={seed} mode="spark" />
-      <FlameParticles count={emberCount} color={flameColor} intensity={intensity * 0.7} seed={seed + 9.1} mode="ember" />
-
-      {/* Heat haze */}
-      <mesh ref={hazeRef} position={[0, 0.55, 0]} rotation={[0, 0, 0]}>
-        <planeGeometry args={[0.55, 0.85]} />
-        <meshBasicMaterial
-          color={flameColor}
-          transparent
-          opacity={0.06 * intensity * tempNorm}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-          side={THREE.DoubleSide}
-          clippingPlanes={[]}
-        />
-      </mesh>
-
-      {/* Root glow — tight + soft */}
-      <group ref={glowRef} position={[0, -0.55, 0]}>
-        <mesh>
-          <sphereGeometry args={[0.22 + tempNorm * 0.08, 20, 20]} />
-          <meshBasicMaterial
-            color={coreColor}
-            transparent
-            opacity={0.28 * intensity}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            toneMapped={false}
-            clippingPlanes={[]}
-          />
-        </mesh>
-        <mesh>
-          <sphereGeometry args={[0.48 + tempNorm * 0.22, 20, 20]} />
-          <meshBasicMaterial
-            color={outerColor}
-            transparent
-            opacity={0.1 * intensity * (0.7 + tempNorm * 0.3)}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            toneMapped={false}
-            clippingPlanes={[]}
-          />
-        </mesh>
-      </group>
+          {/* Animated particles */}
+          <FlameParticles count={sparkCount} color={coreColor} intensity={intensity} seed={seed} mode="spark" />
+          <FlameParticles count={emberCount} color={coreColor} intensity={intensity * 0.7} seed={seed + 9.1} mode="ember" />
+        </>
+      )}
     </group>
   );
 }

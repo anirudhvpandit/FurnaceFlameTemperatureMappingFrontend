@@ -1,36 +1,43 @@
 // src/furnace3d/utils/temperatureScale.js
 import { DEFAULT_TEMPERATURE_WARN_C, DEFAULT_TEMPERATURE_ALERT_C } from "../config/furnaceConfig";
 
-export const TEMPERATURE_SCALE_STOPS = (alert = DEFAULT_TEMPERATURE_ALERT_C, warn = DEFAULT_TEMPERATURE_WARN_C) => [
-  { t: 600, color: [37, 99, 235] },
-  { t: 900, color: [6, 182, 212] },
-  { t: 1100, color: [16, 185, 129] },
-  { t: warn, color: [245, 158, 11] },
-  { t: alert, color: [239, 68, 68] },
-  { t: 1500, color: [190, 24, 93] },
+/** Smooth palette sampled from the supplied 350–1773 K contour legend.
+ * Temperatures are stored in Celsius in the app, so the Kelvin stops are
+ * converted to Celsius here while preserving the reference colors.
+ */
+export const TEMPERATURE_SCALE_STOPS = () => [
+  { t: 77, label: "350 K", color: [20, 72, 235] },
+  { t: 235, label: "508 K", color: [0, 83, 255] },
+  { t: 393, label: "666 K", color: [0, 177, 235] },
+  { t: 551, label: "824 K", color: [0, 226, 205] },
+  { t: 709, label: "982 K", color: [0, 230, 91] },
+  { t: 868, label: "1141 K", color: [42, 232, 0] },
+  { t: 1026, label: "1299 K", color: [211, 239, 0] },
+  { t: 1184, label: "1457 K", color: [255, 224, 0] },
+  { t: 1342, label: "1615 K", color: [255, 104, 0] },
+  { t: 1500, label: "1773 K", color: [239, 57, 19] },
 ];
 
 function lerp(a, b, f) { return a + (b - a) * f; }
-function rgbToHex([r, g, b]) { return `#${[r,g,b].map((v) => Math.round(v).toString(16).padStart(2,"0")).join("")}`; }
+function rgbToHex([r, g, b]) { return `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`; }
 
-export function temperatureToColor(tempC, alert = DEFAULT_TEMPERATURE_ALERT_C, warn = DEFAULT_TEMPERATURE_WARN_C) {
+export function temperatureToColor(tempC) {
   if (tempC == null || Number.isNaN(tempC)) return "#6b7280";
-  const stops = TEMPERATURE_SCALE_STOPS(alert, warn);
+  const stops = TEMPERATURE_SCALE_STOPS();
   if (tempC <= stops[0].t) return rgbToHex(stops[0].color);
-  for (let i = 0; i < stops.length - 1; i++) {
-    const a = stops[i], b = stops[i+1];
+  for (let i = 0; i < stops.length - 1; i += 1) {
+    const a = stops[i], b = stops[i + 1];
     if (tempC >= a.t && tempC <= b.t) {
-      const f = (tempC - a.t) / (b.t - a.t);
-      const c = [0,1,2].map((k) => lerp(a.color[k], b.color[k], f));
-      return rgbToHex(c);
+      const fraction = (tempC - a.t) / (b.t - a.t);
+      return rgbToHex([0, 1, 2].map((channel) => lerp(a.color[channel], b.color[channel], fraction)));
     }
   }
-  return rgbToHex(stops[stops.length-1].color);
+  return rgbToHex(stops[stops.length - 1].color);
 }
 
-export function normalizeTemperature(tempC, alert = DEFAULT_TEMPERATURE_ALERT_C, warn = DEFAULT_TEMPERATURE_WARN_C) {
-  const stops = TEMPERATURE_SCALE_STOPS(alert, warn);
-  const min = stops[0].t, max = stops[stops.length-1].t;
+export function normalizeTemperature(tempC) {
+  const stops = TEMPERATURE_SCALE_STOPS();
+  const min = stops[0].t, max = stops[stops.length - 1].t;
   if (tempC == null) return 0;
   return Math.min(1, Math.max(0, (tempC - min) / (max - min)));
 }

@@ -18,9 +18,12 @@ export function buildFurnaceModel(dataset, coalMills = [], dimensions = DEFAULT_
   const allTemps = [];
   const layers = dataset.elevation.map((rawElevation, rowIdx) => {
     const elevationM = Number(rawElevation);
-    const normalizedZ = Number.isFinite(elevationM)
+    const elevationFraction = Number.isFinite(elevationM)
       ? ((elevationM - minElevation) / elevationSpan) * dimensions.height
       : (rowIdx / Math.max(1, dataset.elevation.length - 1)) * dimensions.height;
+    // Keep the measured elevation sequence together as a compact stack in the
+    // centre of the furnace, leaving the upper chamber and lower hopper clear.
+    const normalizedZ = dimensions.height * (0.4 + (elevationFraction / dimensions.height) * 0.26);
     const label = dataset.elevation_labels?.[rowIdx] ?? String(rawElevation);
     const tiltDeg = Number(dataset.burner_tilt_deg?.[rowIdx]) || 0;
     const burners = cornerKeys.map((key, i) => {
@@ -45,6 +48,37 @@ export function buildFurnaceModel(dataset, coalMills = [], dimensions = DEFAULT_
     });
     const layerTemps = burners.map((b) => b.temperature).filter((v) => v != null);
     const avg = layerTemps.length ? layerTemps.reduce((a, b) => a + b, 0) / layerTemps.length : null;
+
+    /* ------------------------------------------------------------------
+     * Derive the 4 tile-corner temperatures from burner data.
+     * Burners are arranged around the furnace perimeter at specific angles
+     * (see CORNER_ANGLES_DEG).  The four diagonal angles (45°, 135°, 225°,
+     * 315°) land closest to the four corners of the rectangular elevation
+     * tile.  We find the closest burner for each tile corner so that the
+     * per-corner colours and the gradient surface between them have real
+     * temperature data to work with.
+     * ------------------------------------------------------------------ */
+    const TARGET_ANGLE_BY_TILE_CORNER = {
+      c1: 135, // front-left (z+)
+      c2: 225, // back-left (z-)
+      c3: 315, // back-right (z-)
+      c4: 45,  // front-right (z+)
+    };
+    const tileCornerTemps = { c1: null, c2: null, c3: null, c4: null };
+    for (const [cornerKey, targetAngle] of Object.entries(TARGET_ANGLE_BY_TILE_CORNER)) {
+      let closestBurner = null;
+      let minDist = Infinity;
+      for (const burner of burners) {
+        const diff = Math.abs(burner.angleDeg - targetAngle);
+        const dist = Math.min(diff, 360 - diff);
+        if (dist < minDist) {
+          minDist = dist;
+          closestBurner = burner;
+        }
+      }
+      tileCornerTemps[cornerKey] = closestBurner ? closestBurner.temperature : null;
+    }
+
     return {
       id: `layer-${rowIdx}`,
       index: rowIdx,
@@ -53,7 +87,15 @@ export function buildFurnaceModel(dataset, coalMills = [], dimensions = DEFAULT_
       z: normalizedZ,
       tiltDeg,
       burners,
-      temperature: { min: layerTemps.length ? Math.min(...layerTemps) : null, max: layerTemps.length ? Math.max(...layerTemps) : null, avg },
+      temperature: {
+        min: layerTemps.length ? Math.min(...layerTemps) : null,
+        max: layerTemps.length ? Math.max(...layerTemps) : null,
+        avg,
+        c1: tileCornerTemps.c1,
+        c2: tileCornerTemps.c2,
+        c3: tileCornerTemps.c3,
+        c4: tileCornerTemps.c4,
+      },
     };
   });
   return {
