@@ -18,6 +18,52 @@ function layerTemperatureAt(layer, x, z) {
   return THREE.MathUtils.lerp(back, front, z);
 }
 
+function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, rightWall) {
+  // These readings describe the coil pass sequence from top to bottom.
+  const stages = [
+    { y: 0.96, left: boilerParams?.fg_temp_after_dpsh_l, right: boilerParams?.fg_temp_after_dpsh_r },
+    { y: 0.92, left: boilerParams?.fg_temp_after_psh_l, right: boilerParams?.fg_temp_after_psh_r },
+    { y: 0.87, left: boilerParams?.fg_temp_after_rh_l, right: boilerParams?.fg_temp_after_rh_r },
+    { y: 0.82, left: boilerParams?.fg_temp_after_hsh_l, right: boilerParams?.fg_temp_after_hsh_r },
+  ].map((stage) => {
+    const parse = (value) => value == null || value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
+    return { ...stage, left: parse(stage.left), right: parse(stage.right) };
+  }).filter((stage) => stage.left != null || stage.right != null);
+
+  // Wrap the readings around all four vertical faces. The front/back faces
+  // blend left-to-right; each side wall follows its corresponding sensor.
+  // The top cap carries the final DPSH left-to-right gradient.
+  const onLeftOrRightWall = leftWall || rightWall;
+  const onFrontOrBackWall = zNorm <= 0.002 || zNorm >= 0.998;
+  const altitude = y / height;
+  const onTopSurface = altitude >= 0.998;
+  if (!stages.length || (!onLeftOrRightWall && !onFrontOrBackWall && !onTopSurface)) return null;
+  const sample = (stage) => {
+    if (onLeftOrRightWall) {
+      return leftWall
+        ? stage.left ?? stage.right
+        : stage.right ?? stage.left;
+    }
+    const left = stage.left ?? stage.right;
+    const right = stage.right ?? stage.left;
+    return THREE.MathUtils.lerp(left, right, xNorm);
+  };
+  const topStage = stages[0];
+  const bottomStage = stages[stages.length - 1];
+  if (onTopSurface) return sample(topStage);
+  if (altitude >= topStage.y) return sample(topStage);
+  if (altitude <= bottomStage.y) return sample(bottomStage);
+  for (let index = 0; index < stages.length - 1; index += 1) {
+    const upper = stages[index];
+    const lower = stages[index + 1];
+    if (altitude <= upper.y && altitude >= lower.y) {
+      const fraction = (upper.y - altitude) / (upper.y - lower.y);
+      return THREE.MathUtils.lerp(sample(upper), sample(lower), fraction);
+    }
+  }
+  return null;
+}
+
 /** Get the inset value at a given height for the buzzneck notch */
 function getBuzzneckInset(y, height, width) {
   const cutBottomY = height * 0.69;
@@ -50,7 +96,7 @@ function getBuzzneckInset(y, height, width) {
 
 /** Smooth temperature volume between the elevation tiles, colored from the
  * measured corner values at each elevation. */
-export default function TemperatureBand({ model, thresholds }) {
+export default function TemperatureBand({ model, thresholds, boilerParams }) {
   const materialRef = useRef();
   const scaleRange = getTemperatureScaleRange();
   const layers = useMemo(() => [...(model?.layers || [])]
@@ -80,7 +126,8 @@ export default function TemperatureBand({ model, thresholds }) {
     const colors = new Float32Array(positions.count * 3);
 
     for (let i = 0; i < positions.count; i += 1) {
-      let x = positions.getX(i);
+      const originalX = positions.getX(i);
+      let x = originalX;
       const z = positions.getZ(i);
       const y = positions.getY(i) + height / 2 + extendedBottom;
 
@@ -96,42 +143,33 @@ export default function TemperatureBand({ model, thresholds }) {
 
       let low = layers[0];
       let high = layers[layers.length - 1];
-      let fraction = 0;
-
-      // If y is above the top layer, use the top layer's temperature
-      if (y > top) {
-        const lowTemp = layerTemperatureAt(high, xNorm, zNorm);
-        const temp = lowTemp ?? 1200; // Fallback to reasonable temperature
-        const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn));
-        colors[i * 3] = color.r;
-        colors[i * 3 + 1] = color.g;
-        colors[i * 3 + 2] = color.b;
-        continue;
-      }
-
-      // If y is below the bottom layer, use the bottom layer's temperature
-      if (y < bottom) {
-        const lowTemp = layerTemperatureAt(low, xNorm, zNorm);
-        const temp = lowTemp ?? 1200; // Fallback to reasonable temperature
-        const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn));
-        colors[i * 3] = color.r;
-        colors[i * 3 + 1] = color.g;
-        colors[i * 3 + 2] = color.b;
-        continue;
-      }
-
-      // Normal interpolation between layers
-      for (let j = 0; j < layers.length - 1; j += 1) {
-        if (y <= layers[j + 1].z) {
-          low = layers[j];
-          high = layers[j + 1];
-          break;
+      let temp;
+      if (y <= bottom) {
+        temp = layerTemperatureAt(low, xNorm, zNorm);
+      } else if (y >= top) {
+        temp = layerTemperatureAt(high, xNorm, zNorm);
+      } else {
+        for (let j = 0; j < layers.length - 1; j += 1) {
+          if (y <= layers[j + 1].z) {
+            low = layers[j];
+            high = layers[j + 1];
+            break;
+          }
         }
+        const fraction = high.z === low.z ? 0 : THREE.MathUtils.clamp((y - low.z) / (high.z - low.z), 0, 1);
+        const lowTemp = layerTemperatureAt(low, xNorm, zNorm);
+        const highTemp = layerTemperatureAt(high, xNorm, zNorm);
+        temp = lowTemp == null ? highTemp : highTemp == null ? lowTemp : THREE.MathUtils.lerp(lowTemp, highTemp, fraction);
       }
-      fraction = high.z === low.z ? 0 : THREE.MathUtils.clamp((y - low.z) / (high.z - low.z), 0, 1);
-      const lowTemp = layerTemperatureAt(low, xNorm, zNorm);
-      const highTemp = layerTemperatureAt(high, xNorm, zNorm);
-      const temp = lowTemp == null ? highTemp : highTemp == null ? lowTemp : THREE.MathUtils.lerp(lowTemp, highTemp, fraction);
+      const shellHalfWidth = (model.dimensions.width * 0.99) / 2;
+      const leftWall = originalX <= -shellHalfWidth + 0.002;
+      const rightWall = originalX >= shellHalfWidth - 0.002;
+      const flueTemp = flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, model.dimensions.height, leftWall, rightWall);
+      if (flueTemp != null) {
+        // Fade the coil readings into the existing furnace heatmap below the coils.
+        const blend = THREE.MathUtils.smoothstep(y / model.dimensions.height, 0.68, 0.82);
+        temp = temp == null ? flueTemp : THREE.MathUtils.lerp(temp, flueTemp, blend);
+      }
       const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn));
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
@@ -141,7 +179,7 @@ export default function TemperatureBand({ model, thresholds }) {
     positions.needsUpdate = true;
     geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     return { geometry, centerY: (extendedBottom + extendedTop) / 2 };
-  }, [layers, model, thresholds, scaleRange]);
+  }, [layers, model, thresholds, scaleRange, boilerParams]);
 
   useFrame(({ clock }) => {
     const shader = materialRef.current?.userData.flowShader;

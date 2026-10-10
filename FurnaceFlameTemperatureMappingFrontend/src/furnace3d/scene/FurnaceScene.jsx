@@ -114,7 +114,7 @@ function ComparisonSeparator({ position }) {
   );
 }
 
-const FurnaceScene = forwardRef(({ model, onResetCameraRef, onControlsReady, onControlsRemoved, furnaceOffsets = [[0, 0], [0, 0]] }, ref) => {
+const FurnaceScene = forwardRef(({ model, boilerParams, onResetCameraRef, onControlsReady, onControlsRemoved, furnaceOffsets = [[0, 0], [0, 0]] }, ref) => {
   const controlsRef = useRef();
   const sceneRef = useRef();
   const [isLoading, setIsLoading] = useState(true);
@@ -323,16 +323,16 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef, onControlsReady, onC
         
         <Suspense fallback={null}>
           {state.ctScanMode ? (
-            <FurnaceLayers model={model} receiveShadow castShadow />
+            <FurnaceLayers model={model} boilerParams={boilerParams} receiveShadow castShadow />
           ) : state.isFocusedView ? (
             <>
-              <FurnaceLayers model={model} receiveShadow castShadow />
+              <FurnaceLayers model={model} boilerParams={boilerParams} receiveShadow castShadow />
               {state.focusedObjectType === 'burner' && <BurnerSystem model={model} />}
             </>
           ) : (
             <>
               <group position={[furnaceOffsets[0]?.[0] || 0, 0, furnaceOffsets[0]?.[1] || 0]}>
-              <FurnaceLayers model={model} receiveShadow castShadow />
+              <FurnaceLayers model={model} boilerParams={boilerParams} receiveShadow castShadow />
               <FurnaceShell dimensions={model.dimensions} model={model} receiveShadow castShadow isFocusedView={state.isFocusedView} plantId={state.plantId || "default"} />
               <SuperheaterCoils dimensions={model.dimensions} />
               <BurnerSystem model={model} />
@@ -351,7 +351,7 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef, onControlsReady, onC
               <ComparisonSeparator position={[-2, 0, 0]} />
               <FurnaceShell dimensions={comparisonModel.dimensions} model={comparisonModel} receiveShadow castShadow isFocusedView={state.isFocusedView} />
               <SuperheaterCoils dimensions={comparisonModel.dimensions} />
-              <FurnaceLayers model={comparisonModel} receiveShadow castShadow />
+              <FurnaceLayers model={comparisonModel} boilerParams={boilerParams} receiveShadow castShadow />
               <BurnerSystem model={comparisonModel} />
               <TemperatureField model={comparisonModel} isFocusedView={state.isFocusedView} />
             </group>

@@ -21,7 +21,7 @@ const LAYER_THICKNESS = 0.85;
  *  • Enhanced shadow interaction for realistic depth.
  *  • Improved visual feedback for all interaction states.
  */
-export default function FurnaceLayers({ model }) {
+export default function FurnaceLayers({ model, boilerParams }) {
   const { state, selectLayer, setHover, setFocus, setFocusedLayer, clearFocusedLayer } = useFurnaceStore();
   const opacity = state.layerOpacity;
   const layerRefs = useRef({});
@@ -62,7 +62,7 @@ export default function FurnaceLayers({ model }) {
 
   return (
     <group>
-      {showContinuousBand && <TemperatureBand model={model} thresholds={state.thresholds} />}
+      {showContinuousBand && <TemperatureBand model={model} thresholds={state.thresholds} boilerParams={boilerParams} />}
       {model.layers.map((layer) => {
         const visible = state.layerVisibility[layer.id] ?? true;
         if (!visible) return null;

@@ -389,6 +389,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
   } = useFurnaceStore();
   
   const [model, setModel] = useState(null);
+  const [boilerParams, setBoilerParams] = useState(null);
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -405,6 +406,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
   const loadRun = useCallback(async (runId) => {
     setLoading(true);
     setError("");
+    setBoilerParams(null);
     try {
       const [dsRes, coalRes] = await Promise.all([
         axios.get(`${BASE_URL}/history/${runId}`),
@@ -415,6 +417,10 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
       setModel(built);
       setStoreModel(built);
       setIsDemo(false);
+      // Boiler readings are supplementary to furnace elevation data. Keep failures isolated.
+      axios.get(`${BASE_URL}/history/${runId}/boiler-params`)
+        .then((response) => setBoilerParams(response.data || null))
+        .catch((err) => console.warn("Furnace3DView: could not load boiler parameters:", err));
       // Connect WebSocket for live updates if enabled
       connectWebSocket(runId, (updatedData) => {
         const newModel = buildFurnaceModel(updatedData, coalRes.data);
@@ -428,6 +434,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
       const demo = buildDemoFurnaceModel();
       setModel(demo);
       setStoreModel(demo);
+      setBoilerParams(null);
       setIsDemo(true);
       setError("Could not load real run data — showing placeholder demo data instead.");
     } finally {
@@ -442,6 +449,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
       const demo = buildDemoFurnaceModel();
       setModel(demo);
       setStoreModel(demo);
+      setBoilerParams(null);
       setIsDemo(true);
       setLoading(false);
     }
@@ -502,6 +510,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
   ) : (
     <FurnaceScene
       model={model}
+      boilerParams={boilerParams}
       onResetCameraRef={resetCameraRef}
       onControlsReady={cameraSync?.registerControls}
       onControlsRemoved={cameraSync?.unregisterControls}
