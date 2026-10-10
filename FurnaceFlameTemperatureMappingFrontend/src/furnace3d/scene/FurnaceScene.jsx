@@ -7,6 +7,7 @@ import FurnaceShell from "./FurnaceShell";
 import FurnaceLayers from "./FurnaceLayers";
 import BurnerSystem from "./BurnerSystem";
 import TemperatureField from "./TemperatureField";
+import SuperheaterCoils from "./SuperheaterCoils";
 import AIPrediction from "./AIPrediction";
 import { useFurnaceStore } from "../state/FurnaceStore";
 import SceneLighting from "./SceneLightening";
@@ -333,6 +334,7 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef, onControlsReady, onC
               <group position={[furnaceOffsets[0]?.[0] || 0, 0, furnaceOffsets[0]?.[1] || 0]}>
               <FurnaceLayers model={model} receiveShadow castShadow />
               <FurnaceShell dimensions={model.dimensions} model={model} receiveShadow castShadow isFocusedView={state.isFocusedView} plantId={state.plantId || "default"} />
+              <SuperheaterCoils dimensions={model.dimensions} />
               <BurnerSystem model={model} />
               {(state.explodedView || state.sectionalView === "isolated" ||
                 model.layers.some((layer) => state.layerVisibility[layer.id] === false)) && (
@@ -348,6 +350,7 @@ const FurnaceScene = forwardRef(({ model, onResetCameraRef, onControlsReady, onC
             <group position={[comparisonModel.dimensions.width + 4 + (furnaceOffsets[1]?.[0] || 0), 0, furnaceOffsets[1]?.[1] || 0]}>
               <ComparisonSeparator position={[-2, 0, 0]} />
               <FurnaceShell dimensions={comparisonModel.dimensions} model={comparisonModel} receiveShadow castShadow isFocusedView={state.isFocusedView} />
+              <SuperheaterCoils dimensions={comparisonModel.dimensions} />
               <FurnaceLayers model={comparisonModel} receiveShadow castShadow />
               <BurnerSystem model={comparisonModel} />
               <TemperatureField model={comparisonModel} isFocusedView={state.isFocusedView} />
