@@ -114,14 +114,14 @@ function FurnaceFrame({ width, height, depth, explosionOffset }) {
     const topY = height;
     const hopperY = height * 0.16;
     const outletY = -height * 0.04;
-    const cutTopY = height * 0.81;
-    const cutBottomY = height * 0.69;
+    const cutTopY = height * 0.79;
+    const cutBottomY = height * 0.72;
     const cutInset = width * 0.28;
     const notchProfile = [
       { y: cutBottomY, inset: 0 },
-      { y: height * 0.705, inset: cutInset * 0.35 },
-      { y: height * 0.73, inset: cutInset * 0.9 },
-      { y: height * 0.755, inset: cutInset },
+      { y: height * 0.73, inset: cutInset * 0.35 },
+      { y: height * 0.745, inset: cutInset * 0.9 },
+      { y: height * 0.76, inset: cutInset },
       { y: cutTopY, inset: 0 },
     ];
     const outletX = x * 0.28;

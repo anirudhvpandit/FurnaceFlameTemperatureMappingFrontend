@@ -66,8 +66,8 @@ function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, r
 
 /** Get the inset value at a given height for the buzzneck notch */
 function getBuzzneckInset(y, height, width) {
-  const cutBottomY = height * 0.69;
-  const cutTopY = height * 0.81;
+  const cutBottomY = height * 0.72;
+  const cutTopY = height * 0.79;
   const cutInset = width * 0.28;
 
   // Below or above buzzneck section, no inset
@@ -76,9 +76,9 @@ function getBuzzneckInset(y, height, width) {
   // Interpolate through the notch profile
   const notchProfile = [
     { y: cutBottomY, inset: 0 },
-    { y: height * 0.705, inset: cutInset * 0.35 },
-    { y: height * 0.73, inset: cutInset * 0.9 },
-    { y: height * 0.755, inset: cutInset },
+    { y: height * 0.73, inset: cutInset * 0.35 },
+    { y: height * 0.745, inset: cutInset * 0.9 },
+    { y: height * 0.76, inset: cutInset },
     { y: cutTopY, inset: 0 },
   ];
 
