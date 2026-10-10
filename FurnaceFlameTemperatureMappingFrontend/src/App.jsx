@@ -16,6 +16,7 @@ import img from "./assets/abhitech-logo.png";
 import { useNavigate } from "react-router-dom";
 import Furnace3DView from "./furnace3d/Furnace3DView";
 import { CameraSyncProvider } from "./furnace3d/CameraSync";
+import { setTemperatureScaleRange } from "./furnace3d/utils/temperatureScale";
 
 
 const BASE_URL = "https://abhiftm.com/api";
@@ -1356,6 +1357,24 @@ export default function App() {
   min: "",
   max: "",
 });
+  const [temperatureScaleRange, setTemperatureScaleRangeState] = useState({ min: 77, max: 1500 });
+  const [temperatureScaleDraft, setTemperatureScaleDraft] = useState({ min: "77", max: "1500" });
+  const commitTemperatureScaleBound = (bound) => {
+    const parsedValue = Number(temperatureScaleDraft[bound]);
+    if (temperatureScaleDraft[bound].trim() === "" || !Number.isFinite(parsedValue)) {
+      setTemperatureScaleDraft((draft) => ({ ...draft, [bound]: String(temperatureScaleRange[bound]) }));
+      return;
+    }
+    const value = Math.round(parsedValue);
+    const nextRange = { ...temperatureScaleRange, [bound]: value };
+    if (nextRange.max <= nextRange.min) {
+      setTemperatureScaleDraft((draft) => ({ ...draft, [bound]: String(temperatureScaleRange[bound]) }));
+      return;
+    }
+    setTemperatureScaleRangeState(nextRange);
+    setTemperatureScaleDraft({ min: String(nextRange.min), max: String(nextRange.max) });
+    setTemperatureScaleRange(nextRange.min, nextRange.max);
+  };
   const [activeTab, setActiveTab] = useState({});
 
   const [pinnedTooltip, setPinnedTooltip] = useState({});
@@ -3058,6 +3077,43 @@ const activeMillLabel =
                         <strong style={{ fontSize: 11, letterSpacing: ".06em" }}>CAMERA SYNC</strong>
                         <button type="button" onClick={() => setMoveFurnacesTogether(true)} style={{ ...S.tabBtn, ...(moveFurnacesTogether ? S.tabActive : {}) }}>TOGETHER</button>
                         <button type="button" onClick={() => setMoveFurnacesTogether(false)} style={{ ...S.tabBtn, ...(!moveFurnacesTogether ? S.tabActive : {}) }}>ALONE</button>
+                        <strong style={{ marginLeft: 12, fontSize: 11, letterSpacing: ".06em" }}>TEMPERATURE RANGE (°C)</strong>
+                        <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}>
+                          LOW
+                          <input
+                            aria-label="Lowest temperature for 3D color scale"
+                            type="number"
+                            step="1"
+                            value={temperatureScaleDraft.min}
+                            onChange={(e) => setTemperatureScaleDraft((draft) => ({ ...draft, min: e.target.value }))}
+                            onBlur={() => commitTemperatureScaleBound("min")}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                e.currentTarget.blur();
+                              }
+                            }}
+                            style={{ width: 82, padding: "5px 7px", borderRadius: 6, border: "1px solid #52647c", background: "#0b1b32", color: "#e5f0ff" }}
+                          />
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}>
+                          HIGH
+                          <input
+                            aria-label="Highest temperature for 3D color scale"
+                            type="number"
+                            step="1"
+                            value={temperatureScaleDraft.max}
+                            onChange={(e) => setTemperatureScaleDraft((draft) => ({ ...draft, max: e.target.value }))}
+                            onBlur={() => commitTemperatureScaleBound("max")}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                e.currentTarget.blur();
+                              }
+                            }}
+                            style={{ width: 82, padding: "5px 7px", borderRadius: 6, border: "1px solid #52647c", background: "#0b1b32", color: "#e5f0ff" }}
+                          />
+                        </label>
                         <span style={{ fontSize: 10, color: "rgba(180,210,255,0.5)", marginLeft: "auto" }}>
                           {moveFurnacesTogether ? "Mouse/touchpad movements sync both furnaces" : "Mouse/touchpad movements affect selected furnace only"}
                         </span>

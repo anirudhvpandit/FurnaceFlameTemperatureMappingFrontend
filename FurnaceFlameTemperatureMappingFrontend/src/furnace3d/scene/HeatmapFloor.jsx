@@ -2,7 +2,7 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { temperatureToColor } from "../utils/temperatureScale";
+import { getTemperatureScaleRange, temperatureToColor } from "../utils/temperatureScale";
 import { useFurnaceStore } from "../state/FurnaceStore";
 
 /**
@@ -22,6 +22,7 @@ export default function HeatmapFloor({ model, isFocusedView = false }) {
   const { state } = useFurnaceStore();
   const pointsRef = useRef();
   const materialRef = useRef();
+  const scaleRange = getTemperatureScaleRange();
 
   if (!model) return null;
 
@@ -80,7 +81,7 @@ export default function HeatmapFloor({ model, isFocusedView = false }) {
       sizes: new Float32Array(sizes),
       intensities: new Float32Array(intensities)
     };
-  }, [model, state.thresholds]);
+  }, [model, state.thresholds, scaleRange]);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();

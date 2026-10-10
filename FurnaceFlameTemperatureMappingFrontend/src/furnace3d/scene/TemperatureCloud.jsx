@@ -2,7 +2,7 @@
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { temperatureToColor } from "../utils/temperatureScale";
+import { getTemperatureScaleRange, temperatureToColor } from "../utils/temperatureScale";
 import { useFurnaceStore } from "../state/FurnaceStore";
 
 /**
@@ -36,6 +36,7 @@ export default function TemperatureCloud({ model, isFocusedView = false }) {
   const cloudRef = useRef();
   const materialRef = useRef();
   const { state } = useFurnaceStore();
+  const scaleRange = getTemperatureScaleRange();
   
   const { positions, colors, sizes, velocities, originalPositions } = useMemo(() => {
     if (!model) {
@@ -119,7 +120,7 @@ export default function TemperatureCloud({ model, isFocusedView = false }) {
     }
 
     return { positions: pos, colors: col, sizes: sz, velocities: vel, originalPositions: origPos };
-  }, [model, state.thresholds]);
+  }, [model, state.thresholds, scaleRange]);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();

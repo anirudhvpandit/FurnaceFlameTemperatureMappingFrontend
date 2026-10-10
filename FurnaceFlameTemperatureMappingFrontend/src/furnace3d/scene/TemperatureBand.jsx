@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { temperatureToColor } from "../utils/temperatureScale";
+import { getTemperatureScaleRange, temperatureToColor } from "../utils/temperatureScale";
 
 function layerTemperatureAt(layer, x, z) {
   const values = [
@@ -52,6 +52,7 @@ function getBuzzneckInset(y, height, width) {
  * measured corner values at each elevation. */
 export default function TemperatureBand({ model, thresholds }) {
   const materialRef = useRef();
+  const scaleRange = getTemperatureScaleRange();
   const layers = useMemo(() => [...(model?.layers || [])]
     .filter((layer) => layer.temperature?.avg != null)
     .sort((a, b) => a.z - b.z), [model]);
@@ -140,7 +141,7 @@ export default function TemperatureBand({ model, thresholds }) {
     positions.needsUpdate = true;
     geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     return { geometry, centerY: (extendedBottom + extendedTop) / 2 };
-  }, [layers, model, thresholds]);
+  }, [layers, model, thresholds, scaleRange]);
 
   useFrame(({ clock }) => {
     const shader = materialRef.current?.userData.flowShader;

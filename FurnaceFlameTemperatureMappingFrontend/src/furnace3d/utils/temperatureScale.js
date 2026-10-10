@@ -5,18 +5,26 @@ import { DEFAULT_TEMPERATURE_WARN_C, DEFAULT_TEMPERATURE_ALERT_C } from "../conf
  * Temperatures are stored in Celsius in the app, so the Kelvin stops are
  * converted to Celsius here while preserving the reference colors.
  */
-export const TEMPERATURE_SCALE_STOPS = () => [
-  { t: 77, label: "350 K", color: [20, 72, 235] },
-  { t: 235, label: "508 K", color: [0, 83, 255] },
-  { t: 393, label: "666 K", color: [0, 177, 235] },
-  { t: 551, label: "824 K", color: [0, 226, 205] },
-  { t: 709, label: "982 K", color: [0, 230, 91] },
-  { t: 868, label: "1141 K", color: [42, 232, 0] },
-  { t: 1026, label: "1299 K", color: [211, 239, 0] },
-  { t: 1184, label: "1457 K", color: [255, 224, 0] },
-  { t: 1342, label: "1615 K", color: [255, 104, 0] },
-  { t: 1500, label: "1773 K", color: [239, 57, 19] },
-];
+export const DEFAULT_TEMPERATURE_SCALE_RANGE = { min: 77, max: 1500 };
+let temperatureScaleRange = { ...DEFAULT_TEMPERATURE_SCALE_RANGE };
+
+export function getTemperatureScaleRange() {
+  return temperatureScaleRange;
+}
+
+export function setTemperatureScaleRange(min, max) {
+  const low = Math.round(Number(min));
+  const high = Math.round(Number(max));
+  if (Number.isFinite(low) && Number.isFinite(high) && high > low) temperatureScaleRange = { min: low, max: high };
+}
+
+export const TEMPERATURE_SCALE_STOPS = (min = temperatureScaleRange.min, max = temperatureScaleRange.max) => {
+  const colors = [[20,72,235],[0,83,255],[0,177,235],[0,226,205],[0,230,91],[42,232,0],[211,239,0],[255,224,0],[255,104,0],[239,57,19]];
+  return colors.map((color, index) => {
+    const t = Math.round(min + (max - min) * index / (colors.length - 1));
+    return { t, label: `${t}°C`, color };
+  });
+};
 
 function lerp(a, b, f) { return a + (b - a) * f; }
 function rgbToHex([r, g, b]) { return `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`; }

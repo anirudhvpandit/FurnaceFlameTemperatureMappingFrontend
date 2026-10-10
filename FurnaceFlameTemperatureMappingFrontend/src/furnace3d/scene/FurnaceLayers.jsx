@@ -1,7 +1,7 @@
 // src/furnace3d/scene/FurnaceLayers.jsx
 import { useMemo, useRef } from "react";
 import { useFurnaceStore } from "../state/FurnaceStore";
-import { temperatureToColor } from "../utils/temperatureScale";
+import { getTemperatureScaleRange, temperatureToColor } from "../utils/temperatureScale";
 import { Html, Text } from "@react-three/drei";
 import * as THREE from "three";
 import CornerTemperatureField from "./CornerTemperatureField";
@@ -191,6 +191,7 @@ function EnhancedLayerMesh({ layer, showContinuousBand, position, dimensions, co
   const meshRef = ref || fallbackMeshRef;
   const materialRef = useRef();
   const { state } = useFurnaceStore();
+  const scaleRange = getTemperatureScaleRange();
 
   // Create custom geometry with vertex colors for corners
   const geometry = useMemo(() => {
@@ -246,7 +247,7 @@ function EnhancedLayerMesh({ layer, showContinuousBand, position, dimensions, co
 
     boxGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     return boxGeometry;
-  }, [layer.temperature, dimensions, state.thresholds]);
+  }, [layer.temperature, dimensions, state.thresholds, scaleRange]);
 
   // Removed smooth material transitions to keep furnace static
 
