@@ -374,7 +374,7 @@ const FurnaceScene = forwardRef(({ model, boilerParams, onResetCameraRef, onCont
         <DeselectOnMiss />
 
         {/* 3D temperature colour scale legend */}
-        {!state.ctScanMode && !state.isFocusedView && (
+        {!state.ctScanMode && (
           <TemperatureColorLegend />
         )}
 
