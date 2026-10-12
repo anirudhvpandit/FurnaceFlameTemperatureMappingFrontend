@@ -83,7 +83,7 @@ function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, r
 /** Get the inset value at a given height for the buzzneck notch */
 function getBuzzneckInset(y, height, width) {
   const cutBottomY = height * 0.72;
-  const cutTopY = height * 0.79;
+  const cutTopY = height * 0.82;
   const cutInset = width * 0.28;
 
   // Below or above buzzneck section, no inset

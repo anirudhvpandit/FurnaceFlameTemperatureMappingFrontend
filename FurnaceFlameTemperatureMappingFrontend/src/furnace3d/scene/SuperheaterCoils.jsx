@@ -56,7 +56,9 @@ export default function SuperheaterCoils({ dimensions, boilerParams, thresholds 
       for (let section = 0; section < sections; section += 1) {
         // Keep top constant, only shorten bottom for subsequent sections to follow slope
         const sectionProgress = section / (sections - 1);
-        const bottomDescent = section > 0 ? sectionProgress * (height * 0.22) : 0;
+        const bottomDescent = section === 1
+          ? height * 0.10
+          : section > 1 ? sectionProgress * (height * 0.22) : 0;
         const sectionYBottom = yBottom + bottomDescent; // Bottom moves up, shortening the tube
         
         const startPass = section * passesPerSection;
