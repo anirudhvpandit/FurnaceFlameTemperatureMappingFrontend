@@ -130,8 +130,10 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
     const height = extendedTop - extendedBottom;
     if (height <= 0) return null;
 
+    const shellWidth = model.dimensions.width * 0.99;
+    const rightExtension = model.dimensions.width * 0.45;
     const geometry = new THREE.BoxGeometry(
-      model.dimensions.width * 0.99,
+      shellWidth,
       height,
       model.dimensions.depth * 0.99,
       32,
@@ -154,7 +156,11 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
         positions.setX(i, x);
       }
 
-      const xNorm = THREE.MathUtils.clamp(x / (model.dimensions.width * 0.99) + 0.5, 0, 1);
+      const xNorm = THREE.MathUtils.clamp(x / shellWidth + 0.5, 0, 1);
+      if (x > 0 && y >= model.dimensions.height * 0.82) {
+        x += rightExtension;
+        positions.setX(i, x);
+      }
       const zNorm = THREE.MathUtils.clamp(z / (model.dimensions.depth * 0.99) + 0.5, 0, 1);
 
       let low = layers[0];
@@ -177,9 +183,8 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
         const highTemp = layerTemperatureAt(high, xNorm, zNorm);
         temp = lowTemp == null ? highTemp : highTemp == null ? lowTemp : THREE.MathUtils.lerp(lowTemp, highTemp, fraction);
       }
-      const shellHalfWidth = (model.dimensions.width * 0.99) / 2;
-      const leftWall = originalX <= -shellHalfWidth + 0.002;
-      const rightWall = originalX >= shellHalfWidth - 0.002;
+      const leftWall = originalX <= -shellWidth / 2 + 0.002;
+      const rightWall = originalX >= shellWidth / 2 - 0.002;
       const flueTemp = flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, model.dimensions.height, leftWall, rightWall, model.dimensions.width);
       if (flueTemp != null) {
         // Use coil temperature directly in the coil section

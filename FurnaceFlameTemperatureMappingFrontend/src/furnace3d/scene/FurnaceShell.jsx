@@ -110,6 +110,7 @@ function FurnaceFrame({ width, height, depth, explosionOffset }) {
     const vertices = [];
     const addLine = (a, b) => vertices.push(...a, ...b);
     const x = width / 2;
+    const xRight = width * 0.95;
     const z = depth / 2;
     const topY = height;
     const hopperY = height * 0.16;
@@ -124,7 +125,7 @@ function FurnaceFrame({ width, height, depth, explosionOffset }) {
       { y: height * 0.76, inset: cutInset },
       { y: cutTopY, inset: 0 },
     ];
-    const outletX = x * 0.28;
+    const outletX = (width / 2) * 0.28;
     const outletZ = z * 0.28;
     const corners = [[-x, -z], [x, -z], [x, z], [-x, z]];
 
@@ -137,7 +138,8 @@ function FurnaceFrame({ width, height, depth, explosionOffset }) {
           const next = notchProfile[i + 1];
           addLine([cx - current.inset, current.y, cz], [cx - next.inset, next.y, cz]);
         }
-        addLine([cx, cutTopY, cz], [cx, topY, cz]);
+        addLine([cx, cutTopY, cz], [xRight, cutTopY, cz]);
+        addLine([xRight, cutTopY, cz], [xRight, topY, cz]);
       } else {
         addLine([cx, hopperY, cz], [cx, topY, cz]);
       }
@@ -149,9 +151,13 @@ function FurnaceFrame({ width, height, depth, explosionOffset }) {
     });
 
     // Top rim.
+    const topCorners = [[-x, -z], [xRight, -z], [xRight, z], [-x, z]];
+    topCorners.forEach(([cx, cz], index) => {
+      const [nx, nz] = topCorners[(index + 1) % topCorners.length];
+      addLine([cx, topY, cz], [nx, topY, nz]);
+    });
     corners.forEach(([cx, cz], index) => {
       const [nx, nz] = corners[(index + 1) % corners.length];
-      addLine([cx, topY, cz], [nx, topY, nz]);
       addLine([cx, hopperY, cz], [nx, hopperY, nz]);
     });
 
