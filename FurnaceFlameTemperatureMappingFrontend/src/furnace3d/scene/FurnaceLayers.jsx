@@ -202,12 +202,31 @@ function EnhancedLayerMesh({ layer, showContinuousBand, position, dimensions, co
     const boxGeometry = new THREE.BoxGeometry(width, height, depth);
 
     // Get corner temperatures
-    const cornerTemps = {
+    const rawCornerTemps = {
       c1: layer.temperature?.c1,
       c2: layer.temperature?.c2,
       c3: layer.temperature?.c3,
       c4: layer.temperature?.c4,
     };
+
+    // Keep the focused gradient continuous when a corner has no reading.
+    // Use the mean of the available corners on this elevation for color only;
+    // CornerTemperatureField still reports the original value as N/A.
+    const validCornerTemps = Object.values(rawCornerTemps)
+      .filter((temp) => temp != null && String(temp).trim() !== "" && String(temp).trim().toUpperCase() !== "NA")
+      .map(Number)
+      .filter(Number.isFinite);
+    const surroundingAverage = validCornerTemps.length
+      ? validCornerTemps.reduce((sum, temp) => sum + temp, 0) / validCornerTemps.length
+      : null;
+    const cornerTemps = Object.fromEntries(
+      Object.entries(rawCornerTemps).map(([corner, temp]) => {
+        const numericTemp = temp == null || String(temp).trim().toUpperCase() === "NA"
+          ? null
+          : Number(temp);
+        return [corner, Number.isFinite(numericTemp) ? numericTemp : surroundingAverage];
+      })
+    );
 
     // Get colors for each corner
     const cornerColors = {
