@@ -1,8 +1,39 @@
 import { useMemo } from "react";
 import * as THREE from "three";
+import { temperatureToColor } from "../utils/temperatureScale";
+
+/** Get coil temperature at a specific x position */
+function getCoilTemperatureAtX(xNorm, boilerParams) {
+  const coilPositions = [
+    { xNorm: 0.12, temp: boilerParams?.fg_temp_after_dpsh_l ?? boilerParams?.fg_temp_after_dpsh_r },
+    { xNorm: 0.37, temp: boilerParams?.fg_temp_after_psh_l ?? boilerParams?.fg_temp_after_psh_r },
+    { xNorm: 0.63, temp: boilerParams?.fg_temp_after_rh_l ?? boilerParams?.fg_temp_after_rh_r },
+    { xNorm: 0.88, temp: boilerParams?.fg_temp_after_hsh_l ?? boilerParams?.fg_temp_after_hsh_r },
+  ].map((coil) => ({
+    ...coil,
+    temp: coil.temp == null || coil.temp === "" || !Number.isFinite(Number(coil.temp)) ? null : Number(coil.temp)
+  })).filter((coil) => coil.temp != null);
+
+  if (coilPositions.length === 0) return 600; // Default temperature
+
+  // Interpolate temperature based on x position
+  if (coilPositions.length === 1) return coilPositions[0].temp;
+  if (xNorm <= coilPositions[0].xNorm) return coilPositions[0].temp;
+  if (xNorm >= coilPositions[coilPositions.length - 1].xNorm) return coilPositions[coilPositions.length - 1].temp;
+
+  for (let i = 0; i < coilPositions.length - 1; i++) {
+    const left = coilPositions[i];
+    const right = coilPositions[i + 1];
+    if (xNorm >= left.xNorm && xNorm <= right.xNorm) {
+      const fraction = (xNorm - left.xNorm) / (right.xNorm - left.xNorm);
+      return THREE.MathUtils.lerp(left.temp, right.temp, fraction);
+    }
+  }
+  return coilPositions[0].temp;
+}
 
 /** 3D superheater tube curtains filling the upper furnace above the buzz-neck. */
-export default function SuperheaterCoils({ dimensions }) {
+export default function SuperheaterCoils({ dimensions, boilerParams, thresholds }) {
   const { width, depth, height } = dimensions;
 
   const tubeBanks = useMemo(() => {
@@ -52,12 +83,27 @@ export default function SuperheaterCoils({ dimensions }) {
         const curve = new THREE.CatmullRomCurve3(points, false, "centripetal", 0.25);
         const outline = new THREE.TubeGeometry(curve, 720, pipeRadius * 1.55, 8, false);
         const hotTube = new THREE.TubeGeometry(curve, 720, pipeRadius, 8, false);
+
+        // Add vertex colors based on temperature at each position
+        const positions = hotTube.attributes.position;
+        const colors = new Float32Array(positions.count * 3);
+        for (let i = 0; i < positions.count; i++) {
+          const x = positions.getX(i);
+          const xNorm = (x / width) + 0.5;
+          const temp = getCoilTemperatureAtX(xNorm, boilerParams);
+          const color = new THREE.Color(temperatureToColor(temp, thresholds?.alert || 1350, thresholds?.warn || 1300));
+          colors[i * 3] = color.r;
+          colors[i * 3 + 1] = color.g;
+          colors[i * 3 + 2] = color.b;
+        }
+        hotTube.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
         sectionBanks.push({ section, outline, hotTube });
       }
 
       return { z, sectionBanks };
     });
-  }, [width, depth, height]);
+  }, [width, depth, height, boilerParams, thresholds]);
 
   return (
     <group>
@@ -71,7 +117,7 @@ export default function SuperheaterCoils({ dimensions }) {
               </mesh>
               <mesh geometry={sectionBank.hotTube} renderOrder={31}>
                 <meshStandardMaterial
-                  color={sectionIndex % 2 === 0 ? "#d84a34" : "#ef6a32"}
+                  vertexColors
                   emissive="#8f2416"
                   emissiveIntensity={0.42}
                   metalness={0.38}

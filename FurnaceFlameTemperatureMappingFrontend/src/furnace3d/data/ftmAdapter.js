@@ -129,5 +129,17 @@ export function buildDemoFurnaceModel() {
     coal_flow_tph: 12 + ((i * 7) % 5),
     pa_flow_tph: 20 + ((i * 3) % 6),
   }));
-  return buildFurnaceModel(demoDataset, demoMills);
+  const model = buildFurnaceModel(demoDataset, demoMills);
+  // Add demo boiler params with coil temperature data
+  model.boilerParams = {
+    fg_temp_after_dpsh_l: 680.0,
+    fg_temp_after_dpsh_r: 653.0,
+    fg_temp_after_psh_l: null,
+    fg_temp_after_psh_r: 616.0,
+    fg_temp_after_rh_l: 617.0,
+    fg_temp_after_rh_r: 547.0,
+    fg_temp_after_hsh_l: 595.0,
+    fg_temp_after_hsh_r: 561.0,
+  };
+  return model;
 }

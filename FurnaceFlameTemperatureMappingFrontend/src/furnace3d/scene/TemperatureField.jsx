@@ -17,11 +17,16 @@ import { temperatureStatusLabel } from "../utils/temperatureScale";
  *  • Professional industrial design aesthetic
  */
 
-export default function TemperatureField({ model, isFocusedView = false }) {
+export default function TemperatureField({ model, isFocusedView = false, boilerParams }) {
   const { state } = useFurnaceStore();
   // Hide temperature field in focused view (CAT scan mode)
   const shouldShow = state.showTemperatureLabels && !isFocusedView;
-  return shouldShow ? <TemperatureFieldContent model={model} /> : null;
+  return (
+    <group>
+      {shouldShow && <TemperatureFieldContent model={model} />}
+      <CoilTemperatureLabels model={model} boilerParams={boilerParams} />
+    </group>
+  );
 }
 
 function TemperatureFieldContent({ model }) {
@@ -54,6 +59,121 @@ function TemperatureFieldContent({ model }) {
 function EnhancedTemperatureLabel({ layer, position, thresholds }) {
   return null;
 }
+
+// ============================================================================
+// COIL TEMPERATURE LABELS COMPONENT
+// ============================================================================
+
+function CoilTemperatureLabels({ model, boilerParams }) {
+  if (!boilerParams) return null;
+
+  const { width, height, depth } = model.dimensions;
+
+  // Coil configuration: positions from left to right on the furnace face
+  const coils = [
+    { id: 'dpsh', label: 'DPSH', yPos: height * 0.92, xPos: -width * 0.38, zPos: depth * 0.5 + 0.5 },
+    { id: 'psh', label: 'PSH', yPos: height * 0.88, xPos: -width * 0.13, zPos: depth * 0.5 + 0.5 },
+    { id: 'rh', label: 'RH', yPos: height * 0.84, xPos: width * 0.13, zPos: depth * 0.5 + 0.5 },
+    { id: 'hsh', label: 'HSH', yPos: height * 0.80, xPos: width * 0.38, zPos: depth * 0.5 + 0.5 },
+  ];
+
+  return (
+    <group>
+      {coils.map((coil) => {
+        const leftTemp = boilerParams[`fg_temp_after_${coil.id}_l`];
+        const rightTemp = boilerParams[`fg_temp_after_${coil.id}_r`];
+
+        if (leftTemp == null && rightTemp == null) return null;
+
+        return (
+          <CoilLabel
+            key={coil.id}
+            label={coil.label}
+            leftTemp={leftTemp}
+            rightTemp={rightTemp}
+            position={[coil.xPos, coil.yPos, coil.zPos]}
+          />
+        );
+      })}
+    </group>
+  );
+}
+
+function CoilLabel({ label, leftTemp, rightTemp, position }) {
+  const leftValue = leftTemp != null && leftTemp !== "" ? Number(leftTemp).toFixed(0) : "N/A";
+  const rightValue = rightTemp != null && rightTemp !== "" ? Number(rightTemp).toFixed(0) : "N/A";
+
+  return (
+    <Html position={position} transform>
+      <div style={coilLabelContainerStyle}>
+        <div style={coilLabelHeaderStyle}>{label}</div>
+        <div style={coilLabelContentStyle}>
+          <div style={coilTempRowStyle}>
+            <span style={coilSideLabelStyle}>L:</span>
+            <span style={coilTempValueStyle}>{leftValue}°C</span>
+          </div>
+          <div style={coilTempRowStyle}>
+            <span style={coilSideLabelStyle}>R:</span>
+            <span style={coilTempValueStyle}>{rightValue}°C</span>
+          </div>
+        </div>
+      </div>
+    </Html>
+  );
+}
+
+// ============================================================================
+// COIL LABEL STYLES
+// ============================================================================
+
+const coilLabelContainerStyle = {
+  background: "linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%)",
+  border: "1px solid rgba(239, 68, 68, 0.4)",
+  borderRadius: "8px",
+  padding: "6px 10px",
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+  fontSize: "14px",
+  color: "#e2e8f0",
+  backdropFilter: "blur(12px)",
+  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.15)",
+  minWidth: "70px",
+  textAlign: "center"
+};
+
+const coilLabelHeaderStyle = {
+  fontSize: "15px",
+  fontWeight: 700,
+  color: "#fca5a5",
+  marginBottom: "4px",
+  paddingBottom: "4px",
+  borderBottom: "1px solid rgba(239, 68, 68, 0.3)",
+  letterSpacing: "0.5px"
+};
+
+const coilLabelContentStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "2px"
+};
+
+const coilTempRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "6px"
+};
+
+const coilSideLabelStyle = {
+  fontSize: "13px",
+  fontWeight: 600,
+  color: "rgba(200, 220, 255, 0.8)"
+};
+
+const coilTempValueStyle = {
+  fontSize: "14px",
+  fontWeight: 700,
+  color: "#fef3c7"
+};
 
 // ============================================================================
 // UTILITY FUNCTIONS

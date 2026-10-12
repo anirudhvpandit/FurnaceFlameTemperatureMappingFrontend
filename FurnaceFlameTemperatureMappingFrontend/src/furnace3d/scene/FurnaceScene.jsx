@@ -334,11 +334,11 @@ const FurnaceScene = forwardRef(({ model, boilerParams, onResetCameraRef, onCont
               <group position={[furnaceOffsets[0]?.[0] || 0, 0, furnaceOffsets[0]?.[1] || 0]}>
               <FurnaceLayers model={model} boilerParams={boilerParams} receiveShadow castShadow />
               <FurnaceShell dimensions={model.dimensions} model={model} receiveShadow castShadow isFocusedView={state.isFocusedView} plantId={state.plantId || "default"} />
-              <SuperheaterCoils dimensions={model.dimensions} />
+              <SuperheaterCoils dimensions={model.dimensions} boilerParams={boilerParams} thresholds={state.thresholds} />
               <BurnerSystem model={model} />
               {(state.explodedView || state.sectionalView === "isolated" ||
                 model.layers.some((layer) => state.layerVisibility[layer.id] === false)) && (
-                <TemperatureField model={model} isFocusedView={state.isFocusedView} />
+                <TemperatureField model={model} isFocusedView={state.isFocusedView} boilerParams={boilerParams} />
               )}
               {state.showAIOverlay && <AIPrediction model={model} isFocusedView={state.isFocusedView} />}
               </group>
@@ -350,10 +350,10 @@ const FurnaceScene = forwardRef(({ model, boilerParams, onResetCameraRef, onCont
             <group position={[comparisonModel.dimensions.width + 4 + (furnaceOffsets[1]?.[0] || 0), 0, furnaceOffsets[1]?.[1] || 0]}>
               <ComparisonSeparator position={[-2, 0, 0]} />
               <FurnaceShell dimensions={comparisonModel.dimensions} model={comparisonModel} receiveShadow castShadow isFocusedView={state.isFocusedView} />
-              <SuperheaterCoils dimensions={comparisonModel.dimensions} />
+              <SuperheaterCoils dimensions={comparisonModel.dimensions} boilerParams={boilerParams} thresholds={state.thresholds} />
               <FurnaceLayers model={comparisonModel} boilerParams={boilerParams} receiveShadow castShadow />
               <BurnerSystem model={comparisonModel} />
-              <TemperatureField model={comparisonModel} isFocusedView={state.isFocusedView} />
+              <TemperatureField model={comparisonModel} isFocusedView={state.isFocusedView} boilerParams={boilerParams} />
             </group>
           )}
         </Suspense>

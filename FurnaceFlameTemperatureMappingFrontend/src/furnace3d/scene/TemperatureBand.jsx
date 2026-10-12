@@ -18,49 +18,65 @@ function layerTemperatureAt(layer, x, z) {
   return THREE.MathUtils.lerp(back, front, z);
 }
 
-function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, rightWall) {
+function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, rightWall, width) {
   // These readings describe the coil pass sequence from top to bottom.
-  const stages = [
-    { y: 0.96, left: boilerParams?.fg_temp_after_dpsh_l, right: boilerParams?.fg_temp_after_dpsh_r },
-    { y: 0.92, left: boilerParams?.fg_temp_after_psh_l, right: boilerParams?.fg_temp_after_psh_r },
-    { y: 0.87, left: boilerParams?.fg_temp_after_rh_l, right: boilerParams?.fg_temp_after_rh_r },
-    { y: 0.82, left: boilerParams?.fg_temp_after_hsh_l, right: boilerParams?.fg_temp_after_hsh_r },
-  ].map((stage) => {
-    const parse = (value) => value == null || value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
-    return { ...stage, left: parse(stage.left), right: parse(stage.right) };
-  }).filter((stage) => stage.left != null || stage.right != null);
+  // Coil positions from left to right: DPSH, PSH, RH, HSH
+  const coilPositions = [
+    { xNorm: 0.12, temp: boilerParams?.fg_temp_after_dpsh_l ?? boilerParams?.fg_temp_after_dpsh_r },
+    { xNorm: 0.37, temp: boilerParams?.fg_temp_after_psh_l ?? boilerParams?.fg_temp_after_psh_r },
+    { xNorm: 0.63, temp: boilerParams?.fg_temp_after_rh_l ?? boilerParams?.fg_temp_after_rh_r },
+    { xNorm: 0.88, temp: boilerParams?.fg_temp_after_hsh_l ?? boilerParams?.fg_temp_after_hsh_r },
+  ].map((coil) => ({
+    ...coil,
+    temp: coil.temp == null || coil.temp === "" || !Number.isFinite(Number(coil.temp)) ? null : Number(coil.temp)
+  })).filter((coil) => coil.temp != null);
 
-  // Wrap the readings around all four vertical faces. The front/back faces
-  // blend left-to-right; each side wall follows its corresponding sensor.
-  // The top cap carries the final DPSH left-to-right gradient.
-  const onLeftOrRightWall = leftWall || rightWall;
-  const onFrontOrBackWall = zNorm <= 0.002 || zNorm >= 0.998;
+  if (coilPositions.length === 0) return null;
+
+  // Interpolate temperature horizontally based on coil positions
+  const getCoilTempAtX = (x) => {
+    if (coilPositions.length === 1) return coilPositions[0].temp;
+    if (x <= coilPositions[0].xNorm) return coilPositions[0].temp;
+    if (x >= coilPositions[coilPositions.length - 1].xNorm) return coilPositions[coilPositions.length - 1].temp;
+
+    for (let i = 0; i < coilPositions.length - 1; i++) {
+      const left = coilPositions[i];
+      const right = coilPositions[i + 1];
+      if (x >= left.xNorm && x <= right.xNorm) {
+        const fraction = (x - left.xNorm) / (right.xNorm - left.xNorm);
+        return THREE.MathUtils.lerp(left.temp, right.temp, fraction);
+      }
+    }
+    return coilPositions[0].temp;
+  };
+
   const altitude = y / height;
   const onTopSurface = altitude >= 0.998;
-  if (!stages.length || (!onLeftOrRightWall && !onFrontOrBackWall && !onTopSurface)) return null;
-  const sample = (stage) => {
-    if (onLeftOrRightWall) {
-      return leftWall
-        ? stage.left ?? stage.right
-        : stage.right ?? stage.left;
+  const onFrontOrBackWall = zNorm <= 0.002 || zNorm >= 0.998;
+
+  // Apply coil temperature gradient in the coil section (0.72 to 1.0 of height - covers top section)
+  const coilSectionTop = 1.0;
+  const coilSectionBottom = 0.72;
+
+  if (altitude >= coilSectionBottom && altitude <= coilSectionTop) {
+    // The furnace cap is part of the coil section too. Sample the same
+    // left-to-right coil pass gradient there instead of falling back to the
+    // upper elevation layer temperatures.
+    if (onTopSurface) {
+      return getCoilTempAtX(xNorm);
     }
-    const left = stage.left ?? stage.right;
-    const right = stage.right ?? stage.left;
-    return THREE.MathUtils.lerp(left, right, xNorm);
-  };
-  const topStage = stages[0];
-  const bottomStage = stages[stages.length - 1];
-  if (onTopSurface) return sample(topStage);
-  if (altitude >= topStage.y) return sample(topStage);
-  if (altitude <= bottomStage.y) return sample(bottomStage);
-  for (let index = 0; index < stages.length - 1; index += 1) {
-    const upper = stages[index];
-    const lower = stages[index + 1];
-    if (altitude <= upper.y && altitude >= lower.y) {
-      const fraction = (upper.y - altitude) / (upper.y - lower.y);
-      return THREE.MathUtils.lerp(sample(upper), sample(lower), fraction);
+    if (onFrontOrBackWall) {
+      return getCoilTempAtX(xNorm);
+    }
+    if (leftWall) {
+      return getCoilTempAtX(0.15); // DPSH position on left wall
+    }
+    if (rightWall) {
+      return getCoilTempAtX(0.85); // HSH position on right wall
     }
   }
+
+  // For areas outside coil section, return null to use furnace layer temperatures
   return null;
 }
 
@@ -164,11 +180,10 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
       const shellHalfWidth = (model.dimensions.width * 0.99) / 2;
       const leftWall = originalX <= -shellHalfWidth + 0.002;
       const rightWall = originalX >= shellHalfWidth - 0.002;
-      const flueTemp = flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, model.dimensions.height, leftWall, rightWall);
+      const flueTemp = flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, model.dimensions.height, leftWall, rightWall, model.dimensions.width);
       if (flueTemp != null) {
-        // Fade the coil readings into the existing furnace heatmap below the coils.
-        const blend = THREE.MathUtils.smoothstep(y / model.dimensions.height, 0.68, 0.82);
-        temp = temp == null ? flueTemp : THREE.MathUtils.lerp(temp, flueTemp, blend);
+        // Use coil temperature directly in the coil section
+        temp = flueTemp;
       }
       const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn));
       colors[i * 3] = color.r;

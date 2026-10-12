@@ -434,7 +434,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
       const demo = buildDemoFurnaceModel();
       setModel(demo);
       setStoreModel(demo);
-      setBoilerParams(null);
+      setBoilerParams(demo.boilerParams || null);
       setIsDemo(true);
       setError("Could not load real run data — showing placeholder demo data instead.");
     } finally {
@@ -449,7 +449,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
       const demo = buildDemoFurnaceModel();
       setModel(demo);
       setStoreModel(demo);
-      setBoilerParams(null);
+      setBoilerParams(demo.boilerParams || null);
       setIsDemo(true);
       setLoading(false);
     }
