@@ -6,8 +6,8 @@ export default function SuperheaterCoils({ dimensions }) {
   const { width, depth, height } = dimensions;
 
   const tubeBanks = useMemo(() => {
-    const xLeft = -width * 0.44;
-    const xRight = width * 0.44;
+    const xLeft = -width * 0.44 + width * 0.5;
+    const xRight = width * 0.44 + width * 0.5;
     const yBottom = height * 0.82;
     const yTop = height * 0.96;
     const passCount = 12;
