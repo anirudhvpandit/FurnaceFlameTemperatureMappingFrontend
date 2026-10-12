@@ -101,16 +101,16 @@ const styles = {
   
   headerTitle: {
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "16px",
+    fontSize: "24px",
     fontWeight: 800,
     color: "#fff",
     letterSpacing: "0.04em",
     textShadow: "0 2px 8px rgba(0, 0, 0, 0.3)"
   },
-  
+
   headerSubtitle: {
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "11px",
+    fontSize: "18px",
     color: "rgba(180,210,255,0.6)",
     letterSpacing: "0.1em",
     marginTop: "4px",
@@ -134,7 +134,7 @@ const styles = {
     padding: "8px 14px",
     cursor: "pointer",
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "10px",
+    fontSize: "16px",
     fontWeight: 700,
     letterSpacing: "0.08em",
     transition: "all 0.2s ease",
@@ -163,7 +163,7 @@ const styles = {
     padding: "6px 12px",
     cursor: "pointer",
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "9px",
+    fontSize: "15px",
     fontWeight: 700,
     letterSpacing: "0.08em",
     transition: "all 0.2s ease"
@@ -181,7 +181,7 @@ const styles = {
     borderBottom: "1px solid rgba(245,158,11,0.3)",
     color: "#fde68a",
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "12px",
+    fontSize: "18px",
     letterSpacing: "0.04em",
     fontWeight: 500,
     display: "flex",
@@ -211,7 +211,7 @@ const styles = {
   },
   
   loadingText: {
-    fontSize: "14px",
+    fontSize: "22px",
     fontWeight: 600,
     letterSpacing: "0.05em"
   },
@@ -231,7 +231,7 @@ const styles = {
     background: "transparent",
     color: "rgba(200,220,255,0.5)",
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "10px",
+    fontSize: "16px",
     fontWeight: 700,
     letterSpacing: "0.08em",
     cursor: "pointer",
@@ -300,7 +300,7 @@ const styles = {
   
   sectionDividerText: {
     color: "rgba(200,220,255,0.5)",
-    fontSize: "9px",
+    fontSize: "15px",
     fontWeight: 600,
     letterSpacing: "0.1em"
   },

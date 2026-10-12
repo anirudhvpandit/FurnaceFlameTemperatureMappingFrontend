@@ -98,7 +98,7 @@ const styles = {
     borderRadius: "10px",
     padding: "8px 12px",
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "11px",
+    fontSize: "18px",
     color: "#e2e8f0",
     letterSpacing: "0.02em",
     whiteSpace: "nowrap",
@@ -117,10 +117,10 @@ const styles = {
     borderBottom: "1px solid rgba(255, 255, 255, 0.1)"
   },
   labelIcon: {
-    fontSize: "14px"
+    fontSize: "22px"
   },
   layerLabel: {
-    fontSize: "12px",
+    fontSize: "19px",
     fontWeight: 700,
     color: "#e2e8f0",
     letterSpacing: "0.5px"
@@ -137,11 +137,11 @@ const styles = {
   },
   temperatureLabel: {
     color: "rgba(200, 220, 255, 0.7)",
-    fontSize: "10px",
+    fontSize: "17px",
     fontWeight: 500
   },
   temperatureValue: {
-    fontSize: "12px",
+    fontSize: "19px",
     fontWeight: 700
   },
   statusRow: {
@@ -151,11 +151,11 @@ const styles = {
   },
   statusLabel: {
     color: "rgba(200, 220, 255, 0.7)",
-    fontSize: "10px",
+    fontSize: "17px",
     fontWeight: 500
   },
   statusBadge: {
-    fontSize: "10px",
+    fontSize: "17px",
     fontWeight: 700,
     padding: "2px 6px",
     borderRadius: "4px",

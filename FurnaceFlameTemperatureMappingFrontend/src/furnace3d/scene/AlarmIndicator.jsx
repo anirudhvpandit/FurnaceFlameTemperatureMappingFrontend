@@ -94,7 +94,7 @@ function CornerTemperatureIndicators({ type, burners, tileWidth, tileDepth }) {
             {/* Temperature text */}
             <Text
               position={[0, 0, 0]}
-              fontSize={0.5}
+              fontSize={0.9}
               color={tempColor}
               anchorX="center"
               anchorY="middle"
@@ -109,7 +109,7 @@ function CornerTemperatureIndicators({ type, burners, tileWidth, tileDepth }) {
             {/* Corner label */}
             <Text
               position={[0, 0.4, 0]}
-              fontSize={0.3}
+              fontSize={0.6}
               color="#e2e8f0"
               anchorX="center"
               anchorY="middle"

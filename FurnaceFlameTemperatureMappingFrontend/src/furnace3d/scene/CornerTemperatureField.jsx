@@ -36,7 +36,7 @@ function CornerMarker({ corner, dimensions, face, opacity }) {
       <group>
         <Text
           position={[0, 0.2, 0]}
-          fontSize={0.22}
+          fontSize={0.45}
           color="#f5d66e"
           anchorX="center"
           anchorY="bottom"
@@ -49,7 +49,7 @@ function CornerMarker({ corner, dimensions, face, opacity }) {
         >{corner.label}</Text>
         <Text
           position={[0, -0.08, 0]}
-          fontSize={0.24}
+          fontSize={0.5}
           color={temperatureColor}
           anchorX="center"
           anchorY="middle"

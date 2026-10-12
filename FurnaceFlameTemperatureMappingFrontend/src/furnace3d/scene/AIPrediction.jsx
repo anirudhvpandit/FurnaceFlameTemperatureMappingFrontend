@@ -302,7 +302,7 @@ const styles = {
     borderRadius: "8px",
     padding: "8px 12px",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "10px",
+    fontSize: "17px",
     color: "#ffffff",
     minWidth: "160px",
     whiteSpace: "nowrap",
@@ -316,7 +316,7 @@ const styles = {
     gap: "5px",
     fontWeight: 700,
     marginBottom: "4px",
-    fontSize: "9px",
+    fontSize: "16px",
     letterSpacing: "0.05em",
   },
   predictionHeaderIcon: {
@@ -332,10 +332,12 @@ const styles = {
   predictionRowLabel: {
     color: "rgba(200, 220, 255, 0.5)",
     fontFamily: "'DM Mono', monospace",
+    fontSize: "16px",
   },
   predictionRowValue: {
     fontWeight: 700,
     fontFamily: "'DM Mono', monospace",
+    fontSize: "16px",
   },
 
   // ── Confidence Bar ──
@@ -354,7 +356,7 @@ const styles = {
     transition: "width 0.3s ease",
   },
   confidenceLabel: {
-    fontSize: "8px",
+    fontSize: "15px",
     color: "rgba(200, 220, 255, 0.4)",
     fontFamily: "'DM Mono', monospace",
     textAlign: "right",
@@ -368,7 +370,7 @@ const styles = {
     borderRadius: "6px",
     padding: "6px 10px",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "9px",
+    fontSize: "16px",
     color: "#ffffff",
     minWidth: "140px",
     whiteSpace: "nowrap",
@@ -382,7 +384,7 @@ const styles = {
     gap: "4px",
     fontWeight: 700,
     marginBottom: "4px",
-    fontSize: "8px",
+    fontSize: "15px",
     letterSpacing: "0.05em",
   },
   failureHeaderIcon: {
@@ -396,16 +398,16 @@ const styles = {
   },
   failureComponent: {
     color: "rgba(220, 220, 250, 0.7)",
-    fontSize: "8px",
+    fontSize: "15px",
   },
   failureProbability: {
     fontWeight: 800,
-    fontSize: "10px",
+    fontSize: "17px",
     fontFamily: "'DM Mono', monospace",
   },
   failureTime: {
     color: "rgba(200, 220, 255, 0.5)",
-    fontSize: "8px",
+    fontSize: "15px",
     fontFamily: "'DM Mono', monospace",
   },
 
@@ -417,7 +419,7 @@ const styles = {
     borderRadius: "6px",
     padding: "8px 10px",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "9px",
+    fontSize: "16px",
     color: "#ffffff",
     maxWidth: "200px",
     backdropFilter: "blur(12px) saturate(180%)",
@@ -431,7 +433,7 @@ const styles = {
     padding: "4px 6px",
     borderRadius: "4px",
     fontWeight: 700,
-    fontSize: "8px",
+    fontSize: "15px",
     letterSpacing: "0.05em",
     marginBottom: "4px",
     textTransform: "uppercase",
@@ -442,7 +444,7 @@ const styles = {
   },
   recommendationPriority: {
     marginLeft: "auto",
-    fontSize: "7px",
+    fontSize: "14px",
     opacity: 0.8,
   },
   recommendationMessage: {
@@ -455,7 +457,7 @@ const styles = {
     justifyContent: "flex-end",
   },
   recommendationType: {
-    fontSize: "8px",
+    fontSize: "15px",
     fontWeight: 700,
     fontFamily: "'DM Mono', monospace",
     textTransform: "uppercase",

@@ -453,14 +453,14 @@ const styles = {
   },
   loadingText: {
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "16px",
+    fontSize: "24px",
     fontWeight: 600,
     color: "#e2e8f0",
     letterSpacing: "0.5px"
   },
   loadingSubtext: {
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "12px",
+    fontSize: "20px",
     color: "rgba(200, 220, 255, 0.6)",
     fontWeight: 400
   }

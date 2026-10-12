@@ -329,7 +329,7 @@ function EnhancedLayerMesh({ layer, showContinuousBand, position, dimensions, co
 
 function ElevationNumber({ label, width, depth, opacity = 1 }) {
   const text = `${label} m`;
-  const fontSize = Math.min(0.7, Math.max(0.36, Math.min(width, depth) * 0.05));
+  const fontSize = Math.min(1.4, Math.max(0.7, Math.min(width, depth) * 0.1));
   const textOpacity = 1;
   const faces = [
     { position: [0, 0, depth / 2 + 0.035], rotation: [0, 0, 0] },
@@ -407,7 +407,7 @@ const styles = {
     borderRadius: "6px",
     padding: "4px 10px",
     fontFamily: "'DM Mono', 'SF Mono', ui-monospace, monospace",
-    fontSize: "13px",
+    fontSize: "20px",
     fontWeight: 700,
     color: "#f8fafc",
     letterSpacing: "0.04em",
@@ -421,7 +421,7 @@ const styles = {
     borderRadius: "10px",
     padding: "10px 14px",
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "11px",
+    fontSize: "18px",
     color: "#fff",
     letterSpacing: "0.02em",
     whiteSpace: "nowrap",
@@ -440,10 +440,10 @@ const styles = {
     borderBottom: "1px solid rgba(255, 255, 255, 0.1)"
   },
   tooltipIcon: {
-    fontSize: "14px"
+    fontSize: "22px"
   },
   tooltipLabel: {
-    fontSize: "12px",
+    fontSize: "19px",
     fontWeight: 700,
     color: "#e2e8f0",
     letterSpacing: "0.5px"
@@ -460,11 +460,11 @@ const styles = {
   },
   temperatureLabel: {
     color: "rgba(200, 220, 255, 0.7)",
-    fontSize: "10px",
+    fontSize: "17px",
     fontWeight: 500
   },
   temperatureValue: {
-    fontSize: "12px",
+    fontSize: "19px",
     fontWeight: 700
   },
   statusRow: {
@@ -474,11 +474,11 @@ const styles = {
   },
   statusLabel: {
     color: "rgba(200, 220, 255, 0.7)",
-    fontSize: "10px",
+    fontSize: "17px",
     fontWeight: 500
   },
   statusValue: {
-    fontSize: "10px",
+    fontSize: "17px",
     fontWeight: 700,
     padding: "2px 6px",
     borderRadius: "4px",
@@ -490,7 +490,7 @@ const styles = {
     borderTop: "1px solid rgba(255, 255, 255, 0.1)"
   },
   hintText: {
-    fontSize: "9px",
+    fontSize: "16px",
     color: "rgba(200, 220, 255, 0.5)",
     fontStyle: "italic",
     textAlign: "center"

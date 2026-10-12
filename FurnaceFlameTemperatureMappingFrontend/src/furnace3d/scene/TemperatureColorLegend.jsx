@@ -38,7 +38,7 @@ export default function TemperatureColorLegend() {
           pointerEvents: "none",
         }}
       >
-        <header style={{ marginBottom: 10, fontSize: 10, fontWeight: 750, letterSpacing: ".08em", color: "#c7d9f4" }}>
+        <header style={{ marginBottom: 10, fontSize: 16, fontWeight: 750, letterSpacing: ".08em", color: "#c7d9f4" }}>
           TEMPERATURE <span style={{ color: "#96a9c4" }}>°C</span>
         </header>
 
@@ -48,7 +48,7 @@ export default function TemperatureColorLegend() {
               <span key={item.color} style={{ position: "absolute", left: -4, top: `${100 - item.pct}%`, width: 24, height: 2, background: item.color, boxShadow: `0 0 5px ${item.color}` }} />
             ))}
           </div>
-          <div style={{ position: "relative", flex: 1, font: "600 9px ui-monospace, SFMono-Regular, monospace", color: "#bdcbe0" }}>
+          <div style={{ position: "relative", flex: 1, font: "600 15px ui-monospace, SFMono-Regular, monospace", color: "#bdcbe0" }}>
             {ticks.map((tick) => {
               const pct = ((tick.t - min) / (max - min)) * 100;
               return (
@@ -60,7 +60,7 @@ export default function TemperatureColorLegend() {
           </div>
         </div>
 
-        <footer style={{ display: "grid", gap: 5, marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(148,184,230,.14)", color: "#cbd6e6", fontSize: 9, fontWeight: 650 }}>
+        <footer style={{ display: "grid", gap: 5, marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(148,184,230,.14)", color: "#cbd6e6", fontSize: 15, fontWeight: 650 }}>
           <span><i style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#ffe16a", marginRight: 5 }} />WARN {warn}°</span>
           <span><i style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#ff7183", marginRight: 5 }} />ALERT {alert}°</span>
         </footer>

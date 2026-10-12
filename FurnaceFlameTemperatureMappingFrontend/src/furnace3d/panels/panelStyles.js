@@ -111,7 +111,7 @@ export const panelStyles = {
   // ── Section Label (header) ──
   sectionLabel: {
     fontFamily: "'Inter', sans-serif",
-    fontSize: "10px",
+    fontSize: "16px",
     fontWeight: 800,
     letterSpacing: "0.22em",
     color: "rgba(180,210,255,0.7)",
@@ -125,7 +125,7 @@ export const panelStyles = {
   // ── Helper Text ──
   helperText: {
     fontFamily: "'Inter', sans-serif",
-    fontSize: "11px",
+    fontSize: "17px",
     color: "rgba(200,220,255,0.6)",
     lineHeight: 1.6,
     marginBottom: "10px",
@@ -135,7 +135,7 @@ export const panelStyles = {
   // ── Field Label (sub-section headers) ──
   fieldLabel: {
     fontFamily: "'Inter', sans-serif",
-    fontSize: "10px",
+    fontSize: "16px",
     fontWeight: 700,
     letterSpacing: "0.12em",
     color: "rgba(180,210,255,0.55)",
@@ -146,7 +146,7 @@ export const panelStyles = {
   sliderValue: {
     textAlign: "right",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "11px",
+    fontSize: "17px",
     color: "rgba(200,220,255,0.7)",
   },
 
@@ -157,7 +157,7 @@ export const panelStyles = {
     gap: "8px",
     marginTop: "10px",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "11px",
+    fontSize: "17px",
     color: "rgba(200,220,255,0.75)",
   },
 
@@ -166,7 +166,7 @@ export const panelStyles = {
     display: "flex",
     justifyContent: "space-between",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "11px",
+    fontSize: "17px",
     color: "rgba(200,220,255,0.7)",
     padding: "3px 0",
   },
@@ -181,7 +181,7 @@ export const panelStyles = {
     background: "rgba(255, 255, 255, 0.05)",
     color: "rgba(200, 220, 255, 0.85)",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "10px",
+    fontSize: "16px",
     fontWeight: 700,
     letterSpacing: "0.08em",
     padding: "7px 12px",
@@ -204,7 +204,7 @@ export const panelStyles = {
     background: "linear-gradient(135deg, #1a4f9c 0%, #2563c6 100%)",
     color: "#ffffff",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "11px",
+    fontSize: "17px",
     fontWeight: 700,
     letterSpacing: "0.08em",
     padding: "10px 16px",
@@ -225,7 +225,7 @@ export const panelStyles = {
     background: "transparent",
     color: "rgba(200, 220, 255, 0.8)",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "11px",
+    fontSize: "17px",
     fontWeight: 700,
     letterSpacing: "0.08em",
     padding: "10px 16px",
@@ -247,7 +247,7 @@ export const panelStyles = {
     background: "rgba(220, 38, 38, 0.15)",
     color: "#ffffff",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "11px",
+    fontSize: "17px",
     fontWeight: 700,
     letterSpacing: "0.08em",
     padding: "10px 12px",
@@ -270,7 +270,7 @@ export const panelStyles = {
     background: "rgba(255, 255, 255, 0.03)",
     color: "rgba(200, 220, 255, 0.65)",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "11px",
+    fontSize: "17px",
     fontWeight: 800,
     letterSpacing: "0.06em",
     padding: "9px 8px",
@@ -317,20 +317,20 @@ export const panelStyles = {
   },
   layerLabel: {
     fontFamily: "'Inter', sans-serif",
-    fontSize: "12px",
+    fontSize: "18px",
     fontWeight: 700,
     color: "#ffffff",
   },
   layerSub: {
     fontFamily: "'Inter', sans-serif",
-    fontSize: "10px",
+    fontSize: "16px",
     color: "rgba(200, 220, 255, 0.5)",
   },
   isolateBtn: {
     border: "1px solid rgba(59, 130, 246, 0.3)",
     background: "transparent",
     color: "rgba(200, 220, 255, 0.7)",
-    fontSize: "9px",
+    fontSize: "15px",
     fontWeight: 700,
     letterSpacing: "0.06em",
     padding: "4px 7px",
@@ -345,7 +345,7 @@ export const panelStyles = {
 
   inspectorTitle: {
     fontFamily: "'Inter', sans-serif",
-    fontSize: "13px",
+    fontSize: "19px",
     fontWeight: 800,
     color: "#ffffff",
     letterSpacing: "0.04em",
@@ -357,19 +357,19 @@ export const panelStyles = {
     padding: "6px 0",
     borderBottom: "1px solid rgba(59, 130, 246, 0.08)",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "12px",
+    fontSize: "18px",
   },
   rowLabel: {
     color: "rgba(180, 210, 255, 0.55)",
     letterSpacing: "0.06em",
-    fontSize: "10px",
+    fontSize: "16px",
     fontWeight: 700,
   },
   rowValue: {
     color: "#ffffff",
     fontWeight: 700,
     fontFamily: "'DM Mono', monospace",
-    fontSize: "12px",
+    fontSize: "18px",
   },
   simBadge: {
     display: "inline-block",
@@ -380,7 +380,7 @@ export const panelStyles = {
     border: "1px solid rgba(167, 139, 250, 0.5)",
     color: "#ddd6fe",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "10px",
+    fontSize: "16px",
     fontWeight: 700,
     letterSpacing: "0.06em",
   },
@@ -412,7 +412,7 @@ export const panelStyles = {
   // ── Legend Caption ──
   legendCaption: {
     fontFamily: "'Inter', sans-serif",
-    fontSize: "9px",
+    fontSize: "15px",
     fontWeight: 800,
     letterSpacing: "0.12em",
     color: "rgba(180, 210, 255, 0.5)",
@@ -436,7 +436,7 @@ export const panelStyles = {
   // ── Legend Min/Max Labels ──
   legendMinMax: {
     fontFamily: "'DM Mono', monospace",
-    fontSize: "10px",
+    fontSize: "16px",
     color: "rgba(200, 220, 255, 0.55)",
     display: "flex",
     alignItems: "center",
@@ -449,7 +449,7 @@ export const panelStyles = {
     alignItems: "center",
     gap: "5px",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "10px",
+    fontSize: "16px",
     fontWeight: 600,
     color: "rgba(200, 220, 255, 0.65)",
     letterSpacing: "0.04em",
@@ -474,7 +474,7 @@ export const panelStyles = {
     alignItems: "center",
     gap: "6px",
     fontFamily: "'Inter', sans-serif",
-    fontSize: "10px",
+    fontSize: "16px",
     fontWeight: 800,
     letterSpacing: "0.1em",
     padding: "5px 14px",
@@ -495,7 +495,7 @@ export const panelStyles = {
   // ── Legend Selected Item ──
   legendSelected: {
     fontFamily: "'DM Mono', monospace",
-    fontSize: "11px",
+    fontSize: "17px",
     fontWeight: 700,
     color: "rgba(200, 220, 255, 0.7)",
     letterSpacing: "0.06em",
