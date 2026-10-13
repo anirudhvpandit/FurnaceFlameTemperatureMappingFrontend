@@ -18,14 +18,14 @@ function layerTemperatureAt(layer, x, z) {
   return THREE.MathUtils.lerp(back, front, z);
 }
 
-function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, rightWall, width) {
+function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, rightWall, width, topTileTemp) {
   // These readings describe the coil pass sequence from top to bottom.
   // Coil positions from left to right: DPSH, PSH, RH, HSH
   const coilPositions = [
-    { xNorm: 0.12, temp: boilerParams?.fg_temp_after_dpsh_l ?? boilerParams?.fg_temp_after_dpsh_r },
-    { xNorm: 0.37, temp: boilerParams?.fg_temp_after_psh_l ?? boilerParams?.fg_temp_after_psh_r },
-    { xNorm: 0.63, temp: boilerParams?.fg_temp_after_rh_l ?? boilerParams?.fg_temp_after_rh_r },
-    { xNorm: 0.88, temp: boilerParams?.fg_temp_after_hsh_l ?? boilerParams?.fg_temp_after_hsh_r },
+    { xNorm: 0.12, temp: coilSideAverage(boilerParams, "dpsh") },
+    { xNorm: 0.37, temp: coilSideAverage(boilerParams, "psh") },
+    { xNorm: 0.63, temp: coilSideAverage(boilerParams, "rh") },
+    { xNorm: 0.88, temp: coilSideAverage(boilerParams, "hsh") },
   ].map((coil) => ({
     ...coil,
     temp: coil.temp == null || coil.temp === "" || !Number.isFinite(Number(coil.temp)) ? null : Number(coil.temp)
@@ -33,10 +33,19 @@ function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, r
 
   if (coilPositions.length === 0) return null;
 
+  const dpsh = coilPositions.find((coil) => coil.xNorm === 0.12);
+  const leftBlendTemp = dpsh && topTileTemp != null
+    ? (dpsh.temp + topTileTemp) / 2
+    : dpsh?.temp;
+
   // Interpolate temperature horizontally based on coil positions
   const getCoilTempAtX = (x) => {
     if (coilPositions.length === 1) return coilPositions[0].temp;
-    if (x <= coilPositions[0].xNorm) return coilPositions[0].temp;
+    if (x < coilPositions[0].xNorm) {
+      if (leftBlendTemp == null) return coilPositions[0].temp;
+      const blend = THREE.MathUtils.clamp(x / coilPositions[0].xNorm, 0, 1);
+      return THREE.MathUtils.lerp(leftBlendTemp, coilPositions[0].temp, blend);
+    }
     if (x >= coilPositions[coilPositions.length - 1].xNorm) return coilPositions[coilPositions.length - 1].temp;
 
     for (let i = 0; i < coilPositions.length - 1; i++) {
@@ -69,7 +78,8 @@ function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, r
       return getCoilTempAtX(xNorm);
     }
     if (leftWall) {
-      return getCoilTempAtX(0.15); // DPSH position on left wall
+      // Continue the top-tile/DPSH blend around the upper furnace's left face.
+      return leftBlendTemp ?? getCoilTempAtX(0);
     }
     if (rightWall) {
       return getCoilTempAtX(0.85); // HSH position on right wall
@@ -78,6 +88,14 @@ function flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, height, leftWall, r
 
   // For areas outside coil section, return null to use furnace layer temperatures
   return null;
+}
+
+function coilSideAverage(boilerParams, coilId) {
+  const readings = ["l", "r"]
+    .map((side) => boilerParams?.[`fg_temp_after_${coilId}_${side}`])
+    .filter((value) => value != null && value !== "" && Number.isFinite(Number(value)))
+    .map(Number);
+  return readings.length ? readings.reduce((sum, value) => sum + value, 0) / readings.length : null;
 }
 
 /** Get the inset value at a given height for the buzzneck notch */
@@ -221,7 +239,8 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
       }
       const leftWall = originalX <= -shellWidth / 2 + 0.002;
       const rightWall = originalX >= shellWidth / 2 - 0.002;
-      const flueTemp = flueGasTemperatureAt(boilerParams, y, xNorm, zNorm, model.dimensions.height, leftWall, rightWall, model.dimensions.width);
+      const coilXNorm = THREE.MathUtils.clamp(x / model.dimensions.width, 0, 1);
+      const flueTemp = flueGasTemperatureAt(boilerParams, y, coilXNorm, zNorm, model.dimensions.height, leftWall, rightWall, model.dimensions.width, layers[layers.length - 1].temperature?.avg);
       if (flueTemp != null) {
         // Use coil temperature directly in the coil section
         temp = flueTemp;
@@ -296,8 +315,10 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
         const highTemp = layerTemperatureAt(high, xNorm, zNorm);
         temp = lowTemp == null ? highTemp : highTemp == null ? lowTemp : THREE.MathUtils.lerp(lowTemp, highTemp, t);
       }
+      const coilXNorm = THREE.MathUtils.clamp(sampleX / width, 0, 1);
       const coilTemp = flueGasTemperatureAt(
-        boilerParams, y, xNorm, 1, height, false, false, width,
+        boilerParams, y, coilXNorm, 1, height, false, false, width,
+        layers[layers.length - 1].temperature?.avg,
       );
       if (coilTemp != null) temp = coilTemp;
       const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn));

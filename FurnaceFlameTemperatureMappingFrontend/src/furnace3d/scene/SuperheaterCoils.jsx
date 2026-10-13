@@ -5,10 +5,10 @@ import { temperatureToColor } from "../utils/temperatureScale";
 /** Get coil temperature at a specific x position */
 function getCoilTemperatureAtX(xNorm, boilerParams) {
   const coilPositions = [
-    { xNorm: 0.12, temp: boilerParams?.fg_temp_after_dpsh_l ?? boilerParams?.fg_temp_after_dpsh_r },
-    { xNorm: 0.37, temp: boilerParams?.fg_temp_after_psh_l ?? boilerParams?.fg_temp_after_psh_r },
-    { xNorm: 0.63, temp: boilerParams?.fg_temp_after_rh_l ?? boilerParams?.fg_temp_after_rh_r },
-    { xNorm: 0.88, temp: boilerParams?.fg_temp_after_hsh_l ?? boilerParams?.fg_temp_after_hsh_r },
+    { xNorm: 0.12, temp: coilSideAverage(boilerParams, "dpsh") },
+    { xNorm: 0.37, temp: coilSideAverage(boilerParams, "psh") },
+    { xNorm: 0.63, temp: coilSideAverage(boilerParams, "rh") },
+    { xNorm: 0.88, temp: coilSideAverage(boilerParams, "hsh") },
   ].map((coil) => ({
     ...coil,
     temp: coil.temp == null || coil.temp === "" || !Number.isFinite(Number(coil.temp)) ? null : Number(coil.temp)
@@ -30,6 +30,14 @@ function getCoilTemperatureAtX(xNorm, boilerParams) {
     }
   }
   return coilPositions[0].temp;
+}
+
+function coilSideAverage(boilerParams, coilId) {
+  const readings = ["l", "r"]
+    .map((side) => boilerParams?.[`fg_temp_after_${coilId}_${side}`])
+    .filter((value) => value != null && value !== "" && Number.isFinite(Number(value)))
+    .map(Number);
+  return readings.length ? readings.reduce((sum, value) => sum + value, 0) / readings.length : null;
 }
 
 /** 3D superheater tube curtains filling the upper furnace above the buzz-neck. */
@@ -107,7 +115,7 @@ export default function SuperheaterCoils({ dimensions, boilerParams, thresholds 
         const colors = new Float32Array(positions.count * 3);
         for (let i = 0; i < positions.count; i++) {
           const x = positions.getX(i);
-          const xNorm = (x / width) + 0.5;
+          const xNorm = x / width;
           const temp = getCoilTemperatureAtX(xNorm, boilerParams);
           const color = new THREE.Color(temperatureToColor(temp, thresholds?.alert || 1350, thresholds?.warn || 1300));
           colors[i * 3] = color.r;
