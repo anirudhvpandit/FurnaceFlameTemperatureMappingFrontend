@@ -54,12 +54,9 @@ export default function SuperheaterCoils({ dimensions, boilerParams, thresholds 
       const sectionBanks = [];
 
       for (let section = 0; section < sections; section += 1) {
-        // Keep top constant, only shorten bottom for subsequent sections to follow slope
-        const sectionProgress = section / (sections - 1);
-        const bottomDescent = section === 1
-          ? height * 0.10
-          : section > 1 ? sectionProgress * (height * 0.22) : 0;
-        const sectionYBottom = yBottom + bottomDescent; // Bottom moves up, shortening the tube
+        // The two rightmost loops sit on the furnace's descending shoulder.
+        // Keep the earlier loops at the main lower level, then raise the bottom
+        // of the final two loops along the same shallow slope as the shell.
         
         const startPass = section * passesPerSection;
         const endPass = startPass + passesPerSection;
@@ -68,7 +65,22 @@ export default function SuperheaterCoils({ dimensions, boilerParams, thresholds 
         for (let pass = startPass; pass < endPass; pass += 1) {
           const x = xLeft + pitch * pass;
           const endsAtBottom = pass % 2 === 0;
-          const yEnd = endsAtBottom ? sectionYBottom : yTop;
+          let yEnd = yTop;
+          if (endsAtBottom) {
+            yEnd = yBottom;
+            if (pass >= passCount - 8) {
+              // Match the FurnaceFrame shoulder exactly: it runs from the
+              // inner wall at 82% height to the outer wall at 77% height.
+              const slopeStartX = width / 2;
+              const slopeEndX = width * 0.95;
+              const slopeProgress = THREE.MathUtils.clamp(
+                (x - slopeStartX) / (slopeEndX - slopeStartX),
+                0,
+                1
+              );
+              yEnd = THREE.MathUtils.lerp(height * 0.82, height * 0.77, slopeProgress);
+            }
+          }
           points.push(new THREE.Vector3(x, yEnd, z));
 
           if (pass < endPass - 1) {
@@ -76,7 +88,11 @@ export default function SuperheaterCoils({ dimensions, boilerParams, thresholds 
             const centerX = (x + nextX) / 2;
             for (let step = 1; step <= 10; step += 1) {
               const angle = Math.PI - (step / 10) * Math.PI;
-              const bendY = yEnd + (endsAtBottom ? -1 : 1) * bendRadius * Math.sin(angle);
+              // The last two loops return above their sloped bottom endpoints;
+              // a normal downward U-bend would extend through the shoulder.
+              const followsShoulder = endsAtBottom && pass >= passCount - 8;
+              const bendDirection = endsAtBottom ? (followsShoulder ? 1 : -1) : 1;
+              const bendY = yEnd + bendDirection * bendRadius * Math.sin(angle);
               points.push(new THREE.Vector3(centerX + bendRadius * Math.cos(angle), bendY, z));
             }
           }
