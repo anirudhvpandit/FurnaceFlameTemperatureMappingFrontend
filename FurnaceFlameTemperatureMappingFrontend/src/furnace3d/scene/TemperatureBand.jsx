@@ -110,10 +110,43 @@ function getBuzzneckInset(y, height, width) {
   return 0;
 }
 
+function configureFlowShader(shader, centerY, height, materialRef) {
+  shader.uniforms.uFlowTime = { value: 0 };
+  shader.uniforms.uFurnaceHeight = { value: height };
+  shader.uniforms.uBandCenterY = { value: centerY };
+  shader.vertexShader = `
+    varying vec3 vFurnaceFlowPosition;
+    uniform float uBandCenterY;
+    ${shader.vertexShader}
+  `.replace(
+    "#include <begin_vertex>",
+    `#include <begin_vertex>
+     vFurnaceFlowPosition = transformed + vec3(0.0, uBandCenterY, 0.0);`
+  );
+  shader.fragmentShader = `
+    varying vec3 vFurnaceFlowPosition;
+    uniform float uFlowTime;
+    uniform float uFurnaceHeight;
+    ${shader.fragmentShader}
+  `.replace(
+    "#include <color_fragment>",
+    `#include <color_fragment>
+     float altitude = clamp(vFurnaceFlowPosition.y / uFurnaceHeight, 0.0, 1.0);
+     float weave = sin(vFurnaceFlowPosition.x * 0.28 + vFurnaceFlowPosition.z * 0.24
+                       + sin(altitude * 5.0 - uFlowTime * 0.9) * 0.8);
+     float currentA = 0.5 + 0.5 * sin(altitude * 16.0 - uFlowTime * 1.9 + weave * 1.1);
+     float currentB = 0.5 + 0.5 * sin(altitude * 14.0 - uFlowTime * 1.7 - weave * 1.1 + 2.1);
+     float gentleFlow = max(currentA, currentB);
+     diffuseColor.rgb *= 0.82 + gentleFlow * 0.32;`
+  );
+  if (materialRef.current) materialRef.current.userData.flowShader = shader;
+}
+
 /** Smooth temperature volume between the elevation tiles, colored from the
  * measured corner values at each elevation. */
 export default function TemperatureBand({ model, thresholds, boilerParams }) {
   const materialRef = useRef();
+  const endTriangleMaterialRef = useRef();
   const scaleRange = getTemperatureScaleRange();
   const layers = useMemo(() => [...(model?.layers || [])]
     .filter((layer) => layer.temperature?.avg != null)
@@ -132,12 +165,15 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
 
     const shellWidth = model.dimensions.width * 0.99;
     const rightExtension = model.dimensions.width * 0.45;
+    // Keep an exact row at 82% height, where the upper block extension starts.
+    // The band spans 16%-100%, so 82% is 11/14 through that span.
+    const verticalSegments = Math.ceil(Math.max(48, layers.length * 16) / 14) * 14;
     const geometry = new THREE.BoxGeometry(
       shellWidth,
       height,
       model.dimensions.depth * 0.99,
       32,
-      Math.max(48, layers.length * 16),
+      verticalSegments,
       32,
     );
     const positions = geometry.attributes.position;
@@ -157,7 +193,7 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
       }
 
       const xNorm = THREE.MathUtils.clamp(x / shellWidth + 0.5, 0, 1);
-      if (x > 0 && y >= model.dimensions.height * 0.82) {
+      if (x > 0 && y >= model.dimensions.height * 0.82 - 1e-6) {
         x += rightExtension;
         positions.setX(i, x);
       }
@@ -201,13 +237,90 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
     return { geometry, centerY: (extendedBottom + extendedTop) / 2 };
   }, [layers, model, thresholds, scaleRange, boilerParams]);
 
+  // Fill only the final buzzneck triangle, including its front, back, and
+  // connecting faces. Its colors use the same coil-temperature sampling as
+  // the furnace gradient, while the existing band geometry remains unchanged.
+  const endTriangle = useMemo(() => {
+    if (!model?.dimensions || layers.length < 1) return null;
+    const { width, depth, height } = model.dimensions;
+    const bottom = height * 0.77;
+    const top = height * 0.82;
+    // Match the existing upper gradient surface's actual span at the join.
+    const xInner = width * 0.45;
+    const xOuter = width * 0.951;
+    const centerY = (height * 0.16 + height) / 2;
+    // Slightly overlap the shell outline to prevent a dark antialiasing seam;
+    // the outline itself renders over this fill.
+    const z = depth * 0.501;
+    const points = [
+      [xInner, top, -z], [xOuter, bottom, -z], [xOuter, top, -z],
+      [xInner, top, z], [xOuter, bottom, z], [xOuter, top, z],
+    ];
+    const positions = [];
+    const colors = [];
+    const addFace = (a, b, c) => [points[a], points[b], points[c]].forEach(([x, y, zPosition]) => {
+      positions.push(x, y - centerY, zPosition);
+    });
+    // Triangular end faces.
+    addFace(0, 1, 2);
+    addFace(3, 5, 4);
+    // Three rectangular sides, split into triangles to close the prism.
+    [[0, 1, 4, 3], [1, 2, 5, 4], [2, 0, 3, 5]].forEach(([a, b, c, d]) => {
+      addFace(a, b, c);
+      addFace(a, c, d);
+    });
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const y = positions[i + 1] + centerY;
+      const zPosition = positions[i + 2];
+      // Above the slope, the existing gradient is translated right by 0.45w;
+      // invert that translation when sampling its colors at the shared edge.
+      const sampleX = y >= top - 1e-6 ? x - width * 0.45 : x;
+      const xNorm = THREE.MathUtils.clamp(sampleX / (width * 0.99) + 0.5, 0, 1);
+      const zNorm = THREE.MathUtils.clamp(zPosition / (depth * 0.99) + 0.5, 0, 1);
+      let low = layers[0];
+      let high = layers[layers.length - 1];
+      let temp;
+      if (y <= low.z) temp = layerTemperatureAt(low, xNorm, zNorm);
+      else if (y >= high.z) temp = layerTemperatureAt(high, xNorm, zNorm);
+      else {
+        for (let j = 0; j < layers.length - 1; j += 1) {
+          if (y <= layers[j + 1].z) {
+            low = layers[j];
+            high = layers[j + 1];
+            break;
+          }
+        }
+        const t = high.z === low.z ? 0 : THREE.MathUtils.clamp((y - low.z) / (high.z - low.z), 0, 1);
+        const lowTemp = layerTemperatureAt(low, xNorm, zNorm);
+        const highTemp = layerTemperatureAt(high, xNorm, zNorm);
+        temp = lowTemp == null ? highTemp : highTemp == null ? lowTemp : THREE.MathUtils.lerp(lowTemp, highTemp, t);
+      }
+      const coilTemp = flueGasTemperatureAt(
+        boilerParams, y, xNorm, 1, height, false, false, width,
+      );
+      if (coilTemp != null) temp = coilTemp;
+      const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn));
+      colors.push(color.r, color.g, color.b);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    geometry.computeVertexNormals();
+    return { geometry, centerY };
+  }, [layers, model, thresholds, boilerParams]);
+
   useFrame(({ clock }) => {
-    const shader = materialRef.current?.userData.flowShader;
-    if (shader) shader.uniforms.uFlowTime.value = clock.getElapsedTime();
+    const time = clock.getElapsedTime();
+    [materialRef, endTriangleMaterialRef].forEach((ref) => {
+      const shader = ref.current?.userData.flowShader;
+      if (shader) shader.uniforms.uFlowTime.value = time;
+    });
   });
 
   if (!band) return null;
   return (
+    <>
     <mesh geometry={band.geometry} position={[0, band.centerY, 0]} renderOrder={0}>
       <meshBasicMaterial
         ref={materialRef}
@@ -217,39 +330,22 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
         depthWrite
         side={THREE.DoubleSide}
         toneMapped={false}
-        onBeforeCompile={(shader) => {
-          shader.uniforms.uFlowTime = { value: 0 };
-          shader.uniforms.uFurnaceHeight = { value: model.dimensions.height };
-          shader.uniforms.uBandCenterY = { value: band.centerY };
-          shader.vertexShader = `
-            varying vec3 vFurnaceFlowPosition;
-            uniform float uBandCenterY;
-            ${shader.vertexShader}
-          `.replace(
-            "#include <begin_vertex>",
-            `#include <begin_vertex>
-             vFurnaceFlowPosition = transformed + vec3(0.0, uBandCenterY, 0.0);`
-          );
-          shader.fragmentShader = `
-            varying vec3 vFurnaceFlowPosition;
-            uniform float uFlowTime;
-            uniform float uFurnaceHeight;
-            ${shader.fragmentShader}
-          `.replace(
-            "#include <color_fragment>",
-            `#include <color_fragment>
-             float altitude = clamp(vFurnaceFlowPosition.y / uFurnaceHeight, 0.0, 1.0);
-             float weave = sin(vFurnaceFlowPosition.x * 0.28 + vFurnaceFlowPosition.z * 0.24
-                               + sin(altitude * 5.0 - uFlowTime * 0.9) * 0.8);
-             float currentA = 0.5 + 0.5 * sin(altitude * 16.0 - uFlowTime * 1.9 + weave * 1.1);
-             float currentB = 0.5 + 0.5 * sin(altitude * 14.0 - uFlowTime * 1.7 - weave * 1.1 + 2.1);
-             float gentleFlow = max(currentA, currentB);
-             diffuseColor.rgb *= 0.82 + gentleFlow * 0.32;`
-          );
-          if (materialRef.current) materialRef.current.userData.flowShader = shader;
-        }}
+        onBeforeCompile={(shader) => configureFlowShader(shader, band.centerY, model.dimensions.height, materialRef)}
         customProgramCacheKey={() => "temperature-gradient-gentle-flow-v1"}
       />
     </mesh>
+    {endTriangle && (
+      <mesh geometry={endTriangle.geometry} position={[0, endTriangle.centerY, 0]} renderOrder={1}>
+        <meshBasicMaterial
+          ref={endTriangleMaterialRef}
+          vertexColors
+          side={THREE.DoubleSide}
+          toneMapped={false}
+          onBeforeCompile={(shader) => configureFlowShader(shader, endTriangle.centerY, model.dimensions.height, endTriangleMaterialRef)}
+          customProgramCacheKey={() => "temperature-gradient-gentle-flow-v1"}
+        />
+      </mesh>
+    )}
+    </>
   );
 }

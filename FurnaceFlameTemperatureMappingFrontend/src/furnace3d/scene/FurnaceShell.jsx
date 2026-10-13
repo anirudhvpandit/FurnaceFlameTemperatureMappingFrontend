@@ -116,6 +116,7 @@ function FurnaceFrame({ width, height, depth, explosionOffset }) {
     const hopperY = height * 0.16;
     const outletY = -height * 0.04;
     const cutTopY = height * 0.82;
+    const slopeOuterY = height * 0.77;
     const cutBottomY = height * 0.72;
     const cutInset = width * 0.28;
     const notchProfile = [
@@ -129,7 +130,7 @@ function FurnaceFrame({ width, height, depth, explosionOffset }) {
     const outletZ = z * 0.28;
     const corners = [[-x, -z], [x, -z], [x, z], [-x, z]];
 
-    // Main open shaft. One side has a short inward notch across its full depth.
+    // Extend from the upper buzzneck corner down-right to the outer right wall.
     corners.forEach(([cx, cz]) => {
       if (cx > 0) {
         addLine([cx, hopperY, cz], [cx, cutBottomY, cz]);
@@ -138,17 +139,18 @@ function FurnaceFrame({ width, height, depth, explosionOffset }) {
           const next = notchProfile[i + 1];
           addLine([cx - current.inset, current.y, cz], [cx - next.inset, next.y, cz]);
         }
-        addLine([cx, cutTopY, cz], [xRight, cutTopY, cz]);
-        addLine([xRight, cutTopY, cz], [xRight, topY, cz]);
+        addLine([cx, cutTopY, cz], [xRight, slopeOuterY, cz]);
+        addLine([xRight, slopeOuterY, cz], [xRight, topY, cz]);
       } else {
         addLine([cx, hopperY, cz], [cx, topY, cz]);
       }
     });
 
-    // Join the uneven notch profile front-to-back across this single side panel.
+    // Join the buzzneck and the added diagonal front-to-back.
     notchProfile.forEach(({ y, inset }) => {
       addLine([x - inset, y, -z], [x - inset, y, z]);
     });
+    addLine([xRight, slopeOuterY, -z], [xRight, slopeOuterY, z]);
 
     // Top rim.
     const topCorners = [[-x, -z], [xRight, -z], [xRight, z], [-x, z]];
