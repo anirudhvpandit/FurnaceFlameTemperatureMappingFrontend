@@ -1,5 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { Html } from "@react-three/drei";
 import { temperatureToColor } from "../utils/temperatureScale";
 
 /** Get coil temperature at a specific x position */
@@ -43,119 +45,144 @@ function coilSideAverage(boilerParams, coilId) {
 /** 3D superheater tube curtains filling the upper furnace above the buzz-neck. */
 export default function SuperheaterCoils({ dimensions, boilerParams, thresholds }) {
   const { width, depth, height } = dimensions;
+  const coilMeshRefs = useRef([]);
 
-  const tubeBanks = useMemo(() => {
-    const xLeft = -width * 0.44 + width * 0.5;
-    const xRight = width * 0.44 + width * 0.5;
-    const yBottom = height * 0.72;
-    const yTop = height * 0.98;
-    const passCount = 12;
-    const pitch = (xRight - xLeft) / (passCount - 1);
-    const bendRadius = pitch * 0.5;
-    const pipeRadius = Math.max(0.065, width * 0.007);
-    const rowCount = 5;
-    const sections = 4;
-    const passesPerSection = passCount / sections;
+  // 4 joined cuboids for dpsh, psh, rh, hsh from left to right
+  const coils = useMemo(() => {
+    const coilWidth = width * 0.15;
+    const coilDepth = depth * 0.5;
 
-    return Array.from({ length: rowCount }, (_, row) => {
-      const z = THREE.MathUtils.lerp(-depth * 0.4, depth * 0.4, row / (rowCount - 1));
-      const sectionBanks = [];
-
-      for (let section = 0; section < sections; section += 1) {
-        // The two rightmost loops sit on the furnace's descending shoulder.
-        // Keep the earlier loops at the main lower level, then raise the bottom
-        // of the final two loops along the same shallow slope as the shell.
-        
-        const startPass = section * passesPerSection;
-        const endPass = startPass + passesPerSection;
-        const points = [new THREE.Vector3(xLeft + pitch * startPass, yTop, z)];
-
-        for (let pass = startPass; pass < endPass; pass += 1) {
-          const x = xLeft + pitch * pass;
-          const endsAtBottom = pass % 2 === 0;
-          let yEnd = yTop;
-          if (endsAtBottom) {
-            yEnd = yBottom;
-            if (pass >= passCount - 8) {
-              // Match the FurnaceFrame shoulder exactly: it runs from the
-              // inner wall at 82% height to the outer wall at 77% height.
-              const slopeStartX = width / 2;
-              const slopeEndX = width * 0.95;
-              const slopeProgress = THREE.MathUtils.clamp(
-                (x - slopeStartX) / (slopeEndX - slopeStartX),
-                0,
-                1
-              );
-              yEnd = THREE.MathUtils.lerp(height * 0.82, height * 0.77, slopeProgress);
-            }
-          }
-          points.push(new THREE.Vector3(x, yEnd, z));
-
-          if (pass < endPass - 1) {
-            const nextX = xLeft + pitch * (pass + 1);
-            const centerX = (x + nextX) / 2;
-            for (let step = 1; step <= 10; step += 1) {
-              const angle = Math.PI - (step / 10) * Math.PI;
-              // The last two loops return above their sloped bottom endpoints;
-              // a normal downward U-bend would extend through the shoulder.
-              const followsShoulder = endsAtBottom && pass >= passCount - 8;
-              const bendDirection = endsAtBottom ? (followsShoulder ? 1 : -1) : 1;
-              const bendY = yEnd + bendDirection * bendRadius * Math.sin(angle);
-              points.push(new THREE.Vector3(centerX + bendRadius * Math.cos(angle), bendY, z));
-            }
-          }
-        }
-
-        const curve = new THREE.CatmullRomCurve3(points, false, "centripetal", 0.25);
-        const outline = new THREE.TubeGeometry(curve, 720, pipeRadius * 1.55, 8, false);
-        const hotTube = new THREE.TubeGeometry(curve, 720, pipeRadius, 8, false);
-
-        // Add vertex colors based on temperature at each position
-        const positions = hotTube.attributes.position;
-        const colors = new Float32Array(positions.count * 3);
-        for (let i = 0; i < positions.count; i++) {
-          const x = positions.getX(i);
-          const xNorm = x / width;
-          const temp = getCoilTemperatureAtX(xNorm, boilerParams);
-          const color = new THREE.Color(temperatureToColor(temp, thresholds?.alert || 1350, thresholds?.warn || 1300));
-          colors[i * 3] = color.r;
-          colors[i * 3 + 1] = color.g;
-          colors[i * 3 + 2] = color.b;
-        }
-        hotTube.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-        sectionBanks.push({ section, outline, hotTube });
-      }
-
-      return { z, sectionBanks };
-    });
-  }, [width, depth, height, boilerParams, thresholds]);
+    return [
+      { id: 'dpsh', xPos: width * 0.0, yPos: height * 0.88, height: height * 0.25 },
+      { id: 'psh', xPos: width * 0.30, yPos: height * 0.90, height: height * 0.20 },
+      { id: 'rh', xPos: width * 0.60, yPos: height * 0.90, height: height * 0.20 },
+      { id: 'hsh', xPos: width * 0.90, yPos: height * 0.90, height: height * 0.20 },
+    ].map(coil => ({
+      ...coil,
+      coilWidth,
+      coilDepth,
+      geometry: new THREE.BoxGeometry(coilWidth, coil.height, coilDepth),
+      color: new THREE.Color("#40131b")
+    }));
+  }, [width, height, depth]);
 
   return (
     <group>
-      {tubeBanks.map((bank, rowIndex) => (
-        <group key={rowIndex}>
-          {bank.sectionBanks.map((sectionBank, sectionIndex) => (
-            <group key={`${rowIndex}-${sectionIndex}`}>
-              {/* The offset silhouettes make each depth layer read as real tubing. */}
-              <mesh geometry={sectionBank.outline} renderOrder={30}>
-                <meshBasicMaterial color="#40131b" depthTest={false} toneMapped={false} />
-              </mesh>
-              <mesh geometry={sectionBank.hotTube} renderOrder={31}>
-                <meshStandardMaterial
-                  vertexColors
-                  emissive="#8f2416"
-                  emissiveIntensity={0.42}
-                  metalness={0.38}
-                  roughness={0.32}
-                  depthTest={false}
-                  toneMapped={false}
-                />
-              </mesh>
-            </group>
-          ))}
+      {coils.map((coil, coilIndex) => (
+        <group key={coil.id}>
+          <mesh
+            ref={(node) => { coilMeshRefs.current[coilIndex] = node; }}
+            geometry={coil.geometry}
+            position={[coil.xPos, coil.yPos, 0]}
+            renderOrder={500}
+          >
+            <meshBasicMaterial
+              color={coil.color}
+              transparent={false}
+              opacity={1}
+              side={THREE.FrontSide}
+              depthTest={false}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+
+          <CoilFaceLabels
+            coil={coil}
+            label={coil.id.toUpperCase()}
+            coilIndex={coilIndex}
+            coilMeshRefs={coilMeshRefs}
+          />
         </group>
       ))}
     </group>
   );
+}
+
+function CoilFaceLabels({ coil, label, coilIndex, coilMeshRefs }) {
+  const { camera } = useThree();
+  const groupRef = useRef();
+  const lastVisibleFaces = useRef("");
+  const [visibleFaces, setVisibleFaces] = useState([]);
+  const faces = coilFaces(coil);
+  const raycaster = useMemo(() => new THREE.Raycaster(), []);
+  const cameraPosition = useMemo(() => new THREE.Vector3(), []);
+  const facePosition = useMemo(() => new THREE.Vector3(), []);
+  const labelPosition = useMemo(() => new THREE.Vector3(), []);
+  const toCamera = useMemo(() => new THREE.Vector3(), []);
+  const rayDirection = useMemo(() => new THREE.Vector3(), []);
+  const faceNormal = useMemo(() => new THREE.Vector3(), []);
+  const orientation = useMemo(() => new THREE.Quaternion(), []);
+
+  useFrame(() => {
+    if (!groupRef.current) return;
+    camera.getWorldPosition(cameraPosition);
+    groupRef.current.getWorldQuaternion(orientation);
+    const candidates = coilMeshRefs.current.filter(Boolean);
+    const ownMesh = coilMeshRefs.current[coilIndex];
+    if (!ownMesh) return;
+
+    const nextVisibleFaces = [];
+    faces.forEach((face) => {
+      faceNormal.set(...face.normal).applyQuaternion(orientation);
+      facePosition.set(...face.position);
+      groupRef.current.localToWorld(labelPosition.copy(facePosition));
+      toCamera.copy(cameraPosition).sub(labelPosition).normalize();
+      if (faceNormal.dot(toCamera) <= 0.02) return;
+
+      rayDirection.copy(labelPosition).sub(cameraPosition).normalize();
+      raycaster.set(cameraPosition, rayDirection);
+      const firstHit = raycaster.intersectObjects(candidates, false)[0];
+      const labelDistance = cameraPosition.distanceTo(labelPosition);
+      const liesOnVisibleSurface = firstHit
+        && firstHit.object === ownMesh
+        && Math.abs(firstHit.distance - labelDistance) < 0.2;
+      if (liesOnVisibleSurface) nextVisibleFaces.push(face.name);
+    });
+    const nextKey = nextVisibleFaces.join("|");
+    if (nextKey !== lastVisibleFaces.current) {
+      lastVisibleFaces.current = nextKey;
+      setVisibleFaces(nextVisibleFaces);
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={[coil.xPos, coil.yPos, 0]}>
+      {faces.filter((face) => visibleFaces.includes(face.name)).map((face) => (
+        <Html
+          key={face.name}
+          position={face.position}
+          rotation={face.rotation}
+          transform
+          center
+        >
+          <div style={coilLabelStyle}>{label}</div>
+        </Html>
+      ))}
+    </group>
+  );
+}
+
+const coilLabelStyle = {
+  color: "#ffffff",
+  fontFamily: "Arial, sans-serif",
+  fontSize: "22px",
+  fontWeight: 800,
+  lineHeight: 1,
+  whiteSpace: "nowrap",
+  textShadow: "0 1px 3px #000, 0 0 5px #000",
+  pointerEvents: "none",
+};
+
+function coilFaces(coil) {
+  const { coilWidth, coilDepth, height } = coil;
+  const offset = 0.06;
+  return [
+    { name: "front", position: [0, 0, coilDepth / 2 + offset], rotation: [0, 0, 0], normal: [0, 0, 1] },
+    { name: "back", position: [0, 0, -coilDepth / 2 - offset], rotation: [0, Math.PI, 0], normal: [0, 0, -1] },
+    { name: "left", position: [-coilWidth / 2 - offset, 0, 0], rotation: [0, -Math.PI / 2, 0], normal: [-1, 0, 0] },
+    { name: "right", position: [coilWidth / 2 + offset, 0, 0], rotation: [0, Math.PI / 2, 0], normal: [1, 0, 0] },
+    { name: "top", position: [0, height / 2 + offset, 0], rotation: [-Math.PI / 2, 0, 0], normal: [0, 1, 0] },
+    { name: "bottom", position: [0, -height / 2 - offset, 0], rotation: [Math.PI / 2, 0, 0], normal: [0, -1, 0] },
+  ];
 }
