@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "./api";
 
-const BASE_URL = "https://abhiftm.com/api";
 
 export default function EventLog() {
   const [logs, setLogs] = useState([]);
@@ -14,7 +13,7 @@ export default function EventLog() {
 
   const fetchLogs = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/get-upload-log`);
+      const res = await api.get(`/get-upload-log`);
       const data = res.data;
 
       const formatted = data.map((row) => ({

@@ -20,7 +20,8 @@
  */
 
 // ─── Internal state ──────────────────────────────────────────
-let _transitKey = null;   // CryptoKey (AES-GCM, 256-bit)
+let _transitKey = null;   // Request key (AES-GCM, 256-bit)
+let _transitOutKey = null; // Response key (AES-GCM, 256-bit)
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -60,16 +61,19 @@ function _parseKey(keyStr) {
  *
  * @param {string} keyStr  — 32-byte key as hex (64 chars) or base64url (44 chars).
  */
-export async function initCrypto(keyStr) {
-  const raw = _parseKey(keyStr);
-  if (raw.length !== 32) throw new Error('Transit key must be exactly 32 bytes.');
+export async function initCrypto(keyStr, outKeyStr = keyStr) {
+  if (!keyStr) throw new Error('Set VITE_TRANSIT_KEY in the frontend environment.');
+  if (!outKeyStr) throw new Error('Set VITE_TRANSIT_OUT_KEY in the frontend environment.');
 
-  _transitKey = await crypto.subtle.importKey(
-    'raw', raw,
-    { name: 'AES-GCM' },
-    false,             // not extractable
-    ['encrypt', 'decrypt']
-  );
+  const importAesKey = async (value, label) => {
+    const raw = _parseKey(value);
+    if (raw.length !== 32) throw new Error(`${label} must be exactly 32 bytes.`);
+    return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  };
+  [_transitKey, _transitOutKey] = await Promise.all([
+    importAesKey(keyStr, 'Transit key'),
+    importAesKey(outKeyStr, 'Transit output key'),
+  ]);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -112,13 +116,19 @@ export async function encryptRequest(data) {
  * @returns {*}                — Parsed JS value.
  */
 export async function decryptResponse(response) {
-  if (!_transitKey) throw new Error('Call initCrypto() first.');
+  if (!_transitOutKey) throw new Error('Call initCrypto() first.');
 
   const envelope = await response.json();
+  return decryptEnvelope(envelope);
+}
 
-  if (!envelope.iv || !envelope.ct || !envelope.tag) {
-    // Server returned a plain (non-encrypted) payload — just return it
-    return envelope;
+export async function decryptEnvelope(envelope) {
+  if (!_transitOutKey) throw new Error('Call initCrypto() first.');
+
+  if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope) ||
+      typeof envelope.iv !== 'string' || typeof envelope.ct !== 'string' ||
+      typeof envelope.tag !== 'string') {
+    throw new Error('API returned an unencrypted or invalid response; encrypted JSON is required.');
   }
 
   const iv  = _b64ToBytes(envelope.iv);
@@ -132,7 +142,7 @@ export async function decryptResponse(response) {
 
   const plaintext = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv },
-    _transitKey,
+    _transitOutKey,
     ctWithTag
   );
 
