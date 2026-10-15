@@ -1,167 +1,179 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { Html } from "@react-three/drei";
 import { temperatureToColor } from "../utils/temperatureScale";
 
-/** Get coil temperature at a specific x position */
-function getCoilTemperatureAtX(xNorm, boilerParams) {
-  const coilPositions = [
-    { xNorm: 0.12, temp: coilSideAverage(boilerParams, "dpsh") },
-    { xNorm: 0.37, temp: coilSideAverage(boilerParams, "psh") },
-    { xNorm: 0.63, temp: coilSideAverage(boilerParams, "rh") },
-    { xNorm: 0.88, temp: coilSideAverage(boilerParams, "hsh") },
-  ].map((coil) => ({
-    ...coil,
-    temp: coil.temp == null || coil.temp === "" || !Number.isFinite(Number(coil.temp)) ? null : Number(coil.temp)
-  })).filter((coil) => coil.temp != null);
-
-  if (coilPositions.length === 0) return 600; // Default temperature
-
-  // Interpolate temperature based on x position
-  if (coilPositions.length === 1) return coilPositions[0].temp;
-  if (xNorm <= coilPositions[0].xNorm) return coilPositions[0].temp;
-  if (xNorm >= coilPositions[coilPositions.length - 1].xNorm) return coilPositions[coilPositions.length - 1].temp;
-
-  for (let i = 0; i < coilPositions.length - 1; i++) {
-    const left = coilPositions[i];
-    const right = coilPositions[i + 1];
-    if (xNorm >= left.xNorm && xNorm <= right.xNorm) {
-      const fraction = (xNorm - left.xNorm) / (right.xNorm - left.xNorm);
-      return THREE.MathUtils.lerp(left.temp, right.temp, fraction);
-    }
-  }
-  return coilPositions[0].temp;
-}
-
-function coilSideAverage(boilerParams, coilId) {
-  const readings = ["l", "r"]
+function averageCoilTemperature(boilerParams, coilId) {
+  const values = ["l", "r"]
     .map((side) => boilerParams?.[`fg_temp_after_${coilId}_${side}`])
     .filter((value) => value != null && value !== "" && Number.isFinite(Number(value)))
     .map(Number);
-  return readings.length ? readings.reduce((sum, value) => sum + value, 0) / readings.length : null;
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 600;
 }
 
-/** 3D superheater tube curtains filling the upper furnace above the buzz-neck. */
+/** Earlier serpentine coil detail, shown inside each flue-gas cuboid on zoom. */
 export default function SuperheaterCoils({ dimensions, boilerParams, thresholds }) {
   const { width, depth, height } = dimensions;
-  const coilMeshRefs = useRef([]);
+  const banks = useMemo(() => {
+    const configs = [
+      { id: "dpsh", x: width * 0.0, y: height * 0.89, h: height * 0.23 },
+      { id: "psh", x: width * 0.30, y: height * 0.90, h: height * 0.20 },
+      { id: "rh", x: width * 0.60, y: height * 0.90, h: height * 0.20 },
+      { id: "hsh", x: width * 0.90, y: height * 0.89, h: height * 0.23 },
+    ];
+    const casingWidth = width * 0.15;
+    const casingDepth = depth * 0.5;
+    const pipeRadius = Math.max(0.045, width * 0.0048);
+    const rowCount = 5;
+    const passes = 4;
+    const alert = thresholds?.alert || 1350;
+    const warn = thresholds?.warn || 1300;
 
-  // 4 joined cuboids for dpsh, psh, rh, hsh from left to right
-  const coils = useMemo(() => {
-    const coilWidth = width * 0.15;
-    const coilDepth = depth * 0.5;
+    return configs.map((config) => {
+      const xLeft = -casingWidth * 0.39;
+      const xRight = casingWidth * 0.39;
+      const pitch = (xRight - xLeft) / (passes - 1);
+      const bendRadius = pitch / 2;
+      const yTop = config.h * 0.39;
+      const yBottom = -config.h * 0.39;
+      const rowCurves = [];
 
-    return [
-      // Extend the outer coils downward while keeping their top edge fixed.
-      { id: 'dpsh', xPos: width * 0.0, yPos: height * 0.89, height: height * 0.23 },
-      { id: 'psh', xPos: width * 0.30, yPos: height * 0.90, height: height * 0.20 },
-      { id: 'rh', xPos: width * 0.60, yPos: height * 0.90, height: height * 0.20 },
-      { id: 'hsh', xPos: width * 0.90, yPos: height * 0.89, height: height * 0.23 },
-    ].map(coil => ({
-      ...coil,
-      coilWidth,
-      coilDepth,
-      geometry: new THREE.BoxGeometry(coilWidth, coil.height, coilDepth),
-      color: new THREE.Color("#40131b")
-    }));
-  }, [width, height, depth]);
+      for (let row = 0; row < rowCount; row += 1) {
+        const z = THREE.MathUtils.lerp(-casingDepth * 0.38, casingDepth * 0.38, row / (rowCount - 1));
+        const points = [new THREE.Vector3(xLeft, yTop, z)];
+        for (let pass = 0; pass < passes; pass += 1) {
+          const x = xLeft + pitch * pass;
+          const endsAtBottom = pass % 2 === 0;
+          const yEnd = endsAtBottom ? yBottom : yTop;
+          points.push(new THREE.Vector3(x, yEnd, z));
+
+          if (pass < passes - 1) {
+            const nextX = xLeft + pitch * (pass + 1);
+            const centerX = (x + nextX) / 2;
+            for (let step = 1; step <= 10; step += 1) {
+              const angle = Math.PI - (step / 10) * Math.PI;
+              points.push(new THREE.Vector3(
+                centerX + bendRadius * Math.cos(angle),
+                yEnd + (endsAtBottom ? -1 : 1) * bendRadius * Math.sin(angle),
+                z,
+              ));
+            }
+          }
+        }
+
+        const curve = new THREE.CatmullRomCurve3(points, false, "centripetal", 0.25);
+        const outline = new THREE.TubeGeometry(curve, 240, pipeRadius * 1.65, 8, false);
+        const hotTube = new THREE.TubeGeometry(curve, 240, pipeRadius, 8, false);
+        const colors = new Float32Array(hotTube.attributes.position.count * 3);
+        const color = new THREE.Color();
+        const temp = averageCoilTemperature(boilerParams, config.id);
+        color.set(temperatureToColor(temp, alert, warn));
+        for (let i = 0; i < hotTube.attributes.position.count; i += 1) {
+          colors[i * 3] = color.r;
+          colors[i * 3 + 1] = color.g;
+          colors[i * 3 + 2] = color.b;
+        }
+        hotTube.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+        rowCurves.push({ outline, hotTube });
+      }
+
+      const casingGeometry = new THREE.BoxGeometry(casingWidth, config.h, casingDepth);
+      return { ...config, rowCurves, casingGeometry, casingWidth, casingDepth };
+    });
+  }, [width, depth, height, boilerParams, thresholds]);
 
   return (
     <group>
-      {coils.map((coil, coilIndex) => (
-        <group key={coil.id}>
-          <mesh
-            ref={(node) => { coilMeshRefs.current[coilIndex] = node; }}
-            geometry={coil.geometry}
-            position={[coil.xPos, coil.yPos, 0]}
-            renderOrder={500}
-          >
-            <meshBasicMaterial
-              color={coil.color}
-              transparent={false}
-              opacity={1}
-              side={THREE.FrontSide}
-              depthTest={false}
-              depthWrite={false}
-              toneMapped={false}
-            />
-          </mesh>
-
-          <CoilFaceLabels
-            coil={coil}
-            label={coil.id.toUpperCase()}
-            coilIndex={coilIndex}
-            coilMeshRefs={coilMeshRefs}
-          />
+      {banks.map((bank) => (
+        <group key={bank.id} position={[bank.x, bank.y, 0]}>
+          <ZoomAwareCuboid bank={bank} dimensions={dimensions} />
+          <ZoomedCoilRows bank={bank} dimensions={dimensions} />
+          <Html position={[0, 0, bank.casingDepth / 2 + 0.06]} center style={{ pointerEvents: "none" }}>
+            <div style={coilLabelStyle}>{bank.id.toUpperCase()}</div>
+          </Html>
         </group>
       ))}
     </group>
   );
 }
 
-function CoilFaceLabels({ coil, label, coilIndex, coilMeshRefs }) {
+function ZoomedCoilRows({ bank, dimensions }) {
+  const detailRef = useRef();
   const { camera } = useThree();
-  const groupRef = useRef();
-  const lastVisibleFaces = useRef("");
-  const [visibleFaces, setVisibleFaces] = useState([]);
-  const faces = coilFaces(coil);
-  const raycaster = useMemo(() => new THREE.Raycaster(), []);
-  const cameraPosition = useMemo(() => new THREE.Vector3(), []);
-  const facePosition = useMemo(() => new THREE.Vector3(), []);
-  const labelPosition = useMemo(() => new THREE.Vector3(), []);
-  const toCamera = useMemo(() => new THREE.Vector3(), []);
-  const rayDirection = useMemo(() => new THREE.Vector3(), []);
-  const faceNormal = useMemo(() => new THREE.Vector3(), []);
-  const orientation = useMemo(() => new THREE.Quaternion(), []);
+  const distanceLimit = Math.max(dimensions.width, dimensions.height, dimensions.depth) * 0.9;
 
   useFrame(() => {
-    if (!groupRef.current) return;
-    camera.getWorldPosition(cameraPosition);
-    groupRef.current.getWorldQuaternion(orientation);
-    const candidates = coilMeshRefs.current.filter(Boolean);
-    const ownMesh = coilMeshRefs.current[coilIndex];
-    if (!ownMesh) return;
-
-    const nextVisibleFaces = [];
-    faces.forEach((face) => {
-      faceNormal.set(...face.normal).applyQuaternion(orientation);
-      facePosition.set(...face.position);
-      groupRef.current.localToWorld(labelPosition.copy(facePosition));
-      toCamera.copy(cameraPosition).sub(labelPosition).normalize();
-      if (faceNormal.dot(toCamera) <= 0.02) return;
-
-      rayDirection.copy(labelPosition).sub(cameraPosition).normalize();
-      raycaster.set(cameraPosition, rayDirection);
-      const firstHit = raycaster.intersectObjects(candidates, false)[0];
-      const labelDistance = cameraPosition.distanceTo(labelPosition);
-      const liesOnVisibleSurface = firstHit
-        && firstHit.object === ownMesh
-        && Math.abs(firstHit.distance - labelDistance) < 0.2;
-      if (liesOnVisibleSurface) nextVisibleFaces.push(face.name);
-    });
-    const nextKey = nextVisibleFaces.join("|");
-    if (nextKey !== lastVisibleFaces.current) {
-      lastVisibleFaces.current = nextKey;
-      setVisibleFaces(nextVisibleFaces);
-    }
+    if (!detailRef.current) return;
+    const cameraDistance = camera.position.distanceTo(
+      new THREE.Vector3(bank.x, bank.y, 0),
+    );
+    detailRef.current.visible = cameraDistance < distanceLimit;
   });
 
   return (
-    <group ref={groupRef} position={[coil.xPos, coil.yPos, 0]}>
-      {faces.filter((face) => visibleFaces.includes(face.name)).map((face) => (
-        <Html
-          key={face.name}
-          position={face.position}
-          rotation={face.rotation}
-          transform
-          center
-        >
-          <div style={coilLabelStyle}>{label}</div>
-        </Html>
+    <group ref={detailRef}>
+      {bank.rowCurves.map((row, index) => (
+        <group key={index} renderOrder={520}>
+          <mesh geometry={row.outline} renderOrder={520}>
+            <meshBasicMaterial color="#40131b" depthTest={false} toneMapped={false} />
+          </mesh>
+          <mesh geometry={row.hotTube} renderOrder={521}>
+            <meshStandardMaterial
+              vertexColors
+              emissive="#8f2416"
+              emissiveIntensity={0.42}
+              metalness={0.38}
+              roughness={0.32}
+              depthTest={false}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
       ))}
     </group>
   );
+}
+
+function ZoomAwareCuboid({ bank, dimensions }) {
+  const { camera } = useThree();
+  const meshRef = useRef();
+  const wasZoomed = useRef(false);
+  const openingMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+    color: "#40131b",
+    side: THREE.FrontSide,
+    transparent: true,
+    opacity: 1,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  }), []);
+  const solidMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+    color: "#40131b",
+    side: THREE.FrontSide,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  }), []);
+  const materials = useMemo(
+    () => [solidMaterial, solidMaterial, solidMaterial, solidMaterial, openingMaterial, solidMaterial],
+    [solidMaterial, openingMaterial],
+  );
+  const distanceLimit = Math.max(dimensions.width, dimensions.height, dimensions.depth) * 0.9;
+  const center = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(() => {
+    if (!meshRef.current) return;
+    meshRef.current.getWorldPosition(center);
+    const zoomed = camera.position.distanceTo(center) < distanceLimit;
+    if (zoomed !== wasZoomed.current) {
+      openingMaterial.opacity = zoomed ? 0 : 1;
+      openingMaterial.needsUpdate = true;
+      wasZoomed.current = zoomed;
+    }
+  });
+
+  return <mesh ref={meshRef} geometry={bank.casingGeometry} material={materials} renderOrder={500} />;
 }
 
 const coilLabelStyle = {
@@ -172,18 +184,4 @@ const coilLabelStyle = {
   lineHeight: 1,
   whiteSpace: "nowrap",
   textShadow: "0 1px 3px #000, 0 0 5px #000",
-  pointerEvents: "none",
 };
-
-function coilFaces(coil) {
-  const { coilWidth, coilDepth, height } = coil;
-  const offset = 0.06;
-  return [
-    { name: "front", position: [0, 0, coilDepth / 2 + offset], rotation: [0, 0, 0], normal: [0, 0, 1] },
-    { name: "back", position: [0, 0, -coilDepth / 2 - offset], rotation: [0, Math.PI, 0], normal: [0, 0, -1] },
-    { name: "left", position: [-coilWidth / 2 - offset, 0, 0], rotation: [0, -Math.PI / 2, 0], normal: [-1, 0, 0] },
-    { name: "right", position: [coilWidth / 2 + offset, 0, 0], rotation: [0, Math.PI / 2, 0], normal: [1, 0, 0] },
-    { name: "top", position: [0, height / 2 + offset, 0], rotation: [-Math.PI / 2, 0, 0], normal: [0, 1, 0] },
-    { name: "bottom", position: [0, -height / 2 - offset, 0], rotation: [Math.PI / 2, 0, 0], normal: [0, -1, 0] },
-  ];
-}
