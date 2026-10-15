@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import axios from "axios";
+import api from "./api";
 import {
   LineChart,
   Line,
@@ -19,7 +19,6 @@ import { CameraSyncProvider } from "./furnace3d/CameraSync";
 import { setTemperatureScaleRange } from "./furnace3d/utils/temperatureScale";
 
 
-const BASE_URL = "https://abhiftm.com/api";
 
 // ─── TEMPERATURE ALERT GLOW (>1350) ────────────────────────────
 const TEMP_ALERT_THRESHOLD = 1350;
@@ -425,23 +424,13 @@ async function downloadExcelFromBackend(runsArray, fallbackFilename = "FTM_expor
   try {
     const payload = { runs: runsArray };
 
-    const response = await fetch(`${BASE_URL}/generate-excel`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Server error ${response.status}: ${errText}`);
-    }
-
-    const disposition = response.headers.get("Content-Disposition") || "";
+    const response = await api.post("/generate-excel", payload, { responseType: "blob" });
+    const disposition = response.headers["content-disposition"] || "";
     const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
     let filename = fallbackFilename;
     if (match && match[1]) filename = match[1].replace(/['"]/g, "");
 
-    const blob = await response.blob();
+    const blob = response.data;
 
     // If we have a chart image, inject it into the Excel using ExcelJS
     if (chartImageBase64) {
@@ -1623,7 +1612,7 @@ const closePinnedTooltip = (runId) => {
 
   const fetchHistory = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/history`, {
+      const res = await api.get("/history", {
         params: { station_id: getStationName(), unit_id: getUnitId() },
       });
       console.log("restdata", res.data);
@@ -1642,7 +1631,7 @@ const closePinnedTooltip = (runId) => {
   const fetchRunsForDate = async (date, slotIndex) => {
     if (!date) return;
     try {
-      const res = await axios.get(`${BASE_URL}/history`, {
+      const res = await api.get("/history", {
         params: { station_id: getStationName(), unit_id: getUnitId(), start_date: date, end_date: date },
       });
       console.log("history api response",res);
@@ -1655,10 +1644,10 @@ const closePinnedTooltip = (runId) => {
       console.log(item.run_id);
 
       const [dsRes, boilerRes, coalRes, statsRes] = await Promise.all([
-  axios.get(`${BASE_URL}/history/${item.run_id}`),
-  axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`),
-  axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`),
-  axios.get(`${BASE_URL}/history/${item.run_id}/stats`),
+  api.get(`/history/${item.run_id}`),
+  api.get(`/history/${item.run_id}/boiler-params`),
+  api.get(`/history/${item.run_id}/coal-mill-params`),
+  api.get(`/history/${item.run_id}/stats`),
 ]);
 
 const mergedDataset = {
@@ -1690,7 +1679,7 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
 
   const fetchMappingDates = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/mapping-dates`, {
+      const res = await api.get("/mapping-dates", {
         params: { station: getStationName(), unit: getUnitId() },
       });
 
@@ -1800,7 +1789,7 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
 
     setReportDownloading(true);
     try {
-      const histRes = await axios.get(`${BASE_URL}/history`, {
+      const histRes = await api.get("/history", {
         params: { station_id: getStationName(), unit_id: getUnitId() },
       });
       const toISO = (raw) => {
@@ -1834,9 +1823,9 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
         runs.map(async (item) => {
           try {
             const [dsRes, boilerRes, coalRes] = await Promise.all([
-              axios.get(`${BASE_URL}/history/${item.run_id}`),
-              axios.get(`${BASE_URL}/history/${item.run_id}/boiler-params`),
-              axios.get(`${BASE_URL}/history/${item.run_id}/coal-mill-params`),
+              api.get(`/history/${item.run_id}`),
+              api.get(`/history/${item.run_id}/boiler-params`),
+              api.get(`/history/${item.run_id}/coal-mill-params`),
             ]);
             return { runMeta: item, dataset: dsRes.data, boiler: boilerRes.data, coal: coalRes.data };
           } catch (e) {
@@ -1888,7 +1877,7 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
     }
     setUploading(true);
     try {
-      await axios.post(`${BASE_URL}/upload-run`, payload, {
+      await api.post("/upload-run", payload, {
         headers: { "Content-Type": "application/json" },
       });
       setShowIngestModal(false);
@@ -2113,8 +2102,8 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
     try {
       setSavingEdit(true);
       const payload = buildUploadPayload2(editDraft);
-      await axios.put(
-        `${BASE_URL}/runs/${editingRunId}?username=${localStorage.getItem("username")}`,
+      await api.put(
+        `/runs/${editingRunId}?username=${localStorage.getItem("username")}`,
         payload
       );
 
@@ -2127,10 +2116,10 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
 
       if (selected.includes(editingRunId)) {
         const [dsRes, boilerRes, coalRes, statsRes] = await Promise.all([
-          axios.get(`${BASE_URL}/history/${editingRunId}`),
-          axios.get(`${BASE_URL}/history/${editingRunId}/boiler-params`),
-          axios.get(`${BASE_URL}/history/${editingRunId}/coal-mill-params`),
-          axios.get(`${BASE_URL}/history/${editingRunId}/stats`),
+          api.get(`/history/${editingRunId}`),
+          api.get(`/history/${editingRunId}/boiler-params`),
+          api.get(`/history/${editingRunId}/coal-mill-params`),
+          api.get(`/history/${editingRunId}/stats`),
         ]);
 
         setDatasets(prev => ({ ...prev, [editingRunId]: {
@@ -2156,7 +2145,7 @@ setStatsData(p => ({ ...p, [item.run_id]: statsRes.data }));
     if (!isAdmin) { alert("Only administrators can delete data."); return; }
     if (!window.confirm("Are you sure you want to delete this run?")) return;
     try {
-      await axios.delete(`${BASE_URL}/runs/${run_id}`);
+      await api.delete(`/runs/${run_id}`);
       setHistory(prev => prev.filter(r => r.run_id !== run_id));
       setSelected(prev => prev.filter(id => id !== run_id));
       setDatasets(prev => { const c = { ...prev }; delete c[run_id]; return c; });

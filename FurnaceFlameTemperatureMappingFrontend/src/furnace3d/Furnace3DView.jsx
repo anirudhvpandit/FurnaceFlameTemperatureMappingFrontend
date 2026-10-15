@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import axios from "axios";
+import api from "../api";
 import { useNavigate } from "react-router-dom";
 import { FurnaceStoreProvider, useFurnaceStore } from "./state/FurnaceStore";
 import { buildFurnaceModel, buildDemoFurnaceModel } from "./data/ftmAdapter";
@@ -40,7 +40,6 @@ import { exportSimplified3D, exportLayoutCAD } from "./utils/export3D";
 import { playAlertSound } from "./utils/soundAlerts";
 import { useCameraSync } from "./CameraSync";
 
-const BASE_URL = "https://abhiftm.com/api";
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -409,8 +408,8 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
     setBoilerParams(null);
     try {
       const [dsRes, coalRes] = await Promise.all([
-        axios.get(`${BASE_URL}/history/${runId}`),
-        axios.get(`${BASE_URL}/history/${runId}/coal-mill-params`),
+        api.get(`/history/${runId}`),
+        api.get(`/history/${runId}/coal-mill-params`),
       ]);
       const built = buildFurnaceModel(dsRes.data, coalRes.data);
       if (!built) throw new Error("Run has no elevation data to visualize.");
@@ -418,7 +417,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
       setStoreModel(built);
       setIsDemo(false);
       // Boiler readings are supplementary to furnace elevation data. Keep failures isolated.
-      axios.get(`${BASE_URL}/history/${runId}/boiler-params`)
+      api.get(`/history/${runId}/boiler-params`)
         .then((response) => setBoilerParams(response.data || null))
         .catch((err) => console.warn("Furnace3DView: could not load boiler parameters:", err));
       // Connect WebSocket for live updates if enabled

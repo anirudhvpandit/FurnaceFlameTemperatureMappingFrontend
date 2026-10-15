@@ -15,7 +15,7 @@
  *  • Beautiful background effects
  */
 
-import axios from "axios";
+import api from "./api";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "./assets/abhitech-logo.png";
@@ -194,7 +194,7 @@ const LoginPage = () => {
     if (loading) return;
     setLoading(true);
     try {
-      const response = await axios.post("https://abhiftm.com/api/login", { username, password });
+      const response = await api.post("/login", { username, password });
       const data = response.data;
       console.log(data);
 
