@@ -53,10 +53,11 @@ export default function SuperheaterCoils({ dimensions, boilerParams, thresholds 
     const coilDepth = depth * 0.5;
 
     return [
-      { id: 'dpsh', xPos: width * 0.0, yPos: height * 0.88, height: height * 0.25 },
+      // Extend the outer coils downward while keeping their top edge fixed.
+      { id: 'dpsh', xPos: width * 0.0, yPos: height * 0.89, height: height * 0.23 },
       { id: 'psh', xPos: width * 0.30, yPos: height * 0.90, height: height * 0.20 },
       { id: 'rh', xPos: width * 0.60, yPos: height * 0.90, height: height * 0.20 },
-      { id: 'hsh', xPos: width * 0.90, yPos: height * 0.88, height: height * 0.25 },
+      { id: 'hsh', xPos: width * 0.90, yPos: height * 0.89, height: height * 0.23 },
     ].map(coil => ({
       ...coil,
       coilWidth,
