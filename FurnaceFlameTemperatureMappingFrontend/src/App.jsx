@@ -1347,7 +1347,7 @@ export default function App() {
   max: "",
 });
   const [, setTemperatureScaleVersion] = useState(0);
-  const filterTemperatureScaleToRun = (runId) => {
+  const filterElevationTemperatureScaleToRun = (runId) => {
     const dataset = datasets[runId];
     if (!dataset) return;
 
@@ -1355,6 +1355,25 @@ export default function App() {
       .filter((key) => /^c\d+$/.test(key))
       .flatMap((key) => dataset[key] || [])
       .map((value) => (value == null || String(value).trim() === "" ? NaN : Number(value)))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    if (!temperatures.length) return;
+
+    let min = Math.round(Math.min(...temperatures));
+    let max = Math.round(Math.max(...temperatures));
+    if (max <= min) max = min + 1;
+
+    setTemperatureScaleRange(min, max, runId);
+    setTemperatureScaleVersion((version) => version + 1);
+  };
+
+  const filterFlueGasTemperatureScaleToRun = (runId) => {
+    const boiler = boilerData[runId];
+    if (!boiler) return;
+
+    const flueGasTemps = boiler.flue_gas_temps || boiler;
+    const temperatures = Object.entries(flueGasTemps)
+      .filter(([key]) => key.startsWith("fg_temp_"))
+      .map(([, value]) => (value == null || String(value).trim() === "" ? NaN : Number(value)))
       .filter((value) => Number.isFinite(value) && value > 0);
     if (!temperatures.length) return;
 
@@ -3071,10 +3090,18 @@ const activeMillLabel =
                         <button
                           type="button"
                           aria-label="Filter 3D temperature scale to the lowest and highest elevation temperatures"
-                          onClick={() => filterTemperatureScaleToRun(id)}
+                          onClick={() => filterElevationTemperatureScaleToRun(id)}
                           style={{ ...S.tabBtn, padding: "5px 10px" }}
                         >
                           ELEVATIONS
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Filter 3D temperature scale to the lowest and highest flue gas temperatures"
+                          onClick={() => filterFlueGasTemperatureScaleToRun(id)}
+                          style={{ ...S.tabBtn, padding: "5px 10px" }}
+                        >
+                          FLUE GAS
                         </button>
                         
                         <span style={{ fontSize: 10, color: "rgba(180,210,255,0.5)", marginLeft: "auto" }}>
