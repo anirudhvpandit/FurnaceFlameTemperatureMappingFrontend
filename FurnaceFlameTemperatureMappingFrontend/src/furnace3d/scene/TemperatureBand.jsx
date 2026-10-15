@@ -262,7 +262,7 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
   const endTriangle = useMemo(() => {
     if (!model?.dimensions || layers.length < 1) return null;
     const { width, depth, height } = model.dimensions;
-    const bottom = height * 0.77;
+    const bottom = height * 0.72;
     const top = height * 0.82;
     // Match the existing upper gradient surface's actual span at the join.
     const xInner = width * 0.45;
