@@ -168,10 +168,10 @@ function configureFlowShader(shader, centerY, height, materialRef) {
 
 /** Smooth temperature volume between the elevation tiles, colored from the
  * measured corner values at each elevation. */
-export default function TemperatureBand({ model, thresholds, boilerParams }) {
+export default function TemperatureBand({ model, thresholds, boilerParams, temperatureScaleKey = "default" }) {
   const materialRef = useRef();
   const endTriangleMaterialRef = useRef();
-  const scaleRange = getTemperatureScaleRange();
+  const scaleRange = getTemperatureScaleRange(temperatureScaleKey);
   const layers = useMemo(() => [...(model?.layers || [])]
     .filter((layer) => layer.temperature?.avg != null)
     .sort((a, b) => a.z - b.z), [model]);
@@ -254,7 +254,7 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
         const blend = THREE.MathUtils.smoothstep(progress, 0, 1);
         temp = temp == null ? flueTemp : THREE.MathUtils.lerp(temp, flueTemp, blend);
       }
-      const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn));
+      const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn, temperatureScaleKey));
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
       colors[i * 3 + 2] = color.b;
@@ -333,7 +333,7 @@ export default function TemperatureBand({ model, thresholds, boilerParams }) {
         const blend = THREE.MathUtils.smoothstep(progress, 0, 1);
         temp = temp == null ? coilTemp : THREE.MathUtils.lerp(temp, coilTemp, blend);
       }
-      const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn));
+      const color = new THREE.Color(temperatureToColor(temp, thresholds.alert, thresholds.warn, temperatureScaleKey));
       colors.push(color.r, color.g, color.b);
     }
     const geometry = new THREE.BufferGeometry();

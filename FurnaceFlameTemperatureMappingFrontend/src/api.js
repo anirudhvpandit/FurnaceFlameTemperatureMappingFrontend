@@ -1,7 +1,7 @@
 import axios from "axios";
 import { decryptEnvelope, encryptRequest, initCrypto } from "./furnaceCrypto.js";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://abhiftm.com/api";
 const api = axios.create({ baseURL: BASE_URL, timeout: 30000 });
 
 let cryptoReady;

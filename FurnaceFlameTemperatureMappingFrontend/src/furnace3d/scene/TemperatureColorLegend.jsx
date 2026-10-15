@@ -2,10 +2,10 @@ import { Html } from "@react-three/drei";
 import { useFurnaceStore } from "../state/FurnaceStore";
 import { TEMPERATURE_SCALE_STOPS } from "../utils/temperatureScale";
 
-export default function TemperatureColorLegend() {
+export default function TemperatureColorLegend({ temperatureScaleKey = "default" }) {
   const { state } = useFurnaceStore();
   const { alert, warn } = state.thresholds;
-  const stops = TEMPERATURE_SCALE_STOPS();
+  const stops = TEMPERATURE_SCALE_STOPS(undefined, undefined, temperatureScaleKey);
   const min = stops[0].t;
   const max = stops[stops.length - 1].t;
   const gradient = stops.map((stop) => {

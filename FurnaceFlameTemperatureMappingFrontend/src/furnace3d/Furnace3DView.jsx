@@ -510,6 +510,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
     <FurnaceScene
       model={model}
       boilerParams={boilerParams}
+      temperatureScaleKey={requestedRunId || "default"}
       onResetCameraRef={resetCameraRef}
       onControlsReady={cameraSync?.registerControls}
       onControlsRemoved={cameraSync?.unregisterControls}
@@ -769,7 +770,7 @@ function Furnace3DViewInner({ embedded = false, runId: requestedRunId = null, en
         </div>
       )}
       
-      <Legend />
+      <Legend temperatureScaleKey={requestedRunId || "default"} />
       
       {/* Enhanced Modals */}
       {showScenarioBuilder && (

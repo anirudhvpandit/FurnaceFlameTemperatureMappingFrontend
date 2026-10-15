@@ -53,10 +53,10 @@ const IconSparkles = () => (
 // SUB-COMPONENT: TemperatureGradientBar
 // ============================================================================
 
-function TemperatureGradientBar({ thresholds }) {
+function TemperatureGradientBar({ thresholds, temperatureScaleKey = "default" }) {
   // FIX: TEMPERATURE_SCALE_STOPS is a function, not a plain array.
   // Call it with default thresholds to get the actual stop data.
-  const stops = TEMPERATURE_SCALE_STOPS(thresholds?.alert, thresholds?.warn);
+  const stops = TEMPERATURE_SCALE_STOPS(undefined, undefined, temperatureScaleKey);
   const min = stops[0]?.t ?? 0;
   const max = stops[stops.length - 1]?.t ?? 1;
 
@@ -194,14 +194,14 @@ function ModeBadge() {
 // SUB-COMPONENT: CornerTemperatureScale
 // ============================================================================
 
-function CornerTemperatureScale({ thresholds }) {
+function CornerTemperatureScale({ thresholds, temperatureScaleKey = "default" }) {
     const stops = [
-    { temp: 800, color: temperatureToColor(800, thresholds.alert, thresholds.warn), label: "Cool" },
-    { temp: 1000, color: temperatureToColor(1000, thresholds.alert, thresholds.warn), label: "Normal" },
-    { temp: 1100, color: temperatureToColor(1100, thresholds.alert, thresholds.warn), label: "Warm" },
-    { temp: thresholds.warn, color: temperatureToColor(thresholds.warn, thresholds.alert, thresholds.warn), label: "WARN" },
-    { temp: thresholds.alert, color: temperatureToColor(thresholds.alert, thresholds.alert, thresholds.warn), label: "ALERT" },
-    { temp: 1400, color: temperatureToColor(1400, thresholds.alert, thresholds.warn), label: "Critical" },
+    { temp: 800, color: temperatureToColor(800, thresholds.alert, thresholds.warn, temperatureScaleKey), label: "Cool" },
+    { temp: 1000, color: temperatureToColor(1000, thresholds.alert, thresholds.warn, temperatureScaleKey), label: "Normal" },
+    { temp: 1100, color: temperatureToColor(1100, thresholds.alert, thresholds.warn, temperatureScaleKey), label: "Warm" },
+    { temp: thresholds.warn, color: temperatureToColor(thresholds.warn, thresholds.alert, thresholds.warn, temperatureScaleKey), label: "WARN" },
+    { temp: thresholds.alert, color: temperatureToColor(thresholds.alert, thresholds.alert, thresholds.warn, temperatureScaleKey), label: "ALERT" },
+    { temp: 1400, color: temperatureToColor(1400, thresholds.alert, thresholds.warn, temperatureScaleKey), label: "Critical" },
   ];
 
   return (
@@ -268,16 +268,16 @@ function SelectedDisplay() {
 // MAIN COMPONENT
 // ============================================================================
 
-export default function Legend() {
+export default function Legend({ temperatureScaleKey = "default" }) {
   const { state } = useFurnaceStore();
 
   return (
     <div style={S.legendBar}>
       {/* Temperature Scale */}
-      <TemperatureGradientBar thresholds={state.thresholds} />
+      <TemperatureGradientBar thresholds={state.thresholds} temperatureScaleKey={temperatureScaleKey} />
 
       {/* Corner Temperature Scale */}
-      <CornerTemperatureScale thresholds={state.thresholds} />
+      <CornerTemperatureScale thresholds={state.thresholds} temperatureScaleKey={temperatureScaleKey} />
 
       {/* Burner Status */}
       <div style={styles.legendGroup}>

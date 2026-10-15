@@ -1346,23 +1346,24 @@ export default function App() {
   min: "",
   max: "",
 });
-  const [temperatureScaleRange, setTemperatureScaleRangeState] = useState({ min: 77, max: 1500 });
-  const [temperatureScaleDraft, setTemperatureScaleDraft] = useState({ min: "77", max: "1500" });
-  const commitTemperatureScaleBound = (bound) => {
-    const parsedValue = Number(temperatureScaleDraft[bound]);
-    if (temperatureScaleDraft[bound].trim() === "" || !Number.isFinite(parsedValue)) {
-      setTemperatureScaleDraft((draft) => ({ ...draft, [bound]: String(temperatureScaleRange[bound]) }));
-      return;
-    }
-    const value = Math.round(parsedValue);
-    const nextRange = { ...temperatureScaleRange, [bound]: value };
-    if (nextRange.max <= nextRange.min) {
-      setTemperatureScaleDraft((draft) => ({ ...draft, [bound]: String(temperatureScaleRange[bound]) }));
-      return;
-    }
-    setTemperatureScaleRangeState(nextRange);
-    setTemperatureScaleDraft({ min: String(nextRange.min), max: String(nextRange.max) });
-    setTemperatureScaleRange(nextRange.min, nextRange.max);
+  const [, setTemperatureScaleVersion] = useState(0);
+  const filterTemperatureScaleToRun = (runId) => {
+    const dataset = datasets[runId];
+    if (!dataset) return;
+
+    const temperatures = Object.keys(dataset)
+      .filter((key) => /^c\d+$/.test(key))
+      .flatMap((key) => dataset[key] || [])
+      .map((value) => (value == null || String(value).trim() === "" ? NaN : Number(value)))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    if (!temperatures.length) return;
+
+    let min = Math.round(Math.min(...temperatures));
+    let max = Math.round(Math.max(...temperatures));
+    if (max <= min) max = min + 1;
+
+    setTemperatureScaleRange(min, max, runId);
+    setTemperatureScaleVersion((version) => version + 1);
   };
   const [activeTab, setActiveTab] = useState({});
 
@@ -3066,43 +3067,16 @@ const activeMillLabel =
                         <strong style={{ fontSize: 11, letterSpacing: ".06em" }}>CAMERA SYNC</strong>
                         <button type="button" onClick={() => setMoveFurnacesTogether(true)} style={{ ...S.tabBtn, ...(moveFurnacesTogether ? S.tabActive : {}) }}>TOGETHER</button>
                         <button type="button" onClick={() => setMoveFurnacesTogether(false)} style={{ ...S.tabBtn, ...(!moveFurnacesTogether ? S.tabActive : {}) }}>ALONE</button>
-                        <strong style={{ marginLeft: 12, fontSize: 11, letterSpacing: ".06em" }}>TEMPERATURE RANGE (°C)</strong>
-                        <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}>
-                          LOW
-                          <input
-                            aria-label="Lowest temperature for 3D color scale"
-                            type="number"
-                            step="1"
-                            value={temperatureScaleDraft.min}
-                            onChange={(e) => setTemperatureScaleDraft((draft) => ({ ...draft, min: e.target.value }))}
-                            onBlur={() => commitTemperatureScaleBound("min")}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                e.currentTarget.blur();
-                              }
-                            }}
-                            style={{ width: 82, padding: "5px 7px", borderRadius: 6, border: "1px solid #52647c", background: "#0b1b32", color: "#e5f0ff" }}
-                          />
-                        </label>
-                        <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}>
-                          HIGH
-                          <input
-                            aria-label="Highest temperature for 3D color scale"
-                            type="number"
-                            step="1"
-                            value={temperatureScaleDraft.max}
-                            onChange={(e) => setTemperatureScaleDraft((draft) => ({ ...draft, max: e.target.value }))}
-                            onBlur={() => commitTemperatureScaleBound("max")}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                e.currentTarget.blur();
-                              }
-                            }}
-                            style={{ width: 82, padding: "5px 7px", borderRadius: 6, border: "1px solid #52647c", background: "#0b1b32", color: "#e5f0ff" }}
-                          />
-                        </label>
+                        <strong style={{ marginLeft: 12, fontSize: 11, letterSpacing: ".06em" }}>FOCUS</strong>
+                        <button
+                          type="button"
+                          aria-label="Filter 3D temperature scale to the lowest and highest elevation temperatures"
+                          onClick={() => filterTemperatureScaleToRun(id)}
+                          style={{ ...S.tabBtn, padding: "5px 10px" }}
+                        >
+                          ELEVATIONS
+                        </button>
+                        
                         <span style={{ fontSize: 10, color: "rgba(180,210,255,0.5)", marginLeft: "auto" }}>
                           {moveFurnacesTogether ? "Mouse/touchpad movements sync both furnaces" : "Mouse/touchpad movements affect selected furnace only"}
                         </span>

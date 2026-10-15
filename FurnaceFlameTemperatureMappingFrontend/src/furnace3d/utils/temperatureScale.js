@@ -6,19 +6,24 @@ import { DEFAULT_TEMPERATURE_WARN_C, DEFAULT_TEMPERATURE_ALERT_C } from "../conf
  * converted to Celsius here while preserving the reference colors.
  */
 export const DEFAULT_TEMPERATURE_SCALE_RANGE = { min: 77, max: 1500 };
-let temperatureScaleRange = { ...DEFAULT_TEMPERATURE_SCALE_RANGE };
+const temperatureScaleRanges = new Map();
 
-export function getTemperatureScaleRange() {
-  return temperatureScaleRange;
+export function getTemperatureScaleRange(scaleKey = "default") {
+  return temperatureScaleRanges.get(scaleKey) || DEFAULT_TEMPERATURE_SCALE_RANGE;
 }
 
-export function setTemperatureScaleRange(min, max) {
+export function setTemperatureScaleRange(min, max, scaleKey = "default") {
   const low = Math.round(Number(min));
   const high = Math.round(Number(max));
-  if (Number.isFinite(low) && Number.isFinite(high) && high > low) temperatureScaleRange = { min: low, max: high };
+  if (Number.isFinite(low) && Number.isFinite(high) && high > low) {
+    temperatureScaleRanges.set(scaleKey, { min: low, max: high });
+  }
 }
 
-export const TEMPERATURE_SCALE_STOPS = (min = temperatureScaleRange.min, max = temperatureScaleRange.max) => {
+export const TEMPERATURE_SCALE_STOPS = (min, max, scaleKey = "default") => {
+  const range = getTemperatureScaleRange(scaleKey);
+  min ??= range.min;
+  max ??= range.max;
   const colors = [[20,72,235],[0,83,255],[0,177,235],[0,226,205],[0,230,91],[42,232,0],[211,239,0],[255,224,0],[255,104,0],[239,57,19]];
   return colors.map((color, index) => {
     const t = Math.round(min + (max - min) * index / (colors.length - 1));
@@ -29,9 +34,9 @@ export const TEMPERATURE_SCALE_STOPS = (min = temperatureScaleRange.min, max = t
 function lerp(a, b, f) { return a + (b - a) * f; }
 function rgbToHex([r, g, b]) { return `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`; }
 
-export function temperatureToColor(tempC) {
+export function temperatureToColor(tempC, _alert, _warn, scaleKey = "default") {
   if (tempC == null || Number.isNaN(tempC)) return "#6b7280";
-  const stops = TEMPERATURE_SCALE_STOPS();
+  const stops = TEMPERATURE_SCALE_STOPS(undefined, undefined, scaleKey);
   if (tempC <= stops[0].t) return rgbToHex(stops[0].color);
   for (let i = 0; i < stops.length - 1; i += 1) {
     const a = stops[i], b = stops[i + 1];
@@ -43,8 +48,8 @@ export function temperatureToColor(tempC) {
   return rgbToHex(stops[stops.length - 1].color);
 }
 
-export function normalizeTemperature(tempC) {
-  const stops = TEMPERATURE_SCALE_STOPS();
+export function normalizeTemperature(tempC, scaleKey = "default") {
+  const stops = TEMPERATURE_SCALE_STOPS(undefined, undefined, scaleKey);
   const min = stops[0].t, max = stops[stops.length - 1].t;
   if (tempC == null) return 0;
   return Math.min(1, Math.max(0, (tempC - min) / (max - min)));

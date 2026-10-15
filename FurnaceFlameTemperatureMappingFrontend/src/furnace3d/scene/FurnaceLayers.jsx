@@ -21,7 +21,7 @@ const LAYER_THICKNESS = 0.85;
  *  • Enhanced shadow interaction for realistic depth.
  *  • Improved visual feedback for all interaction states.
  */
-export default function FurnaceLayers({ model, boilerParams }) {
+export default function FurnaceLayers({ model, boilerParams, temperatureScaleKey = "default" }) {
   const { state, selectLayer, setHover, setFocus, setFocusedLayer, clearFocusedLayer } = useFurnaceStore();
   const opacity = state.layerOpacity;
   const layerRefs = useRef({});
@@ -62,7 +62,7 @@ export default function FurnaceLayers({ model, boilerParams }) {
 
   return (
     <group>
-      {showContinuousBand && <TemperatureBand model={model} thresholds={state.thresholds} boilerParams={boilerParams} />}
+      {showContinuousBand && <TemperatureBand model={model} thresholds={state.thresholds} boilerParams={boilerParams} temperatureScaleKey={temperatureScaleKey} />}
       {model.layers.map((layer) => {
         const visible = state.layerVisibility[layer.id] ?? true;
         if (!visible) return null;
@@ -101,7 +101,7 @@ export default function FurnaceLayers({ model, boilerParams }) {
         // Outline colour follows the layer average-temperature colour so the
         // tile edge reinforces the gradient shown on the surface.
         const color = layer.temperature?.avg != null
-          ? temperatureToColor(layer.temperature.avg, state.thresholds.alert, state.thresholds.warn)
+          ? temperatureToColor(layer.temperature.avg, state.thresholds.alert, state.thresholds.warn, temperatureScaleKey)
           : "#64748b";
 
         // Enhanced temperature-driven emissive intensity
@@ -150,6 +150,7 @@ export default function FurnaceLayers({ model, boilerParams }) {
               position={ctPosition}
               dimensions={sliceDimensions}
               color={color}
+              temperatureScaleKey={temperatureScaleKey}
               opacity={targetOpacity}
               emissiveIntensity={emissiveIntensity}
               isSelected={isSelected}
@@ -186,12 +187,12 @@ export default function FurnaceLayers({ model, boilerParams }) {
 // ENHANCED LAYER MESH COMPONENT
 // ============================================================================
 
-function EnhancedLayerMesh({ layer, showContinuousBand, position, dimensions, color, opacity, isSelected, isHovered, isFocused, onSelectLayer, onHover, onDoubleClick, ref }) {
+function EnhancedLayerMesh({ layer, showContinuousBand, position, dimensions, color, opacity, temperatureScaleKey = "default", isSelected, isHovered, isFocused, onSelectLayer, onHover, onDoubleClick, ref }) {
   const fallbackMeshRef = useRef();
   const meshRef = ref || fallbackMeshRef;
   const materialRef = useRef();
   const { state } = useFurnaceStore();
-  const scaleRange = getTemperatureScaleRange();
+  const scaleRange = getTemperatureScaleRange(temperatureScaleKey);
 
   // Create custom geometry with vertex colors for corners
   const geometry = useMemo(() => {
@@ -230,10 +231,10 @@ function EnhancedLayerMesh({ layer, showContinuousBand, position, dimensions, co
 
     // Get colors for each corner
     const cornerColors = {
-      c1: new THREE.Color(temperatureToColor(cornerTemps.c1, state.thresholds.alert, state.thresholds.warn)),
-      c2: new THREE.Color(temperatureToColor(cornerTemps.c2, state.thresholds.alert, state.thresholds.warn)),
-      c3: new THREE.Color(temperatureToColor(cornerTemps.c3, state.thresholds.alert, state.thresholds.warn)),
-      c4: new THREE.Color(temperatureToColor(cornerTemps.c4, state.thresholds.alert, state.thresholds.warn)),
+      c1: new THREE.Color(temperatureToColor(cornerTemps.c1, state.thresholds.alert, state.thresholds.warn, temperatureScaleKey)),
+      c2: new THREE.Color(temperatureToColor(cornerTemps.c2, state.thresholds.alert, state.thresholds.warn, temperatureScaleKey)),
+      c3: new THREE.Color(temperatureToColor(cornerTemps.c3, state.thresholds.alert, state.thresholds.warn, temperatureScaleKey)),
+      c4: new THREE.Color(temperatureToColor(cornerTemps.c4, state.thresholds.alert, state.thresholds.warn, temperatureScaleKey)),
     };
 
     // BoxGeometry has 24 vertices (4 per face)
