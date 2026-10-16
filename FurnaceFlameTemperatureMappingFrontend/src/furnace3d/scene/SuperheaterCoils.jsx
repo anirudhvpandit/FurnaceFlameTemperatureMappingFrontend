@@ -1,19 +1,9 @@
-import { useMemo, useRef } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useMemo } from "react";
 import * as THREE from "three";
 import { Html } from "@react-three/drei";
-import { temperatureToColor } from "../utils/temperatureScale";
 
-function averageCoilTemperature(boilerParams, coilId) {
-  const values = ["l", "r"]
-    .map((side) => boilerParams?.[`fg_temp_after_${coilId}_${side}`])
-    .filter((value) => value != null && value !== "" && Number.isFinite(Number(value)))
-    .map(Number);
-  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 600;
-}
-
-/** Earlier serpentine coil detail, shown inside each flue-gas cuboid on zoom. */
-export default function SuperheaterCoils({ dimensions, boilerParams, thresholds }) {
+/** Superheater coils shown as brown serpentine pipes. */
+export default function SuperheaterCoils({ dimensions }) {
   const { width, depth, height } = dimensions;
   const banks = useMemo(() => {
     const configs = [
@@ -27,8 +17,6 @@ export default function SuperheaterCoils({ dimensions, boilerParams, thresholds 
     const pipeRadius = Math.max(0.045, width * 0.0048);
     const rowCount = 5;
     const passes = 4;
-    const alert = thresholds?.alert || 1350;
-    const warn = thresholds?.warn || 1300;
 
     return configs.map((config) => {
       const xLeft = -casingWidth * 0.39;
@@ -65,30 +53,19 @@ export default function SuperheaterCoils({ dimensions, boilerParams, thresholds 
         const curve = new THREE.CatmullRomCurve3(points, false, "centripetal", 0.25);
         const outline = new THREE.TubeGeometry(curve, 240, pipeRadius * 1.65, 8, false);
         const hotTube = new THREE.TubeGeometry(curve, 240, pipeRadius, 8, false);
-        const colors = new Float32Array(hotTube.attributes.position.count * 3);
-        const color = new THREE.Color();
-        const temp = averageCoilTemperature(boilerParams, config.id);
-        color.set(temperatureToColor(temp, alert, warn));
-        for (let i = 0; i < hotTube.attributes.position.count; i += 1) {
-          colors[i * 3] = color.r;
-          colors[i * 3 + 1] = color.g;
-          colors[i * 3 + 2] = color.b;
-        }
-        hotTube.setAttribute("color", new THREE.BufferAttribute(colors, 3));
         rowCurves.push({ outline, hotTube });
       }
 
       const casingGeometry = new THREE.BoxGeometry(casingWidth, config.h, casingDepth);
       return { ...config, rowCurves, casingGeometry, casingWidth, casingDepth };
     });
-  }, [width, depth, height, boilerParams, thresholds]);
+  }, [width, depth, height]);
 
   return (
     <group>
       {banks.map((bank) => (
         <group key={bank.id} position={[bank.x, bank.y, 0]}>
-          <ZoomAwareCuboid bank={bank} dimensions={dimensions} />
-          <ZoomedCoilRows bank={bank} dimensions={dimensions} />
+          <CoilRows bank={bank} />
           <Html position={[0, 0, bank.casingDepth / 2 + 0.06]} center style={{ pointerEvents: "none" }}>
             <div style={coilLabelStyle}>{bank.id.toUpperCase()}</div>
           </Html>
@@ -98,21 +75,9 @@ export default function SuperheaterCoils({ dimensions, boilerParams, thresholds 
   );
 }
 
-function ZoomedCoilRows({ bank, dimensions }) {
-  const detailRef = useRef();
-  const { camera } = useThree();
-  const distanceLimit = Math.max(dimensions.width, dimensions.height, dimensions.depth) * 0.9;
-
-  useFrame(() => {
-    if (!detailRef.current) return;
-    const cameraDistance = camera.position.distanceTo(
-      new THREE.Vector3(bank.x, bank.y, 0),
-    );
-    detailRef.current.visible = cameraDistance < distanceLimit;
-  });
-
+function CoilRows({ bank }) {
   return (
-    <group ref={detailRef}>
+    <group>
       {bank.rowCurves.map((row, index) => (
         <group key={index} renderOrder={520}>
           <mesh geometry={row.outline} renderOrder={520}>
@@ -120,9 +85,9 @@ function ZoomedCoilRows({ bank, dimensions }) {
           </mesh>
           <mesh geometry={row.hotTube} renderOrder={521}>
             <meshStandardMaterial
-              vertexColors
-              emissive="#8f2416"
-              emissiveIntensity={0.42}
+              color="#40131b"
+              emissive="#40131b"
+              emissiveIntensity={0.3}
               metalness={0.38}
               roughness={0.32}
               depthTest={false}
@@ -135,46 +100,7 @@ function ZoomedCoilRows({ bank, dimensions }) {
   );
 }
 
-function ZoomAwareCuboid({ bank, dimensions }) {
-  const { camera } = useThree();
-  const meshRef = useRef();
-  const wasZoomed = useRef(false);
-  const openingMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-    color: "#40131b",
-    side: THREE.FrontSide,
-    transparent: true,
-    opacity: 1,
-    depthTest: false,
-    depthWrite: false,
-    toneMapped: false,
-  }), []);
-  const solidMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-    color: "#40131b",
-    side: THREE.FrontSide,
-    depthTest: false,
-    depthWrite: false,
-    toneMapped: false,
-  }), []);
-  const materials = useMemo(
-    () => [solidMaterial, solidMaterial, solidMaterial, solidMaterial, openingMaterial, solidMaterial],
-    [solidMaterial, openingMaterial],
-  );
-  const distanceLimit = Math.max(dimensions.width, dimensions.height, dimensions.depth) * 0.9;
-  const center = useMemo(() => new THREE.Vector3(), []);
 
-  useFrame(() => {
-    if (!meshRef.current) return;
-    meshRef.current.getWorldPosition(center);
-    const zoomed = camera.position.distanceTo(center) < distanceLimit;
-    if (zoomed !== wasZoomed.current) {
-      openingMaterial.opacity = zoomed ? 0 : 1;
-      openingMaterial.needsUpdate = true;
-      wasZoomed.current = zoomed;
-    }
-  });
-
-  return <mesh ref={meshRef} geometry={bank.casingGeometry} material={materials} renderOrder={500} />;
-}
 
 const coilLabelStyle = {
   color: "#ffffff",

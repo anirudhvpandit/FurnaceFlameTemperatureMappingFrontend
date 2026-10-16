@@ -334,7 +334,7 @@ const FurnaceScene = forwardRef(({ model, boilerParams, temperatureScaleKey = "d
               <group position={[furnaceOffsets[0]?.[0] || 0, 0, furnaceOffsets[0]?.[1] || 0]}>
               <FurnaceLayers model={model} boilerParams={boilerParams} temperatureScaleKey={temperatureScaleKey} receiveShadow castShadow />
               <FurnaceShell dimensions={model.dimensions} model={model} receiveShadow castShadow isFocusedView={state.isFocusedView} plantId={state.plantId || "default"} />
-              <SuperheaterCoils dimensions={model.dimensions} boilerParams={boilerParams} thresholds={state.thresholds} />
+              <SuperheaterCoils dimensions={model.dimensions} />
               <BurnerSystem model={model} />
               {(state.explodedView || state.sectionalView === "isolated" ||
                 model.layers.some((layer) => state.layerVisibility[layer.id] === false)) && (
@@ -350,7 +350,7 @@ const FurnaceScene = forwardRef(({ model, boilerParams, temperatureScaleKey = "d
             <group position={[comparisonModel.dimensions.width + 4 + (furnaceOffsets[1]?.[0] || 0), 0, furnaceOffsets[1]?.[1] || 0]}>
               <ComparisonSeparator position={[-2, 0, 0]} />
               <FurnaceShell dimensions={comparisonModel.dimensions} model={comparisonModel} receiveShadow castShadow isFocusedView={state.isFocusedView} />
-              <SuperheaterCoils dimensions={comparisonModel.dimensions} boilerParams={boilerParams} thresholds={state.thresholds} />
+              <SuperheaterCoils dimensions={comparisonModel.dimensions} />
               <FurnaceLayers model={comparisonModel} boilerParams={boilerParams} temperatureScaleKey={temperatureScaleKey} receiveShadow castShadow />
               <BurnerSystem model={comparisonModel} />
               <TemperatureField model={comparisonModel} isFocusedView={state.isFocusedView} boilerParams={boilerParams} />
